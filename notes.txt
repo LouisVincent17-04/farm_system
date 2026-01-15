@@ -1,0 +1,185 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+1. Feeding will not be individual, it should be by pen and all animals in that pen are being fed 
+2. Cost Monitoring -> All animals must have an individual record of their costs
+3. If an animal gives birth, all of its expenses (NOT INCLUDING THE PURCHASE COST) will be divided to the newly births
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+COSTING: MAKE A FILTER THAT SHOWS THE HISTORY OF ALL, ACTIVE, SOLD, DISEASED
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+Business Cycle:
+Animal ->  eats, medication, vaccination, vitamins & supplementation, feeding
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+If an Animal will give birth:
+-> Entire cost for medication, vaccination, vitamins & supplementation, feeding will be divided to the piglets
+-> Piglets will have an acquisition cost depending on how much the divided cost
+
+Create a page that will make process that will transfer the cost of each category such as: medication, vaccination, vitamins & supplementation, feeding
+Select Animal Tag No (Parent) -> Transfer Cost -> [Total Cost of X category / Number of piglets]
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+Add Classification in Animals (Add also in database):
+Piglet : N1 - N2 days
+Starter Hog : N1 - N2 days
+Grower Hog : N1 - N2 days
+Finisher Hog - N1 - N2 days
+Jr. Boar & Gilt - N1 - N2
+Boar & Sow - N1 - N2
+
+    -> IF A MALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to JR BOAR then -> BOAR
+    -> IF A FEMALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to GILT then -> SOW 
+
+NOTE: DAYS ARE NOT FIXED, CREATE A TABLE THAT WILL DEFINE THE DAYS, THE SYSTEM WILL AUTOMATICALLY CLASSIFY 
+WHETHER THE ANIMAL IS Piglet, Started Hog, etc... IF THE ANIMAL IS 80 DAYS, IT BELONGS TO GROWER HOG, BUT IF 
+THE USER EXPLICITLY UPDATES THE FOR EXAMPLE STARTED HOG TO MAX 80 DAYS, ALL EXISTING RECORDS THAT ARE 80 DAYS YEARS 
+OLD BELONGS TO STARTED HOG AND NOT GROWER HOG.
+
+Classification Table:
+int class_id
+varchar stages
+start date
+end date
+fcr
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+-> PURCHASED ANIMALS DATE OF BIRTH CAN BE ALTERED ✅
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+BREEDING SOW STATUS ✅
+-> DRY            (IF AN ANIMAL BECOMES SOW CLASSIFICATION, THIS IS THE DEFAULT STATUS)  ✅
+-> SERVICE 1      (USER OPERATED) ✅
+-> SERVICE 2      (USER OPERATED) ✅
+-> SERVICE 3      (USER OPERATED) ✅
+-> SERVICE 4      (USER OPERATED) ✅
+-> SERVICE 5      (USER OPERATED) ✅
+-> PREGNANT       (USER OPERATED) ✅
+-> BIRTHING       (USER OPERATED) ✅
+
+IF DONE BIRTHING, GO BACK TO DRY ✅
+
+NOTE: CREATE A TABLE THAT WILL SHOW THE NUMBER OF DAYS OF SERVICE 1 - 5 ✅
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+EVENTS ARE FIXED: RESTRICTED TO SUPER ADMIN
+PIGLET CLASSIFICATION: SYSTEM PROMPTS TO GIVE: [IRON, HOG CHOLERA, MYCO-PLASMA] -> THESE ARE FIXED
+SOW CLASSIFICATION: SYSTEM PROMPTS TO GIVE: [IRON, HOG CHOLERA, MYCO-PLASMA] -> THESE ARE FIXED
+BOAR CLASSIFICATION: SYSTEM PROMPTS TO GIVE: [IRON, HOG CHOLERA, MYCO-PLASMA] -> THESE ARE FIXED
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+Dashboard is responsible for all push notifications
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+MAKE A SOW CARD FOR BIRTHING: SOW CARD ALSO CONSIST OF THE ANIMAL THAT BELONGS TO SOW ANIMAL CLASSIFICATION AND THEIR TAG ID
+(THESE ARE COLUMNS)
+PARITY - BIRTH INSTANCE
+BORN - N of Birth
+ACTIVE - N of Survived
+DEAD  - N of Dead
+MUMMIFIED - N of Mummified
+
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+Alter the database of Animal Records to include the Current Estiamted Weight.... Weight at Birth......... Current Actual Weight 
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+CREATE A PAGE THAT SHOWS THE FCR OF EACH PEN: [OPTION: GET FCR (FEED CONVERSION RATE)] 
+PROCESS: 
+    WEIGHT AT BIRTH: [SYSTEM INPUT] [Sample Data: 2.5] (THE USER MUST CHOOSE A TAG NUMBER.. INCLUDE THOSE LOCATION FILTERS)
+    FEED CONSUMPTION: [SYSTEM INPUT] [ALL ANIMALS IN PEN ARE THE SAME] [Sample Data: 150 kgs] (the SYSTEM must get all the kgs of feed in that pen divided by all animals in that pen)
+    FCR: [USER INPUT (CAN BE CHANGED)] [ALL ANIMALS IN PEN ARE THE SAME] [Sample Data: 0.35] (Make a logic that when i change the fcr of this animal tag, other animals with this classification would change also the fcr)
+    TOTAL WEIGHT GAIN: [SYSTEM INPUT] [Sample Data: 52.5] 
+    ESTIMATED WEIGHT: [SYSTEM INPUT (WEIGHT AT BIRTH + TOTAL WEIGHT GAIN)] [Sample Data: 55]
+    ACTUAL WEIGHT : [USER INPUT]  [Sample Data: 53]
+    DATE OF WEIGHING: [CHOOSE DATE] [Sample Data: 1/25/2026]
+    PUT STANDARD FCR: [N] [STANDARD FCR SHOULD BE USED WHEN FCR IS NOT SET]
+
+CREATE ALSO A database TO THIS...
+
+SAMPLE USE:
+- USER CHOOSES A LOCATION, CHOOSES A BUILDING, CHOOSES A PEN, AND CHOOSES AN ANIMAL USING TAG NUMBER... THEN ITS WEIGHT AT BIRTH INPUT WILL AUTO COMPLETE
+- SYSTEM AUTO COMPLETES THE FEED CONSUMPTION
+- IF NO FCR SET WITH THE ANIMAL CLASSIFICATION, STANDARD FCR WOULD AUTO COMPLETE THE INPUT
+- SYSTEM AUTOCOMPLETES THE TOTAL WEIGHT GAIN AND ESTIMATED WEIGHT
+- IF USER SETS THE FCR OF A SPECIFIC ANIMAL IN THAT PEN, ALL ANIMALS IN THAT PEN WOULD RECEIVE THE SAME FCR
+- USER INPUTS THE ACTUAL WEIGHT
+- USER ALSO INPUTS THE DATE OF WEIGHING
+- PUT STANDARD FCR FOR EVERYTHING
+- MAKE SURE TO HAVE A SAVE BUTTON
+
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+A SINGLE PEN SHOULD CONSIST OF ANIMALS THAT BELONGS TO A SINGLE CLASSIFICATION
+SO, UPDATE THE FEEDING TRANSACTION THAT IT WILL FEED ALL ANIMALS IN THAT PEN WITH THE SAME QUANTITY AND FEEDS
+============================================================================================================================================================
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+============================================================================================================================================================
+✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅
+============================================================================================================================================================
+
+- PREVENT THE CLOSING OF PURCHASE MODALS WHEN OUTSIDE IS CLICKED ✅
+- ADD LEDGERS/INFORMATION TO FEEDS, VITAMINS, MEDICINES, AND VACCINES ✅
+- ADD A MULTIPLE SELECTION OF ANIMALS IN MEDICATION, VACCINATION, VITAMINS, AND CHECKUPS, AND PROCESS SALES ✅
+- ADD AN OPTION IN PROCESS SALES TO SELL AN ANIMAL PER KG OR PER PC... IF PER KG, IT WILL MULTIPLY THE ANIMAL'S ACTUAL WEIGHT
+ AND THE FINAL PRICE WILL AUTO COMPLETE ✅
+- ADD A PAGE THAT ALLOWS USERS TO INPUT ACTUAL WEIGHTS BASED ON LOCATION > BUILDING > PEN
+- ADD A DATE AND TIME OPTION IN animal_sow_status.php THAT WILL SHOW THE [STATUS] DATE
+    - BEFORE COMPLETING THE BIRTHING STATUS, YOU SHOULD CREATE A SOW CARD
+    - AFTER PREGNANCY, THERE WILL BE OPTIONS SUCH AS BIRTHING AND ABORTION, AFTER ABORTION > DRY
+    - ACTIVE MUST NOT BE EDITABLE, ACTIVE IS ONLY SET UP WHEN DEAD OR MUMMIFIED HAS AN INPUT
+        - ACTIVE = BORN - DEAD - MUMMIFIED
+- IN SOW STATUS, DURING SERVICES, THE SYSTEM MUST CHOOSE WHO (A BOAR) SERVICED THE SOW AND RECORD IT IN THE DATABASE
+- ADD A LINK BETWEEN SOW CARD AND ANIMAL RECORDS
+    - IF THE SOW STATUS IS SET TO BE BIRTHING, IT WILL GO FIRST IN SOW CARDS
+    - AFTER THE SOW CARDS, IT WILL SHOW A PAGE THAT WILL ADD A NEWLY REGISTERED BIRTH
+        EXAMPLE:
+            IF THERE ARE 7 NEWLY BIRTH, THE PAGE WILL ADD 7 ROWS... THE SYSTEM WILL AUTO-GENERATE
+            THE TAG NUMBER WITH THIS FORMAT [SOW TAG - PARITY # - ORDER OF BIRTH] THE SYSTEM WILL PROMPT THE USER
+            TO EDIT THE INFO OF THE 7 NEWLY BIRTH... THE USER SAVES AND IT WILL STORE THE INFO TO ANIMAL_RECORDS 
+            DATABASE!
+    - AFTER CREATING ALL NEWLY BIRTHS, IT WILL GO TO SOW STATUS AND WILL CONFIRM
+    [NOTE: WEAN IS WHEN A PIGLET DOESN'T NEED THEIR MOM ANYMORE]
+    - WHEN A PIGLET IS ALREADY WEANING OR IT WILL GO NEXT STAGE LIKE STARTER HOG, IT WILL SET THE SOW DRY
+- IN THE NEWLY REGISTERED BIRTH, A PIGLET MUST HAVE A BOAR
+- IN THE SERVICE, THERE WILL BE TWO CHOICES OF SERVICING,... NATURAL OR ARTIFICIAL INSEMINATION
+- CREATE A BIRTH CERTIFICATE OF ALL NEWLY REGISTERED BIRTH, ALL FIELDS ARE OPTIONAL EXCEPT THE IMPORTANT INFOS
+- CREATE SELECT GROUP PROCESS WHERE WE CAN:
+    - TRANSFER SELECTED GROUPS OF ANIMALS FROM PEN X TO PEN Y 
+    - SELL SELECTED GROUPS OF ANIMALS 
+    - ALL TRANSACTIONS EXCEPT FEEDING SINCE FEEDING IS ALREADY DONE
+- TRANSFER COST WILL BE BOAR AND SOW OPERATIONAL COST COMBINED
+- FIX THE SEARCHING OF ALL REPORTS
+- SOW AND BOAR'S TRANSFERRABLE COST CAN BE EDITED
+- CREATE A TRANSFER COST WHEN THE COST IS TRANSFERRED.... ADD A START DATE AND END DATE OF OPERATIONAL COST
+- ADD A BUYER DATABASE AND PAGE ........... AND ALSO, MAKE IT A DROP DOWN IN THE SELECT BUYER
+- ADD A REPORT THAT SHOWS ALL OPERATIONAL TRANSACTIONS TO ANIMALS 
+- ANIMAL SALES REPORT PDF SHOULD BE FIXED
+- ANIMAL RECORD MUST HAVE DAYS OLD
+- ADD EVENTS PAGE WHERE IT SHOWS THE TABLE OF CLASSIFICATIONS AND THEIR EQUIVALENT MED, VITS, ETC 

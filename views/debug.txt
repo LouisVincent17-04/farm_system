@@ -1,0 +1,28 @@
+=== SEARCH DEBUG ===
+Search Term: 'Louis'
+Date From: ''
+Date To: ''
+WHERE SQL:  AND (
+            ar.TAG_NO LIKE :search OR 
+            s.customer_name LIKE :search OR 
+            s.notes LIKE :search
+        )
+Full SQL: SELECT 
+                    COUNT(*) AS total_count,
+                    COALESCE(SUM(s.final_sale_price), 0) AS total_revenue,
+                    COALESCE(SUM(s.total_net_worth), 0) AS total_expenses,
+                    COALESCE(SUM(s.gross_profit), 0) AS total_profit,
+                    COALESCE(SUM(s.weight_at_sale), 0) AS total_weight
+                  FROM animal_sales s
+                  LEFT JOIN animal_records ar ON s.animal_id = ar.ANIMAL_ID
+                  WHERE 1=1  AND (
+            ar.TAG_NO LIKE :search OR 
+            s.customer_name LIKE :search OR 
+            s.notes LIKE :search
+        )
+Params: Array
+(
+    [:search] => %Louis%
+)
+
+Binding: :search => '%Louis%'

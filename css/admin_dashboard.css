@@ -1,0 +1,304 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .admin-title {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .admin-subtitle {
+            color: #94a3b8;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-description {
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        /* Management Grid */
+        .management-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .management-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .management-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.05), transparent);
+            transition: left 0.8s;
+        }
+
+        .management-card:hover::before {
+            left: 100%;
+        }
+
+        .management-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(34, 197, 94, 0.4);
+            box-shadow: 0 20px 40px rgba(34, 197, 94, 0.15);
+        }
+
+        .card-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Different icon colors for visual distinction */
+        .card-icon.maintenance { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .card-icon.animal { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .card-icon.location { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .card-icon.building { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .card-icon.pen { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .card-icon.breed { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .card-icon.veterinary { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .card-icon.medicine { background: linear-gradient(135deg, #84cc16, #65a30d); }
+        .card-icon.disease { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .card-icon.item { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .card-icon.schedule { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+        .card-icon.itemtype { background: linear-gradient(135deg, #e5ff21ff, #ffff00ff); }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #22c55e;
+            margin-bottom: 1rem;
+        }
+
+        .card-description {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(30, 41, 59, 0.8);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #22c55e;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .card-action {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64748b;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .management-card:hover .card-action {
+            color: #22c55e;
+        }
+
+        /* Quick Stats Section */
+        .quick-stats {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+        }
+
+        .stats-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #22c55e;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #22c55e;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-desc {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .admin-title {
+                font-size: 2rem;
+            }
+
+            .admin-subtitle {
+                font-size: 1rem;
+            }
+
+            .management-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .management-card {
+                padding: 1.5rem;
+            }
+
+            .card-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+
+            .card-title {
+                font-size: 1.25rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-title {
+                font-size: 1.5rem;
+            }
+
+            .management-card {
+                padding: 1rem;
+            }
+
+            .card-stats {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animation Effects */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .management-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .management-card:nth-child(1) { animation-delay: 0.1s; }
+        .management-card:nth-child(2) { animation-delay: 0.2s; }
+        .management-card:nth-child(3) { animation-delay: 0.3s; }
+        .management-card:nth-child(4) { animation-delay: 0.4s; }
+        .management-card:nth-child(5) { animation-delay: 0.5s; }
+        .management-card:nth-child(6) { animation-delay: 0.6s; }
+        .management-card:nth-child(7) { animation-delay: 0.7s; }
+        .management-card:nth-child(8) { animation-delay: 0.8s; }
+        .management-card:nth-child(9) { animation-delay: 0.9s; }
+        .management-card:nth-child(10) { animation-delay: 1.0s; }
+        .management-card:nth-child(11) { animation-delay: 1.1s; }
+        .management-card:nth-child(11) { animation-delay: 1.2s; }
+        /* Pulse animation for active states */
+        .management-card.active {
+            border-color: #22c55e;
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+        }
