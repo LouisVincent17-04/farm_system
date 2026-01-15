@@ -1,6 +1,6 @@
 <?php
 // views/animal_record_history.php
-$page = "animal_records"; // Active Tab
+$page = "admin_dashboard"; // Active Tab
 include '../common/navbar.php';
 include '../config/Connection.php';
 include '../security/checkRole.php';    
@@ -10,14 +10,17 @@ checkRole(2);
 $filter_loc    = $_GET['location_id'] ?? '';
 $filter_build  = $_GET['building_id'] ?? '';
 $filter_pen    = $_GET['pen_id'] ?? '';
-$filter_status = $_GET['status'] ?? ''; // New Status Filter
+$filter_status = $_GET['status'] ?? ''; 
 $search_tag    = $_GET['search'] ?? '';
 $limit_opt     = $_GET['limit'] ?? '10';
 
 // --- 2. BUILD DYNAMIC QUERY ---
 $params = [];
+
+// Added DATEDIFF(NOW(), ar.BIRTH_DATE) AS DAYS_OLD to the selection
 $sql = "SELECT 
             ar.*, 
+            DATEDIFF(NOW(), ar.BIRTH_DATE) AS DAYS_OLD,
             at.ANIMAL_TYPE_NAME, 
             b.BREED_NAME,
             l.LOCATION_NAME,
@@ -48,14 +51,13 @@ if (!empty($filter_pen)) {
     $sql .= " AND ar.PEN_ID = ?";
     $params[] = $filter_pen;
 }
-// Apply Status Filter (NEW)
+// Apply Status Filter
 if (!empty($filter_status)) {
     if ($filter_status === 'Active') {
         $sql .= " AND ar.CURRENT_STATUS = 'Active'";
     } elseif ($filter_status === 'Sold') {
         $sql .= " AND ar.CURRENT_STATUS = 'Sold'";
     } elseif ($filter_status === 'Deceased') {
-        // Matches 'Cull', 'Deceased', or 'Dead' depending on your DB convention
         $sql .= " AND (ar.CURRENT_STATUS = 'Cull' OR ar.CURRENT_STATUS = 'Deceased' OR ar.CURRENT_STATUS = 'Dead')";
     }
 }
@@ -181,7 +183,7 @@ if ($filter_build) {
         .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
         .status-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         .status-sold { background: rgba(234, 179, 8, 0.2); color: #facc15; }
-        .status-cull { background: rgba(239, 68, 68, 0.2); color: #f87171; } /* For Deceased/Cull */
+        .status-cull { background: rgba(239, 68, 68, 0.2); color: #f87171; } 
 
         .location-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
         .empty-state { text-align: center; padding: 4rem; color: #64748b; font-style: italic; }
@@ -264,7 +266,7 @@ if ($filter_build) {
                     <th>Tag No</th>
                     <th>Type / Breed</th>
                     <th>Sex</th>
-                    <th>Stage / Class</th>
+                    <th>Age</th> <th>Stage / Class</th>
                     <th>Current Location</th>
                     <th>Weight</th>
                     <th>Status</th>
@@ -288,6 +290,11 @@ if ($filter_build) {
                             <div style="font-size: 0.8rem; color: #64748b;"><?= htmlspecialchars($row['BREED_NAME']) ?></div>
                         </td>
                         <td><?= $row['SEX'] ?></td>
+                        
+                        <td style="color: #fcd34d; font-weight: 600;">
+                            <?= $row['DAYS_OLD'] !== null ? $row['DAYS_OLD'] . " days" : "N/A" ?>
+                        </td>
+
                         <td><?= $row['STAGE_NAME'] ?? '<span style="color:#64748b;">Unknown</span>' ?></td>
                         <td>
                             <div><?= htmlspecialchars($row['LOCATION_NAME']) ?></div>
@@ -310,7 +317,7 @@ if ($filter_build) {
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="8" class="empty-state">
+                        <td colspan="9" class="empty-state">
                             No records found matching your criteria.
                         </td>
                     </tr>

@@ -14,7 +14,7 @@ $location_id  = $_GET['location'] ?? '';
 $date_from    = $_GET['date_from'] ?? '';
 $date_to      = $_GET['date_to'] ?? '';
 $status       = $_GET['status'] ?? ''; // '1' = Active, '0' = Inactive
-$search_term  = $_GET['search'] ?? '';
+$search_term  = trim($_GET['search'] ?? '');
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -59,10 +59,12 @@ try {
         $params[':status'] = $status;
     }
 
-    // Filter: Search
+    // Filter: Search (CASE INSENSITIVE)
     if ($search_term) {
-        $sql .= " AND (i.ITEM_NAME LIKE :search OR i.ITEM_DESCRIPTION LIKE :search)";
-        $params[':search'] = "%$search_term%";
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $sql .= " AND (LOWER(i.ITEM_NAME) LIKE :search1 OR LOWER(i.ITEM_DESCRIPTION) LIKE :search2)";
+        $params[':search1'] = $search_pattern;
+        $params[':search2'] = $search_pattern;
     }
 
     $sql .= " ORDER BY i.ITEM_NAME ASC"; 

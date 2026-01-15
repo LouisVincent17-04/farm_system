@@ -68,6 +68,9 @@ if (isset($_GET['action'])) {
 // =========================================================
 $locations = $conn->query("SELECT * FROM LOCATIONS ORDER BY LOCATION_NAME")->fetchAll(PDO::FETCH_ASSOC);
 
+// Fetch Buyers for Dropdown
+$buyers = $conn->query("SELECT FULL_NAME FROM buyers WHERE IS_ACTIVE = 1 ORDER BY FULL_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 $statsStmt = $conn->query("
     SELECT 
         COUNT(*) as total_sold_today,
@@ -123,6 +126,9 @@ $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
         }
         .form-control:focus, .form-select:focus, .form-input:focus { border-color: #10b981; outline: none; }
         .form-control:disabled, .form-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-search { background: rgba(16, 185, 129, 0.2); color: #10b981; border: none; padding: 0 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-search:hover { background: rgba(16, 185, 129, 0.4); }
 
         /* --- RIGHT PANEL: WORKSPACE --- */
         .workspace-panel { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -201,7 +207,17 @@ $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
 
                 <div class="form-group">
                     <label class="form-label">Buyer Name <span style="color:#f87171">*</span></label>
-                    <input type="text" name="customer_name" class="form-input" required placeholder="Customer Name">
+                    <div style="display: flex; gap: 8px;">
+                        <select name="customer_name" class="form-select" required>
+                            <option value="">-- Select Registered Buyer --</option>
+                            <?php foreach($buyers as $b): ?>
+                                <option value="<?= htmlspecialchars($b['FULL_NAME']) ?>"><?= htmlspecialchars($b['FULL_NAME']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <a href="buyers.php" target="_blank" class="btn-search" title="Manage Buyers">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </a>
+                    </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 15px;">

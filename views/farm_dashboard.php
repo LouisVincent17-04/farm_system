@@ -83,6 +83,8 @@ checkRole(2);
         .category-icon.green  { background: linear-gradient(135deg, #10b981, #059669); }
         .category-icon.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
         .category-icon.teal   { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .category-icon.red    { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .category-icon.yellow { background: linear-gradient(135deg, #eab308, #ca8a04); } /* NEW YELLOW */
 
         .category-info { flex: 1; }
         
@@ -159,6 +161,29 @@ checkRole(2);
                 </div>
             </a>
 
+            <a href="edit_animal_bio.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon yellow">🧬</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Edit Bio Info</h3>
+                        <p class="category-subtitle">Core Data Correction</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Update Records</div>
+                    <ul class="metrics-list">
+                        <li>Correct Tag Numbers</li>
+                        <li>Update Birth Dates</li>
+                        <li>Modify Sex & Breed</li>
+                        <li>Fix Initial Weights</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Edit Records</span>
+                    <span>→</span>
+                </div>
+            </a>
+
             <a href="animal_sow_status.php" class="category-card">
                 <div class="category-header">
                     <div class="category-icon pink">🐖</div>
@@ -182,7 +207,6 @@ checkRole(2);
                 </div>
             </a>
 
-
             <a href="animal_fcr.php" class="category-card">
                 <div class="category-header">
                     <div class="category-icon green">📈</div>
@@ -202,6 +226,52 @@ checkRole(2);
                 </div>
                 <div class="card-action">
                     <span>Manage FCR</span>
+                    <span>→</span>
+                </div>
+            </a>
+
+            <a href="animal_weights.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon orange">⚖️</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Animal Weights</h3>
+                        <p class="category-subtitle">Growth Tracking</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Weight Management</div>
+                    <ul class="metrics-list">
+                        <li>Bulk Weight Entry</li>
+                        <li>Update Actual Weights</li>
+                        <li>Monitor Growth Progress</li>
+                        <li>Historical Logs</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Update Weights</span>
+                    <span>→</span>
+                </div>
+            </a>
+
+            <a href="animal_operations.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon red">⚙️</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Animal Operations</h3>
+                        <p class="category-subtitle">Daily Activities</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Farm Tasks</div>
+                    <ul class="metrics-list">
+                        <li>Schedule Treatments</li>
+                        <li>Log Maintenance</li>
+                        <li>Vaccination Schedules</li>
+                        <li>Operational History</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Manage Operations</span>
                     <span>→</span>
                 </div>
             </a>
@@ -251,29 +321,6 @@ checkRole(2);
                     <span>→</span>
                 </div>
             </a>
-
-            <!-- <a href="animal_sales_process.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon orange">💰</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Sell Animals</h3>
-                        <p class="category-subtitle">Revenue & Exit</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Sales Operations</div>
-                    <ul class="metrics-list">
-                        <li>Market Hog Selection</li>
-                        <li>Weighing & Price Calculation</li>
-                        <li>Cull Sow Processing</li>
-                        <li>Generate Sales Receipt</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>Process Sale</span>
-                    <span>→</span>
-                </div>
-            </a> -->
 
         </div>
     </div>

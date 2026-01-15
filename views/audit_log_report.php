@@ -19,7 +19,7 @@ $user_filter   = $_GET['user'] ?? '';
 $action_filter = $_GET['action'] ?? '';
 $date_from     = $_GET['date_from'] ?? '';
 $date_to       = $_GET['date_to'] ?? '';
-$search_term   = $_GET['search'] ?? '';
+$search_term   = trim($_GET['search'] ?? '');
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -41,9 +41,14 @@ try {
         $params[':date_from'] = $date_from . ' 00:00:00';
         $params[':date_to']   = $date_to . ' 23:59:59';
     }
+    
+    // Filter: Search (CASE INSENSITIVE)
     if ($search_term) {
-        $where_sql .= " AND (ACTION_DETAILS LIKE :search OR TABLE_NAME LIKE :search OR IP_ADDRESS LIKE :search)";
-        $params[':search'] = "%$search_term%";
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $where_sql .= " AND (LOWER(ACTION_DETAILS) LIKE :search1 OR LOWER(TABLE_NAME) LIKE :search2 OR LOWER(IP_ADDRESS) LIKE :search3)";
+        $params[':search1'] = $search_pattern;
+        $params[':search2'] = $search_pattern;
+        $params[':search3'] = $search_pattern;
     }
 
     // --- 3. GET TOTAL COUNT (For Pagination) ---

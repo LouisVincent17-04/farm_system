@@ -13,7 +13,10 @@ checkRole(2); // Farm Admin
 $location_id  = $_GET['location'] ?? '';
 $date_from    = $_GET['date_from'] ?? '';
 $date_to      = $_GET['date_to'] ?? '';
-$search_term  = $_GET['search'] ?? '';
+$search_term  = trim($_GET['search'] ?? ''); 
+
+// Debug flag - set to true to see debug info
+$debug_mode = false;
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -29,6 +32,7 @@ try {
             i.UNIT_COST,
             i.TOTAL_COST,
             i.LOCATION_ID,
+            i.ITEM_TYPE_ID,
             l.LOCATION_NAME,
             DATE_FORMAT(i.CREATED_AT, '%Y-%m-%d') as DATE_ADDED
         FROM items i
@@ -50,10 +54,12 @@ try {
         $params[':date_to']   = $date_to;
     }
 
-    // Filter: Search
+    // Filter: Search (CASE INSENSITIVE)
     if ($search_term) {
-        $sql .= " AND (i.ITEM_NAME LIKE :search OR i.ITEM_DESCRIPTION LIKE :search)";
-        $params[':search'] = "%$search_term%";
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $sql .= " AND (LOWER(i.ITEM_NAME) LIKE :search1 OR LOWER(i.ITEM_DESCRIPTION) LIKE :search2)";
+        $params[':search1'] = $search_pattern;
+        $params[':search2'] = $search_pattern;
     }
 
     $sql .= " ORDER BY i.DATE_OF_PURCHASE DESC, i.ITEM_NAME ASC"; 
@@ -61,6 +67,35 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $raw_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // --- DEBUG OUTPUT (Remove after testing) ---
+    $debug_info = '';
+    if ($debug_mode && $search_term) {
+        $debug_info = "<div style='background: #dc2626; color: white; padding: 1rem; margin: 1rem 0; border-radius: 8px;'>";
+        $debug_info .= "<strong>🔍 DEBUG MODE ACTIVE</strong><br>";
+        $debug_info .= "Search term: '" . htmlspecialchars($search_term) . "'<br>";
+        $debug_info .= "Lowercase search: '" . strtolower($search_term) . "'<br>";
+        $debug_info .= "Search pattern: '%" . strtolower($search_term) . "%'<br>";
+        $debug_info .= "Results found: " . count($raw_data) . "<br>";
+        $debug_info .= "<details><summary>Click to see SQL Query</summary><pre style='background: #000; padding: 10px; overflow: auto;'>" . htmlspecialchars($sql) . "</pre></details>";
+        
+        // Check if any items contain "pig" regardless of ITEM_TYPE_ID
+        $test_sql = "SELECT ITEM_NAME, ITEM_TYPE_ID FROM items WHERE LOWER(ITEM_NAME) LIKE :search1 OR LOWER(ITEM_DESCRIPTION) LIKE :search2";
+        $test_stmt = $conn->prepare($test_sql);
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $test_stmt->execute([':search1' => $search_pattern, ':search2' => $search_pattern]);
+        $test_results = $test_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $debug_info .= "<br><strong>All items matching '" . htmlspecialchars($search_term) . "' (any type):</strong><br>";
+        if ($test_results) {
+            foreach ($test_results as $test) {
+                $debug_info .= "- " . htmlspecialchars($test['ITEM_NAME']) . " (Type ID: " . $test['ITEM_TYPE_ID'] . ")<br>";
+            }
+        } else {
+            $debug_info .= "No items found in entire database!<br>";
+        }
+        $debug_info .= "</div>";
+    }
 
     // --- 3. PROCESS DATA & STATS ---
     $items = [];
@@ -88,6 +123,7 @@ try {
 
 } catch (Exception $e) {
     $items = [];
+    $debug_info = "<div style='background: #dc2626; color: white; padding: 1rem; margin: 1rem 0; border-radius: 8px;'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
     error_log($e->getMessage());
 }
 ?>
@@ -229,6 +265,8 @@ try {
         <h1 class="title">Equipment Purchase Report</h1>
         <p class="subtitle">Log of purchased tools, machinery, and equipment.</p>
     </div>
+
+    <?php if (isset($debug_info) && $debug_info): echo $debug_info; endif; ?>
 
     <div class="stats-grid">
         <div class="stat-card">

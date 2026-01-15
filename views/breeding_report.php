@@ -13,7 +13,8 @@ checkRole(2); // Farm Admin
 $location_id  = $_GET['location'] ?? '';
 $date_from    = $_GET['date_from'] ?? '';
 $date_to      = $_GET['date_to'] ?? '';
-$search_term  = $_GET['search'] ?? '';
+// Fix: Trim whitespace from search term
+$search_term  = trim($_GET['search'] ?? '');
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -50,10 +51,14 @@ try {
         $params[':date_to']   = $date_to;
     }
 
-    // Filter: Search
+    // Filter: Search (FIXED CASE SENSITIVITY)
     if ($search_term) {
-        $sql .= " AND (i.ITEM_NAME LIKE :search OR i.ITEM_DESCRIPTION LIKE :search)";
-        $params[':search'] = "%$search_term%";
+        // Use LOWER() on database columns and strtolower() on PHP input
+        // to ensure case-insensitive search
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $sql .= " AND (LOWER(i.ITEM_NAME) LIKE :search1 OR LOWER(i.ITEM_DESCRIPTION) LIKE :search2)";
+        $params[':search1'] = $search_pattern;
+        $params[':search2'] = $search_pattern;
     }
 
     $sql .= " ORDER BY i.DATE_OF_PURCHASE DESC, i.ITEM_NAME ASC"; 

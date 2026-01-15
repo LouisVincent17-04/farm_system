@@ -36,14 +36,13 @@ try {
         $where_conditions[] = "s.sale_date BETWEEN CONCAT(CURDATE(), ' 00:00:00') AND CONCAT(CURDATE(), ' 23:59:59')";
     }
 
-    // Filter: Search
-    // FIX: Use unique parameter names (:search1, :search2, :search3) to prevent PDO binding errors
+    // Filter: Search (CASE INSENSITIVE)
     if ($search_term !== null) {
-        $where_conditions[] = "(ar.TAG_NO LIKE :search1 OR s.customer_name LIKE :search2 OR s.notes LIKE :search3)";
-        $term = "%" . $search_term . "%";
-        $params[':search1'] = $term;
-        $params[':search2'] = $term;
-        $params[':search3'] = $term;
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $where_conditions[] = "(LOWER(ar.TAG_NO) LIKE :search1 OR LOWER(s.customer_name) LIKE :search2 OR LOWER(s.notes) LIKE :search3)";
+        $params[':search1'] = $search_pattern;
+        $params[':search2'] = $search_pattern;
+        $params[':search3'] = $search_pattern;
     }
 
     // Build WHERE clause

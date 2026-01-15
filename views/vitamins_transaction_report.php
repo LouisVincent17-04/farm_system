@@ -12,7 +12,7 @@ checkRole(2); // Farm Admin
 // --- 1. GET FILTER INPUTS ---
 $date_from   = $_GET['date_from'] ?? '';
 $date_to     = $_GET['date_to'] ?? '';
-$search_term = $_GET['search'] ?? '';
+$search_term = trim($_GET['search'] ?? '');
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -29,10 +29,10 @@ try {
             vt.REMARKS,
             DATE_FORMAT(vt.TRANSACTION_DATE, '%Y-%m-%d') as TRANS_DATE,
             DATE_FORMAT(vt.CREATED_AT, '%Y-%m-%d %H:%i') as LOG_DATE,
-            i.ITEM_NAME,
+            vs.SUPPLY_NAME as ITEM_NAME,
             ar.TAG_NO
         FROM vitamins_supplements_transactions vt
-        LEFT JOIN items i ON vt.ITEM_ID = i.ITEM_ID
+        LEFT JOIN vitamins_supplements vs ON vt.ITEM_ID = vs.SUPPLY_ID
         LEFT JOIN animal_records ar ON vt.ANIMAL_ID = ar.ANIMAL_ID
         WHERE 1=1";
 
@@ -45,10 +45,13 @@ try {
         $params[':date_to']   = $date_to . ' 23:59:59';
     }
 
-    // Filter: Search (Tag, Vitamin Name, Remarks)
+    // Filter: Search (CASE INSENSITIVE)
     if ($search_term) {
-        $sql .= " AND (ar.TAG_NO LIKE :search OR i.ITEM_NAME LIKE :search OR vt.REMARKS LIKE :search)";
-        $params[':search'] = "%$search_term%";
+        $search_pattern = "%" . strtolower($search_term) . "%";
+        $sql .= " AND (LOWER(ar.TAG_NO) LIKE :search1 OR LOWER(vs.SUPPLY_NAME) LIKE :search2 OR LOWER(vt.REMARKS) LIKE :search3)";
+        $params[':search1'] = $search_pattern;
+        $params[':search2'] = $search_pattern;
+        $params[':search3'] = $search_pattern;
     }
 
     $sql .= " ORDER BY vt.TRANSACTION_DATE DESC"; 

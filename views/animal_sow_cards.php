@@ -38,7 +38,6 @@ try {
     }
 
     // --- 3. FETCH FILTERED SOWS ---
-    // Only execute if at least Location is selected
     if ($location_id) {
         $query = "
             SELECT 
@@ -104,7 +103,13 @@ try {
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
-        /* Filter Bar - Responsive Grid */
+        /* Navigation Header */
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .page-title { font-size: 2rem; font-weight: 800; color: white; margin: 0; }
+        .btn-back { color: #94a3b8; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: color 0.2s; }
+        .btn-back:hover { color: #cbd5e1; }
+
+        /* Filter Bar */
         .filter-card {
             background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
@@ -117,39 +122,32 @@ try {
             padding: 10px; background: #1e293b; border: 1px solid #475569; 
             color: white; border-radius: 6px; width: 100%; font-size: 1rem;
         }
+        .form-input[readonly] { background: #334155; cursor: not-allowed; opacity: 0.8; }
 
-        /* Sow List Table - Scrollable */
+        /* Table */
         .table-container {
             background: rgba(15, 23, 42, 0.6); border-radius: 12px; overflow: hidden; margin-bottom: 3rem;
             border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto;
         }
-        
-        /* SCROLL WRAPPER FOR MOBILE */
-        .table-scroll-wrapper {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .data-table { width: 100%; border-collapse: collapse; min-width: 800px; /* Force width for scroll */ }
+        .table-scroll-wrapper { width: 100%; overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
         .data-table th { background: rgba(30, 41, 59, 0.8); padding: 15px; text-align: left; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
         .data-table td { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; }
         .data-table tr:hover { background: rgba(255,255,255,0.02); }
+        
         .btn-select {
             background: rgba(236, 72, 153, 0.1); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3);
             padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.85rem; white-space: nowrap;
         }
         .btn-select.active { background: #ec4899; color: white; }
 
-        /* Sow Card Detail Area */
+        /* Detail Section */
         .detail-section { display: none; margin-top: 30px; animation: fadeIn 0.3s ease; }
         .detail-section.active { display: block; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
-        .sow-title { font-size: 2rem; font-weight: 800; color: white; margin: 0; }
         .sow-tag { color: #ec4899; }
-
         .btn-add { background: linear-gradient(135deg, #ec4899, #db2777); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
         /* History Table */
@@ -172,23 +170,24 @@ try {
         .btn-cancel { background: transparent; border: 1px solid #475569; color: #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
         .btn-save { background: #ec4899; border: none; color: white; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
 
-        /* Responsive Breakpoints */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .filter-card { grid-template-columns: 1fr; gap: 1rem; }
-            .card-header { flex-direction: column; align-items: flex-start; }
-            .sow-title { font-size: 1.5rem; }
-            .form-grid-modal { grid-template-columns: 1fr; } /* Stack modal inputs */
-            .modal-content { padding: 1.5rem; }
-            .btn-add, .btn-save, .btn-cancel { width: 100%; margin-top: 5px; }
-            .modal-footer { flex-direction: column-reverse; }
+            .form-grid-modal { grid-template-columns: 1fr; } 
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="margin-bottom: 2rem;">Sow Card Management</h1>
+    <div class="nav-header">
+        <h1 class="page-title">Sow Card Management</h1>
+        <?php if($selected_animal_id): ?>
+            <a href="manage_sow_status.php?location_id=<?= $location_id ?>&building_id=<?= $building_id ?>&animal_id=<?= $selected_animal_id ?>" class="btn-back">
+                &larr; Back to Status Manager
+            </a>
+        <?php endif; ?>
+    </div>
 
     <form class="filter-card" method="GET" id="filterForm">
         <div class="form-group">
@@ -311,7 +310,15 @@ try {
 
 <div id="recordModal" class="modal">
     <div class="modal-content">
-        <h2 id="modalTitle" style="margin-bottom:20px; color:white;">Add Record</h2>
+        <h2 id="modalTitle" style="margin-bottom:10px; color:white;">Add Birth Record</h2>
+        
+        <div style="background:rgba(34, 197, 94, 0.1); border:1px solid rgba(34, 197, 94, 0.3); padding:12px; border-radius:8px; margin-bottom:20px; font-size:0.9rem; color:#86efac; line-height:1.5;">
+            <strong>ℹ️ Auto-Tagging Enabled</strong><br>
+            Saving this record will automatically create individual animal records for all <strong>Active (Alive)</strong> piglets.<br>
+            <br>
+            <strong>Tag Format:</strong> <code style="background:rgba(0,0,0,0.3); padding:2px 5px; border-radius:4px;">[SOW TAG]-P[PARITY]-[#]</code>
+        </div>
+
         <form id="recordForm">
             <input type="hidden" id="record_id" name="record_id">
             <input type="hidden" id="animal_id" name="animal_id" value="<?php echo $selected_animal_id; ?>">
@@ -319,34 +326,34 @@ try {
 
             <div class="form-row-modal">
                 <label>Date Farrowed</label>
-                <input type="date" id="date_farrowed" name="date_farrowed" required>
+                <input type="date" id="date_farrowed" name="date_farrowed" required value="<?php echo date('Y-m-d'); ?>">
             </div>
 
             <div class="form-grid-modal">
                 <div class="form-row-modal">
                     <label>Total Born</label>
-                    <input type="number" id="total_born" name="total_born" required>
+                    <input type="number" id="total_born" name="total_born" required min="0" oninput="calcActive()">
                 </div>
                 <div class="form-row-modal">
-                    <label>Active (Survived)</label>
-                    <input type="number" id="active_count" name="active_count" required>
+                    <label>Active (Alive) <small style="color:#64748b;">(Auto-Calc)</small></label>
+                    <input type="number" id="active_count" name="active_count" required min="0" readonly>
                 </div>
             </div>
 
             <div class="form-grid-modal">
                 <div class="form-row-modal">
-                    <label>Dead</label>
-                    <input type="number" id="dead_count" name="dead_count" value="0">
+                    <label>Dead (Stillborn)</label>
+                    <input type="number" id="dead_count" name="dead_count" value="0" min="0" oninput="calcActive()">
                 </div>
                 <div class="form-row-modal">
                     <label>Mummified</label>
-                    <input type="number" id="mummified_count" name="mummified_count" value="0">
+                    <input type="number" id="mummified_count" name="mummified_count" value="0" min="0" oninput="calcActive()">
                 </div>
             </div>
 
             <div class="modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn-save" id="btnSave">Save Record</button>
+                <button type="submit" class="btn-save" id="btnSave">Save & Generate</button>
             </div>
         </form>
     </div>
@@ -361,6 +368,18 @@ try {
         }, 300);
     <?php endif; ?>
 
+    // --- AUTO CALCULATE ACTIVE ---
+    function calcActive() {
+        const total = parseInt(document.getElementById('total_born').value) || 0;
+        const dead = parseInt(document.getElementById('dead_count').value) || 0;
+        const mummy = parseInt(document.getElementById('mummified_count').value) || 0;
+        
+        let active = total - (dead + mummy);
+        if (active < 0) active = 0;
+        
+        document.getElementById('active_count').value = active;
+    }
+
     // --- CLIENT SIDE FILTER ---
     function filterSowTable() {
         const input = document.getElementById('sowSearch');
@@ -369,7 +388,7 @@ try {
         const tr = table.getElementsByTagName('tr');
 
         for (let i = 1; i < tr.length; i++) {
-            const td = tr[i].getElementsByTagName('td')[0]; // Tag No Column
+            const td = tr[i].getElementsByTagName('td')[0]; 
             if (td) {
                 const txtValue = td.textContent || td.innerText;
                 tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
@@ -418,8 +437,16 @@ try {
         document.getElementById('action_type').value = 'add';
         document.getElementById('record_id').value = '';
         document.getElementById('animal_id').value = '<?php echo $selected_animal_id; ?>';
+        document.getElementById('date_farrowed').value = new Date().toISOString().split('T')[0];
+        
+        // Reset counts
+        document.getElementById('total_born').value = '';
+        document.getElementById('dead_count').value = 0;
+        document.getElementById('mummified_count').value = 0;
+        document.getElementById('active_count').value = '';
+
         title.textContent = 'Add Birth Record';
-        btnSave.textContent = 'Save Record';
+        btnSave.textContent = 'Save & Generate';
         modal.classList.add('show');
     }
 
@@ -430,9 +457,11 @@ try {
         
         document.getElementById('date_farrowed').value = data.DATE_FARROWED;
         document.getElementById('total_born').value = data.TOTAL_BORN;
-        document.getElementById('active_count').value = data.ACTIVE_COUNT;
         document.getElementById('dead_count').value = data.DEAD_COUNT;
         document.getElementById('mummified_count').value = data.MUMMIFIED_COUNT;
+        
+        // Trigger calc to set active count
+        calcActive();
 
         title.textContent = 'Edit Birth Record (Parity ' + data.PARITY + ')';
         btnSave.textContent = 'Update Changes';
@@ -443,20 +472,39 @@ try {
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-        const formData = new FormData(this);
+        
         const action = document.getElementById('action_type').value;
+        const msg = action === 'add' 
+            ? "Confirm details?\n\nThis will generate new animal records. Ensure 'Active' count is correct." 
+            : "Update this record?";
+
+        if(!confirm(msg)) return;
+
+        const formData = new FormData(this);
         const endpoint = action === 'add' ? '../process/addBirthingRecord.php' : '../process/editBirthingRecord.php';
 
         fetch(endpoint, { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
             if(data.success) {
-                alert("Success!");
+                alert("Success: " + (data.message || "Record Saved"));
                 closeModal();
                 loadHistory('<?php echo $selected_animal_id; ?>');
+                
+                // Redirect logic
+                const urlParams = new URLSearchParams(window.location.search);
+                if (action === 'add' && urlParams.has('location_id')) {
+                    setTimeout(() => {
+                        window.location.href = `animal_sow_status.php?location_id=${urlParams.get('location_id')}&building_id=${urlParams.get('building_id')}&animal_id=<?php echo $selected_animal_id; ?>`;
+                    }, 500);
+                }
             } else {
                 alert("Error: " + data.message);
             }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("System error occurred.");
         });
     });
 

@@ -14,7 +14,7 @@ $filter_loc = $_GET['f_loc'] ?? '';
 $filter_bld = $_GET['f_bld'] ?? '';
 $filter_pen = $_GET['f_pen'] ?? '';
 
-$animal_data = []; // Default to empty array (No Load)
+$animal_data = [];
 $animal_types = [];
 $locations = [];
 $filter_buildings = [];
@@ -23,11 +23,10 @@ $filter_pens = [];
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // --- 2. FETCH DROPDOWN DATA (Always needed for UI) ---
+    // --- 2. FETCH DROPDOWN DATA ---
     $animal_types = $conn->query("SELECT * FROM Animal_Type ORDER BY ANIMAL_TYPE_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
     $locations = $conn->query("SELECT * FROM Locations ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Dependent Filter Dropdowns
     if ($filter_loc) {
         $stmt = $conn->prepare("SELECT * FROM Buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
         $stmt->execute([$filter_loc]);
@@ -39,17 +38,20 @@ try {
         $filter_pens = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 3. FETCH ANIMALS (ONLY IF FILTER IS APPLIED) ---
-    // Performance Fix: Only query DB if user has selected at least a Location
+    // --- 3. FETCH ANIMALS ---
     if (!empty($filter_loc) || !empty($filter_bld) || !empty($filter_pen)) {
         
+        // UPDATED QUERY: Added FATHER_ID join
         $sql = "SELECT 
                     a.ANIMAL_ID, a.TAG_NO, a.SEX, a.BIRTH_DATE, a.CURRENT_STATUS, 
                     a.LOCATION_ID, a.BUILDING_ID, a.PEN_ID, a.ANIMAL_TYPE_ID, a.BREED_ID, a.ANIMAL_ITEM_ID,
                     a.WEIGHT_AT_BIRTH, a.CURRENT_ESTIMATED_WEIGHT, a.CURRENT_ACTUAL_WEIGHT, a.ACQUISITION_COST,
+                    a.MOTHER_ID, a.FATHER_ID,
                     at.ANIMAL_TYPE_NAME, b.BREED_NAME, l.LOCATION_NAME, 
                     bld.BUILDING_NAME, p.PEN_NAME,
-                    m.TAG_NO as MOTHER_TAG
+                    m.TAG_NO as MOTHER_TAG,
+                    f.TAG_NO as FATHER_TAG,
+                    DATEDIFF(NOW(), a.BIRTH_DATE) AS DAYS_OLD 
                 FROM Animal_Records a
                 LEFT JOIN Animal_Type at ON a.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
                 LEFT JOIN Breeds b ON a.BREED_ID = b.BREED_ID
@@ -57,22 +59,14 @@ try {
                 LEFT JOIN Buildings bld ON a.BUILDING_ID = bld.BUILDING_ID
                 LEFT JOIN Pens p ON a.PEN_ID = p.PEN_ID
                 LEFT JOIN Animal_Records m ON a.MOTHER_ID = m.ANIMAL_ID 
+                LEFT JOIN Animal_Records f ON a.FATHER_ID = f.ANIMAL_ID 
                 WHERE a.IS_ACTIVE = 1";
 
         $params = [];
 
-        if ($filter_loc) {
-            $sql .= " AND a.LOCATION_ID = ?";
-            $params[] = $filter_loc;
-        }
-        if ($filter_bld) {
-            $sql .= " AND a.BUILDING_ID = ?";
-            $params[] = $filter_bld;
-        }
-        if ($filter_pen) {
-            $sql .= " AND a.PEN_ID = ?";
-            $params[] = $filter_pen;
-        }
+        if ($filter_loc) { $sql .= " AND a.LOCATION_ID = ?"; $params[] = $filter_loc; }
+        if ($filter_bld) { $sql .= " AND a.BUILDING_ID = ?"; $params[] = $filter_bld; }
+        if ($filter_pen) { $sql .= " AND a.PEN_ID = ?"; $params[] = $filter_pen; }
 
         $sql .= " ORDER BY a.ANIMAL_ID DESC";
         
@@ -107,38 +101,19 @@ try {
         .add-btn { display: flex; align-items: center; gap: 0.5rem; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .add-btn:hover { transform: scale(1.05); }
         .btn-purchase { background: linear-gradient(135deg, #2563eb, #9333ea); }
-        .btn-birth { background: linear-gradient(135deg, #10b981, #059669); }
         .btn-existing { background: linear-gradient(135deg, #f59e0b, #d97706); } 
         
         /* Filter Bar */
-        .filter-bar {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid #475569;
-            padding: 1.5rem;
-            border-radius: 0.75rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            gap: 1rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
+        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
         .filter-group { display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 200px; }
         .filter-group label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
-        .filter-select { 
-            width: 100%; padding: 0.6rem; background: #0f172a; 
-            border: 1px solid #334155; color: white; border-radius: 0.5rem; 
-        }
-        .btn-reset {
-            padding: 0.6rem 1.5rem; background: transparent; border: 1px solid #475569; 
-            color: #94a3b8; border-radius: 0.5rem; text-decoration: none; font-weight: 600;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .filter-select { width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 0.5rem; }
+        .btn-reset { padding: 0.6rem 1.5rem; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; }
         .btn-reset:hover { border-color: white; color: white; }
 
         /* Search */
         .search-container { position: relative; margin-bottom: 2rem; }
         .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; }
         
         /* Table */
         .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; min-height: 200px; }
@@ -209,7 +184,6 @@ try {
             <div class="header-buttons">
                 <button class="add-btn btn-purchase" onclick="openAddModal('purchase', 1)">Add Purchased Animal</button>
                 <button class="add-btn btn-existing" onclick="openAddModal('existing', 0)">Add Existing Record</button>
-                <button class="add-btn btn-birth" onclick="openAddModal('birth', 0)">Register New Birth</button>
             </div>
         </div>
 
@@ -225,7 +199,6 @@ try {
                     <?php endforeach; ?>
                 </select>
             </div>
-
             <div class="filter-group">
                 <label>2. Building</label>
                 <select name="f_bld" class="filter-select" onchange="this.form.submit()" <?= empty($filter_loc) ? 'disabled' : '' ?>>
@@ -237,7 +210,6 @@ try {
                     <?php endforeach; ?>
                 </select>
             </div>
-
             <div class="filter-group">
                 <label>3. Pen</label>
                 <select name="f_pen" class="filter-select" onchange="this.form.submit()" <?= empty($filter_bld) ? 'disabled' : '' ?>>
@@ -249,7 +221,6 @@ try {
                     <?php endforeach; ?>
                 </select>
             </div>
-
             <a href="animal_records.php" class="btn-reset">Reset</a>
         </form>
 
@@ -264,10 +235,9 @@ try {
                         <th>Tag No</th>
                         <th>Type / Breed</th>
                         <th>Sex</th>
-                        <th>Birth Date</th>
+                        <th>Age</th> <th>Birth Date</th>
                         <th>Weight (kg)<br><small>Est / Act</small></th>
-                        <th>Mother</th> 
-                        <th>Status</th>
+                        <th>Lineage (M/F)</th> <th>Status</th>
                         <th>Cost</th> <th>Location</th>
                         <th>Actions</th>
                     </tr>
@@ -289,17 +259,19 @@ try {
                                     </div>
                                 </td>
                                 <td><?php echo $data['SEX'] == 'M' ? 'Male' : 'Female'; ?></td>
+                                <td style="color:#fcd34d; font-weight:600;">
+                                    <?php echo $data['DAYS_OLD'] !== null ? $data['DAYS_OLD'] . " days" : "N/A"; ?>
+                                </td>
                                 <td><?php echo $data['BIRTH_DATE'] ? date('M d, Y', strtotime($data['BIRTH_DATE'])) : 'N/A'; ?></td>
                                 <td>
                                     <span style="color:#60a5fa;"><?php echo number_format($data['CURRENT_ESTIMATED_WEIGHT'], 2); ?></span> / 
                                     <span style="color:#34d399;"><?php echo number_format($data['CURRENT_ACTUAL_WEIGHT'], 2); ?></span>
                                 </td>
                                 <td>
-                                    <?php if($data['MOTHER_TAG']): ?>
-                                        <span style="color: #f472b6;">Tag: <?php echo htmlspecialchars($data['MOTHER_TAG']); ?></span>
-                                    <?php else: ?>
-                                        <span style="color: #64748b;">N/A</span>
-                                    <?php endif; ?>
+                                    <div style="font-size:0.85rem;">
+                                        <span style="color: #f472b6;">SOW: <?php echo $data['MOTHER_TAG'] ? $data['MOTHER_TAG'] : '-'; ?></span><br>
+                                        <span style="color: #60a5fa;">BOAR: <?php echo $data['FATHER_TAG'] ? $data['FATHER_TAG'] : '-'; ?></span>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="status-badge <?php echo strtolower($data['CURRENT_STATUS']); ?>">
@@ -312,12 +284,8 @@ try {
                                 <td><?php echo htmlspecialchars($data['LOCATION_NAME']); ?> - <?php echo htmlspecialchars($data['PEN_NAME']); ?></td>
                                 <td>
                                     <div class="actions">
-                                        <button class="action-btn edit" onclick="editAnimal(this)" title="Edit">
-                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                        </button>
-                                        <button class="action-btn delete" onclick="deleteAnimal(this)" title="Delete">
-                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        </button>
+                                        <button class="action-btn edit" onclick="editAnimal(this)" title="Edit"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                                        <button class="action-btn delete" onclick="deleteAnimal(this)" title="Delete"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                                     </div>
                                 </td>
                             </tr>
@@ -325,11 +293,9 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
-            
             <div id="empty-state" class="empty-state" style="display: <?php echo empty($animal_data) ? 'block' : 'none'; ?>;">
                 <?php if (empty($filter_loc)): ?>
                     <h3 style="color:#94a3b8;">Please select a Location to view records</h3>
-                    <p style="color:#64748b;">Filtering helps improve performance by loading only relevant data.</p>
                 <?php else: ?>
                     <h3>No records found in this location</h3>
                 <?php endif; ?>
@@ -343,8 +309,30 @@ try {
             <div class="modal-body">
                 <div id="add-alert" class="alert"></div>
                 <form id="addAnimalForm">
-                    <input type="hidden" id="entry_type" name="entry_type" value="birth">
+                    <input type="hidden" id="entry_type" name="entry_type" value="existing">
                     <input type="hidden" id="acquisition_type" name="acquisition_type" value="0">
+
+                    <div id="lineage-group" class="form-group full-width" style="display:none; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
+                        <label style="color: #cbd5e1; margin-bottom:10px; display:block;">Lineage (Optional)</label>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label style="color: #f472b6;">Mother (Sow)</label>
+                                <div class="input-group">
+                                    <input type="hidden" id="add_mother_id" name="mother_id">
+                                    <input type="text" id="display_mother_tag" placeholder="Select Sow..." readonly style="border-color: #f472b6;">
+                                    <button type="button" class="btn-select" onclick="openSelectParentModal('sow')">🔍</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label style="color: #60a5fa;">Father (Boar)</label>
+                                <div class="input-group">
+                                    <input type="hidden" id="add_father_id" name="father_id">
+                                    <input type="text" id="display_father_tag" placeholder="Select Boar..." readonly style="border-color: #60a5fa;">
+                                    <button type="button" class="btn-select" onclick="openSelectParentModal('boar')">🔍</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div id="purchase-group" class="form-group full-width" style="display: none;">
                         <label>Linked Purchase Record *</label>
@@ -353,16 +341,6 @@ try {
                             <input type="text" id="display_purchase_item" placeholder="Select a purchase record..." readonly>
                             <button type="button" class="btn-select" onclick="openSelectPurchaseModal()">Select Source</button>
                         </div>
-                    </div>
-
-                    <div id="parent-group" class="form-group full-width" style="display: none;">
-                        <label style="color: #f472b6;">Mother (Sow) Tag Number *</label>
-                        <div class="input-group">
-                            <input type="hidden" id="add_mother_id" name="mother_id">
-                            <input type="text" id="display_mother_tag" name="display_mother_tag" placeholder="Search & Select Sow..." readonly style="border-color: #f472b6;">
-                            <button type="button" class="btn-select" onclick="openSelectParentModal()" style="background: #db2777;">Search Sow</button>
-                        </div>
-                        <small style="color: #64748b;">Linking the mother helps track lineage and birthing history.</small>
                     </div>
 
                     <div class="form-row">
@@ -451,16 +429,13 @@ try {
     <div id="selectParentModal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
-                <h2>Select Mother (Sow)</h2>
-                <p style="color: #94a3b8;">Select the mother from available Sows/Gilts.</p>
+                <h2 id="parent-modal-title">Select Parent</h2>
             </div>
             <div class="modal-body">
                 <div class="table-container">
                     <table class="table">
-                        <thead><tr><th>Tag No</th><th>Breed</th><th>Stage</th><th>Location</th><th>Action</th></tr></thead>
-                        <tbody id="parent-table-body">
-                            <tr><td colspan="5" style="text-align:center;">Loading Sows...</td></tr>
-                        </tbody>
+                        <thead><tr><th>Tag No</th><th>Breed</th><th>Location</th><th>Action</th></tr></thead>
+                        <tbody id="parent-table-body"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -494,13 +469,34 @@ try {
                     <input type="hidden" id="edit_animal_id" name="animal_id">
                     <input type="hidden" id="edit_has_purchase" name="has_purchase" value="0">
 
+                    <div class="form-group full-width" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
+                        <label style="color: #cbd5e1; margin-bottom:10px; display:block;">Lineage</label>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label style="color: #f472b6;">Mother (Sow)</label>
+                                <div class="input-group">
+                                    <input type="hidden" id="edit_mother_id" name="mother_id">
+                                    <input type="text" id="edit_display_mother" placeholder="Select Sow..." readonly style="border-color: #f472b6;">
+                                    <button type="button" class="btn-select" onclick="openSelectParentModal('sow', 'edit')">🔍</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label style="color: #60a5fa;">Father (Boar)</label>
+                                <div class="input-group">
+                                    <input type="hidden" id="edit_father_id" name="father_id">
+                                    <input type="text" id="edit_display_father" placeholder="Select Boar..." readonly style="border-color: #60a5fa;">
+                                    <button type="button" class="btn-select" onclick="openSelectParentModal('boar', 'edit')">🔍</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="edit-purchase-group" class="form-group full-width" style="display: none;">
                         <label for="edit_animal_item_id">Linked Purchase Record *</label>
                         <div class="input-group">
                             <input type="text" id="edit_animal_item_id" name="animal_item_id" placeholder="Select a purchase record..." readonly>
                             <button type="button" class="btn-select" onclick="openEditSelectPurchaseModal()">Change Source</button>
                         </div>
-                        <small style="color: #64748b;">Changing the purchase record will auto-fill location details.</small>
                     </div>
 
                     <div class="form-row">
@@ -625,6 +621,9 @@ try {
     <script>
         // --- MODAL CONTROLLERS ---
         let acquisition_type = 0;
+        // PARENT SELECTION VARIABLES
+        let currentParentMode = ''; // 'add' or 'edit'
+        let currentParentType = ''; // 'sow' or 'boar'
 
         function openAddModal(type, acquisition = 0) {
             const form = document.getElementById('addAnimalForm');
@@ -639,50 +638,33 @@ try {
 
             const modalTitle = document.getElementById('modal-title');
             const purchaseGroup = document.getElementById('purchase-group');
-            const parentGroup = document.getElementById('parent-group');
+            const lineageGroup = document.getElementById('lineage-group');
             const birthGroup = document.getElementById('birth-date-group');
             const costGroup = document.getElementById('acquisition-cost-group'); 
             const entryType = document.getElementById('entry_type');
 
-            // UPDATE GLOBAL & INPUT
             acquisition_type = acquisition;
             if(document.getElementById('acquisition_type')) {
                 document.getElementById('acquisition_type').value = acquisition;
             }
-
-            // RESET COST FIELD
             document.getElementById('add_acquisition_cost').value = '';
 
             if (type === 'purchase') {
                 modalTitle.textContent = 'Add Purchased Animal';
                 entryType.value = 'purchase';
                 purchaseGroup.style.display = 'block';
-                parentGroup.style.display = 'none'; 
                 birthGroup.style.display = 'none';
                 costGroup.style.display = 'block'; 
+                lineageGroup.style.display = 'none'; // No parents needed for purchase usually
                 
             } else if (type === 'existing') {
                 modalTitle.textContent = 'Add Existing Record';
                 entryType.value = 'existing';
                 purchaseGroup.style.display = 'none';
-                parentGroup.style.display = 'none';
                 birthGroup.style.display = 'flex';
                 costGroup.style.display = 'block'; 
+                lineageGroup.style.display = 'block'; // Show Parent Selectors
                 document.getElementById('add_birth_date').value = '';
-
-            } else {
-                // --- BIRTH MODE ---
-                modalTitle.textContent = 'Register New Birth';
-                entryType.value = 'birth';
-                purchaseGroup.style.display = 'none';
-                parentGroup.style.display = 'block';
-                birthGroup.style.display = 'flex';
-                
-                // HIDE COST for New Birth
-                costGroup.style.display = 'none'; 
-                document.getElementById('add_acquisition_cost').value = '0'; 
-
-                document.getElementById('add_birth_date').value = new Date().toISOString().split('T')[0];
             }
 
             document.getElementById('addModal').classList.add('show');
@@ -691,36 +673,62 @@ try {
         function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
         // --- PARENT SELECTION LOGIC ---
-        function openSelectParentModal() {
+        function openSelectParentModal(type, mode = 'add') {
+            currentParentType = type; // 'sow' or 'boar'
+            currentParentMode = mode; // 'add' or 'edit'
+            
             document.getElementById('selectParentModal').classList.add('show');
-            loadAvailableSows();
+            document.getElementById('parent-modal-title').textContent = type === 'sow' ? 'Select Mother' : 'Select Father';
+            loadAvailableParents(type);
         }
         function closeSelectParentModal() { document.getElementById('selectParentModal').classList.remove('show'); }
 
-        function loadAvailableSows() {
+        function loadAvailableParents(type) {
             const tbody = document.getElementById('parent-table-body');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
-            fetch('../process/getAvailableSows.php').then(res => res.json()).then(data => {
-                if (data.success && data.sows.length > 0) {
-                    tbody.innerHTML = data.sows.map(s => `
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
+            
+            // Re-using logic: You need a generic script or two scripts. 
+            // I will assume getAvailableSows.php exists and getAvailableBoars.php exists
+            // Or simple logic within one script. For now, let's target specific files.
+            
+            const script = type === 'sow' ? '../process/getAvailableSows.php' : '../process/getAvailableBoars.php';
+            
+            fetch(script).then(res => res.json()).then(data => {
+                const list = data.sows || data.boars || []; // Handle different key names
+                if (data.success && list.length > 0) {
+                    tbody.innerHTML = list.map(s => `
                         <tr>
-                            <td style="font-weight:bold; color:#f472b6;">${s.TAG_NO}</td>
+                            <td style="font-weight:bold; color:${type==='sow'?'#f472b6':'#60a5fa'};">${s.TAG_NO}</td>
                             <td>${s.BREED_NAME}</td>
-                            <td>${s.STAGE_NAME}</td>
                             <td>${s.LOCATION_NAME} - ${s.PEN_NAME}</td>
-                            <td><button class="action-btn add-link" onclick="selectParent('${s.ANIMAL_ID}', '${s.TAG_NO}')" style="background: #db2777; color: white; border:none;">SELECT</button></td>
+                            <td><button class="action-btn add-link" onclick="selectParent('${s.ANIMAL_ID}', '${s.TAG_NO}')" style="border:none;">SELECT</button></td>
                         </tr>`).join('');
-                } else { tbody.innerHTML = '<tr><td colspan="5">No active Sows/Gilts found.</td></tr>'; }
+                } else { tbody.innerHTML = `<tr><td colspan="4">No active ${type}s found.</td></tr>`; }
+            })
+            .catch(err => {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="4">Error loading data (ensure getAvailableBoars.php exists).</td></tr>'; 
             });
         }
 
         function selectParent(id, tag) {
-            document.getElementById('add_mother_id').value = id;
-            document.getElementById('display_mother_tag').value = tag;
+            const prefix = currentParentMode === 'add' ? 'add_' : 'edit_';
+            const displayPrefix = currentParentMode === 'add' ? 'display_' : 'edit_display_';
+            
+            if (currentParentType === 'sow') {
+                document.getElementById(prefix + 'mother_id').value = id;
+                document.getElementById(displayPrefix + 'mother_tag' + (currentParentMode==='edit'?'':'')).value = tag; // ID fix
+                if(currentParentMode === 'edit') document.getElementById('edit_display_mother').value = tag;
+                else document.getElementById('display_mother_tag').value = tag;
+            } else {
+                document.getElementById(prefix + 'father_id').value = id;
+                if(currentParentMode === 'edit') document.getElementById('edit_display_father').value = tag;
+                else document.getElementById('display_father_tag').value = tag;
+            }
             closeSelectParentModal();
         }
 
-        // --- PURCHASE SELECTION LOGIC ---
+        // --- PURCHASE SELECTION LOGIC (unchanged) ---
         function loadAvailablePurchases(targetBodyId) {
             const tbody = document.getElementById(targetBodyId);
             tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
@@ -793,7 +801,6 @@ try {
             const formData = new FormData(form);
             const btn = document.getElementById('btn-add-save');
 
-            // SYNC ACQUISITION TYPE
             if(document.getElementById('acquisition_type')) {
                 document.getElementById('acquisition_type').value = acquisition_type;
                 formData.set('acquisition_type', acquisition_type); 
@@ -831,7 +838,7 @@ try {
             });
         }
 
-        // --- EDIT ANIMAL (Corrected Auto-Complete) ---
+        // --- EDIT ANIMAL ---
         async function editAnimal(button) {
             const row = button.closest('tr');
             const animalId = row.getAttribute('data-id');
@@ -848,13 +855,17 @@ try {
                     document.getElementById('edit_sex').value = animal.SEX;
                     document.getElementById('edit_status').value = animal.CURRENT_STATUS;
                     
-                    // Weights & Cost (AUTO-POPULATE WEIGHTS)
                     document.getElementById('edit_weight_birth').value = animal.WEIGHT_AT_BIRTH || '';
                     document.getElementById('edit_weight_actual').value = animal.CURRENT_ACTUAL_WEIGHT || '';
                     document.getElementById('edit_weight_est').value = animal.CURRENT_ESTIMATED_WEIGHT || '';
                     document.getElementById('edit_acquisition_cost').value = animal.ACQUISITION_COST || '';
 
-                    // Type & Breed
+                    // Lineage
+                    document.getElementById('edit_mother_id').value = animal.MOTHER_ID || '';
+                    document.getElementById('edit_father_id').value = animal.FATHER_ID || '';
+                    // Note: Ideally backend returns Tag No for display, assumes getAnimalDetails provides this or handled separately
+                    // For now leaving text empty if not provided in JSON response (requires getAnimalDetails update to return TAG names)
+                    
                     document.getElementById('edit_animal_type').value = animal.ANIMAL_TYPE_ID;
                     await loadBreeds(animal.ANIMAL_TYPE_ID, 'edit');
                     
@@ -862,7 +873,6 @@ try {
                          document.getElementById('edit_breed').value = animal.BREED_ID;
                     }, 50);
 
-                    // Purchase/Birth Logic
                     if (animal.ANIMAL_ITEM_ID) {
                         document.getElementById('edit-purchase-group').style.display = 'block';
                         document.getElementById('edit_animal_item_id').value = animal.ANIMAL_ITEM_ID; 
@@ -875,7 +885,6 @@ try {
                         document.getElementById('edit_birth_date').value = animal.BIRTH_DATE || '';
                     }
 
-                    // Location Hierarchy
                     document.getElementById('edit_location').value = animal.LOCATION_ID;
                     
                     if (animal.LOCATION_ID) {
@@ -971,10 +980,7 @@ try {
 
         function checkEmptyState(count) {
             const el = document.getElementById('empty-state');
-            // If explicit count passed, use it. Otherwise rely on data array from PHP
-            if (count === undefined) {
-               // Initial load check (handled by PHP rendering)
-            } else {
+            if (count === undefined) { } else {
                el.style.display = (count === 0) ? 'block' : 'none';
             }
         }
@@ -988,12 +994,11 @@ try {
         // Click outside
         document.getElementById('addModal').addEventListener('click', function(e) { if(e.target===this) closeAddModal(); });
         document.getElementById('editModal').addEventListener('click', function(e) { if(e.target===this) closeEditModal(); });
-        document.getElementById('selectParentModal').addEventListener('click', function(e) { if(e.target===this) closeSelectParentModal(); });
         document.getElementById('selectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeSelectPurchaseModal(); });
         document.getElementById('editSelectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeEditSelectPurchaseModal(); });
+        document.getElementById('selectParentModal').addEventListener('click', function(e) { if(e.target===this) closeSelectParentModal(); });
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Initial check if table empty from server side
             const rows = document.querySelectorAll('#animal-table tr');
             if(rows.length === 0) document.getElementById('empty-state').style.display = 'block';
         });
