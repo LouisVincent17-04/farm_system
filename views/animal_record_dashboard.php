@@ -1,6 +1,6 @@
 <?php
 // views/animal_record_dashboard.php
-$page = "animal_records"; // Active Tab
+$page = "admin_dashboard"; // Active Tab
 include '../common/navbar.php';
 include '../config/Connection.php';
 include '../security/checkRole.php';    
@@ -11,8 +11,7 @@ checkRole(2);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animal Records - FarmPro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Animal Records - FarmPro</title>
     <style>
         /* --- CORE STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,7 +33,8 @@ checkRole(2);
         /* --- CARD GRID --- */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            /* Changed minmax to 300px to fit mobile screens better before stacking */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
         }
 
@@ -105,6 +105,27 @@ checkRole(2);
             transition: transform 0.2s;
         }
         .record-card:hover .action-link { transform: translateX(5px); }
+
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 768px) {
+            .container { padding: 1.5rem 1rem; } /* Reduce padding */
+            
+            .page-title { font-size: 1.8rem; } /* Smaller title */
+            .page-subtitle { font-size: 1rem; }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr; /* Stack cards vertically */
+                gap: 1.5rem;
+            }
+
+            .record-card {
+                padding: 1.5rem; /* Smaller internal padding */
+            }
+
+            .card-icon-box {
+                width: 60px; height: 60px; font-size: 2rem; /* Smaller icon */
+            }
+        }
 
     </style>
 </head>

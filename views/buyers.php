@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['flash_error'] = "Error: " . $e->getMessage();
     }
 
-    // --- CRITICAL FIX: REDIRECT TO PREVENT DUPLICATES ---
+    // --- REDIRECT TO PREVENT DUPLICATES ---
     header("Location: buyers.php");
     exit();
 }
@@ -77,39 +77,93 @@ if (isset($_SESSION['flash_error'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Buyer Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Buyer Management</title>
     <style>
         /* Shared Styles */
-        body { font-family: sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; margin:0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; margin:0; }
+        
         .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        .header h1 { margin: 0; font-size: 1.8rem; }
         
         .card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; }
         
+        /* Table Default Styles */
         .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         .table th { text-align: left; padding: 12px; background: rgba(15, 23, 42, 0.8); color: #94a3b8; border-bottom: 1px solid #334155; }
         .table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
         
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; }
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; font-size: 0.9rem; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        
         .btn-primary { background: #3b82f6; color: white; }
         .btn-edit { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 6px 12px; font-size: 0.85rem; }
         .btn-delete { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px 12px; font-size: 0.85rem; margin-left: 5px; }
-        .btn-delete:hover { background: rgba(239, 68, 68, 0.2); }
-
+        
         /* Alerts */
         .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: bold; text-align: center; }
         .alert-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
         .alert-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
 
         /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 12px; width: 400px; padding: 2rem; border: 1px solid #475569; animation: zoomIn 0.2s; }
+        .modal-content { background: #1e293b; border-radius: 12px; width: 100%; max-width: 400px; padding: 2rem; border: 1px solid #475569; animation: zoomIn 0.2s; position: relative; }
         @keyframes zoomIn { from {transform:scale(0.9); opacity:0;} to {transform:scale(1); opacity:1;} }
         
         .form-group { margin-bottom: 1rem; }
         .form-label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; }
-        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; }
+        .form-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            
+            /* Stack Header */
+            .header { flex-direction: column; align-items: stretch; text-align: center; }
+            .btn-primary { width: 100%; padding: 12px; font-size: 1rem; }
+
+            /* Table to Card View Transformation */
+            .table thead { display: none; } /* Hide Table Headers */
+            .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
+            
+            .table tr {
+                background: rgba(15, 23, 42, 0.6);
+                border: 1px solid #475569;
+                border-radius: 10px;
+                margin-bottom: 1rem;
+                padding: 1rem;
+            }
+
+            .table td {
+                padding: 8px 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                text-align: right;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+            }
+
+            .table td:last-child { border-bottom: none; padding-top: 15px; justify-content: flex-end; gap: 10px; }
+
+            /* Add Labels via CSS */
+            .table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #94a3b8;
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                margin-right: 10px;
+            }
+
+            /* Adjust Buttons for Mobile */
+            .btn-edit, .btn-delete { padding: 8px 16px; font-size: 0.9rem; margin: 0; }
+            
+            /* Specific fix for Address text wrap */
+            .table td[data-label="Address"] { display: block; text-align: left; }
+            .table td[data-label="Address"]::before { display: block; margin-bottom: 5px; }
+        }
     </style>
 </head>
 <body>
@@ -136,10 +190,10 @@ if (isset($_SESSION['flash_error'])) {
                 <?php else: ?>
                     <?php foreach($buyers as $b): ?>
                     <tr>
-                        <td style="font-weight:bold; color:white;"><?= htmlspecialchars($b['FULL_NAME']) ?></td>
-                        <td><?= htmlspecialchars($b['CONTACT_NO']) ?></td>
-                        <td><?= htmlspecialchars($b['ADDRESS']) ?></td>
-                        <td>
+                        <td data-label="Name" style="font-weight:bold; color:white;"><?= htmlspecialchars($b['FULL_NAME']) ?></td>
+                        <td data-label="Contact"><?= htmlspecialchars($b['CONTACT_NO']) ?></td>
+                        <td data-label="Address"><?= htmlspecialchars($b['ADDRESS']) ?></td>
+                        <td data-label="Action">
                             <button class="btn btn-edit" onclick='openModal(<?= json_encode($b) ?>)'>Edit</button>
                             <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure? This action cannot be undone if no history exists.');">
                                 <input type="hidden" name="delete_id" value="<?= $b['BUYER_ID'] ?>">
@@ -161,18 +215,18 @@ if (isset($_SESSION['flash_error'])) {
             <input type="hidden" name="buyer_id" id="buyer_id">
             <div class="form-group">
                 <label class="form-label">Full Name *</label>
-                <input type="text" name="full_name" id="full_name" class="form-input" required>
+                <input type="text" name="full_name" id="full_name" class="form-input" required placeholder="e.g. Juan Dela Cruz">
             </div>
             <div class="form-group">
                 <label class="form-label">Contact Number</label>
-                <input type="text" name="contact_no" id="contact_no" class="form-input">
+                <input type="text" name="contact_no" id="contact_no" class="form-input" placeholder="09123456789">
             </div>
             <div class="form-group">
                 <label class="form-label">Address</label>
-                <textarea name="address" id="address" class="form-input" rows="3"></textarea>
+                <textarea name="address" id="address" class="form-input" rows="3" placeholder="Barangay, City"></textarea>
             </div>
-            <div style="text-align: right; margin-top: 1.5rem;">
-                <button type="button" class="btn" style="background:transparent; color:#94a3b8;" onclick="closeModal()">Cancel</button>
+            <div style="text-align: right; margin-top: 1.5rem; display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn" style="background:transparent; color:#94a3b8; border:1px solid #475569;" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Buyer</button>
             </div>
         </form>
@@ -191,10 +245,17 @@ if (isset($_SESSION['flash_error'])) {
         } else {
             document.getElementById('modalTitle').innerText = 'Add Buyer';
             document.getElementById('buyer_id').value = '';
-            document.querySelector('form').reset();
+            document.querySelector('#buyerModal form').reset();
         }
     }
     function closeModal() { document.getElementById('buyerModal').classList.remove('show'); }
+    
+    // Close modal if clicked outside
+    window.onclick = function(e) {
+        if (e.target == document.getElementById('buyerModal')) {
+            closeModal();
+        }
+    }
 </script>
 
 </body>

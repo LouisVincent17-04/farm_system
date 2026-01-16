@@ -16,7 +16,6 @@ try {
     $locs = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
 
     // 2. Fetch Medicines (Inventory)
-    // Using MEDICINES table instead of VITAMINS_SUPPLEMENTS
     $meds = $conn->query("
         SELECT m.SUPPLY_ID, m.SUPPLY_NAME, m.TOTAL_STOCK, u.UNIT_ABBR, m.UNIT_ID 
         FROM MEDICINES m 
@@ -36,7 +35,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Group Medication</title>
     <style>
-        /* --- GLOBAL STYLES (Matching Group Vitamins) --- */
+        /* --- GLOBAL STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -62,6 +61,7 @@ try {
             padding: 1.5rem;
             position: sticky; top: 1.5rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            z-index: 10;
         }
         .panel-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
         .panel-subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem; }
@@ -74,7 +74,7 @@ try {
             border-radius: 8px; color: #fff; font-size: 0.95rem;
             transition: border-color 0.2s;
         }
-        .form-control:focus { border-color: #8b5cf6; outline: none; } /* Purple focus for Meds */
+        .form-control:focus { border-color: #8b5cf6; outline: none; }
         .form-control:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* --- RIGHT PANEL: SELECTION & TABLE --- */
@@ -89,7 +89,7 @@ try {
         .section-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
         
         .animal-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Adjusted for mobile */
             gap: 0.75rem; max-height: 250px; overflow-y: auto; padding-right: 5px;
         }
         .animal-card {
@@ -137,24 +137,61 @@ try {
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; color: #94a3b8; }
         .summary-total { margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; font-weight: 700; color: #fff; display: block; }
         
-        /* Apply Button */
+        /* Buttons */
         .btn-mini {
             background: #334155; border: 1px solid #475569; color: #fff;
-            border-radius: 8px; padding: 0 12px; cursor: pointer; font-size: 0.8rem;
-            white-space: nowrap; transition: 0.2s;
+            border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem;
+            white-space: nowrap; transition: 0.2s; flex-shrink: 0;
         }
         .btn-mini:hover { background: #475569; border-color: #94a3b8; }
 
         .btn-submit {
             width: 100%; margin-top: 1.5rem; padding: 1rem;
-            background: linear-gradient(135deg, #8b5cf6, #6d28d9); /* Purple Gradient */
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
             border: none; border-radius: 12px; color: white; font-weight: 700;
-            cursor: pointer; transition: all 0.2s;
+            cursor: pointer; transition: all 0.2s; font-size: 1rem;
         }
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
         .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); }
 
-        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } .control-panel { position: relative; top: 0; } }
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 1024px) {
+            .container { padding: 1rem; }
+            .main-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .control-panel { position: static; margin-bottom: 1rem; }
+            
+            /* Table Card Transformation */
+            .custom-table, .custom-table tbody, .custom-table tr, .custom-table td {
+                display: block; width: 100%;
+            }
+            .custom-table thead { display: none; } /* Hide Headers */
+            
+            .custom-table tr {
+                background: rgba(30, 41, 59, 0.3);
+                margin-bottom: 1rem;
+                border: 1px solid #334155;
+                border-radius: 12px;
+                padding: 1rem;
+                position: relative;
+            }
+            
+            .custom-table td {
+                padding: 8px 0;
+                display: flex; justify-content: space-between; align-items: center;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                text-align: right;
+            }
+            .custom-table td:last-child { border-bottom: none; justify-content: flex-end; }
+            
+            /* Data Labels */
+            .custom-table td::before {
+                content: attr(data-label);
+                font-weight: 600; font-size: 0.85rem; color: #94a3b8;
+                text-transform: uppercase; margin-right: 1rem;
+            }
+            
+            .custom-table select, .custom-table input { width: 60%; }
+        }
     </style>
 </head>
 <body>
@@ -167,7 +204,7 @@ try {
             <div class="panel-subtitle">Mass treatment distribution.</div>
 
             <form id="settingsForm">
-                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; margin-bottom:1rem; border:1px dashed #475569;">
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:8px; margin-bottom:1.5rem; border:1px dashed #475569;">
                     <label class="form-label" style="margin-bottom:8px; color:#c4b5fd;">STEP 1: Locate Group</label>
                     <div class="form-group" style="margin-bottom:0.5rem;">
                         <select id="location_id" class="form-control" onchange="loadBuildings(this.value)">
@@ -187,7 +224,7 @@ try {
                 
                 <div class="form-group">
                     <label class="form-label">Default Medication <span style="color:#f87171">*</span></label>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:8px;">
                         <select id="default_item" class="form-control" onchange="updateAllItems()">
                             <option value="">Select Medicine</option>
                             <?php foreach($meds as $m): ?>
@@ -202,7 +239,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Default Dosage <span style="color:#94a3b8; font-size:0.8em;">(e.g. 5ml)</span></label>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:8px;">
                         <input type="text" id="default_dosage" class="form-control" placeholder="e.g. 5ml" onchange="updateAllDosages()">
                         <button type="button" class="btn-mini" onclick="updateAllDosages()">Apply</button>
                     </div>
@@ -210,7 +247,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Default Qty / Head <span style="color:#f87171">*</span></label>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:8px;">
                         <input type="number" id="default_qty" class="form-control" step="0.01" min="0.01" value="1.00" onchange="updateAllQuantities()" placeholder="Qty">
                         <button type="button" class="btn-mini" onclick="updateAllQuantities()">Apply</button>
                     </div>
@@ -240,7 +277,7 @@ try {
             <div class="picker-section">
                 <div class="section-header">
                     <div class="section-title">🐖 Step 3: Select Animals</div>
-                    <div style="font-size:0.85rem; color:#94a3b8;">Animals in selected pen</div>
+                    <div style="font-size:0.85rem; color:#94a3b8;">Tap to select</div>
                 </div>
                 <div id="animal-grid" class="animal-grid">
                     <div style="grid-column:1/-1; text-align:center; padding:2rem; color:#64748b; border:1px dashed #475569; border-radius:8px;">
@@ -252,7 +289,7 @@ try {
             <div class="table-section">
                 <div class="section-header" style="padding:1rem; border-bottom:1px solid #334155; margin-bottom:0;">
                     <div class="section-title">📋 Step 4: Confirm Details</div>
-                    <button onclick="clearTable()" style="background:transparent; border:1px solid #f87171; color:#f87171; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">Clear All</button>
+                    <button onclick="clearTable()" style="background:transparent; border:1px solid #f87171; color:#f87171; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:0.85rem;">Clear All</button>
                 </div>
                 
                 <table class="custom-table">
@@ -279,7 +316,6 @@ try {
 <script>
     // --- DATA STORE ---
     let selectedAnimals = new Set(); 
-    // Store inventory for validation
     const inventory = {};
     <?php foreach($meds as $m): ?>
         inventory[<?= $m['SUPPLY_ID'] ?>] = {
@@ -342,12 +378,7 @@ try {
                 }
 
                 animals.forEach(a => {
-                    if(a.IS_ACTIVE == 0)
-                    {
-                        return; 
-                    } 
-                    else
-                    {
+                    if(a.IS_ACTIVE != 0) {
                         const card = document.createElement('div');
                         card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
                         card.id = `card-${a.ANIMAL_ID}`;
@@ -358,7 +389,6 @@ try {
                         `;
                         grid.appendChild(card);
                     }
-                    
                 });
             });
     }
@@ -371,12 +401,10 @@ try {
         if(emptyRow) emptyRow.remove();
 
         const tbody = document.getElementById('medication-list');
-        // Get Default Values
         const defaultQty = document.getElementById('default_qty').value;
         const defaultItem = document.getElementById('default_item').value;
         const defaultDosage = document.getElementById('default_dosage').value;
 
-        // Build Select Options
         let optionsHtml = '<option value="">Select Med</option>';
         for (const [id, item] of Object.entries(inventory)) {
             const isSelected = (id === defaultItem) ? 'selected' : '';
@@ -387,23 +415,24 @@ try {
         tr.id = `row-${animal.ANIMAL_ID}`;
         tr.dataset.id = animal.ANIMAL_ID;
         
+        // Added data-label attributes for mobile view
         tr.innerHTML = `
-            <td style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
-            <td>
+            <td data-label="Tag No" style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
+            <td data-label="Medication">
                 <select class="item-select" name="item[${animal.ANIMAL_ID}]" onchange="updateCalculations()">${optionsHtml}</select>
             </td>
-            <td>
+            <td data-label="Dosage">
                 <input type="text" class="dosage-input" name="dosage[${animal.ANIMAL_ID}]" 
                        value="${defaultDosage}" placeholder="e.g. 5ml">
             </td>
-            <td>
+            <td data-label="Qty">
                 <input type="number" class="qty-input" name="qty[${animal.ANIMAL_ID}]" 
                        value="${defaultQty}" step="0.01" min="0.01" oninput="updateCalculations()">
             </td>
-            <td>
+            <td data-label="Remarks">
                 <input type="text" name="remarks[${animal.ANIMAL_ID}]" placeholder="Notes...">
             </td>
-            <td style="text-align:center;">
+            <td data-label="Remove" style="text-align:right;">
                 <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})">×</button>
             </td>
         `;
@@ -541,7 +570,6 @@ try {
             date: document.getElementById('txn_date').value
         };
 
-        // Note: Using a specific medication handler
         fetch('../process/addBatchMedication.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -14,7 +14,7 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Checkups (Include Location IDs for Smart Edit)
+    // 1. Fetch Checkups
     $checkups_sql = "SELECT c.*, 
                             a.TAG_NO, 
                             a.LOCATION_ID, a.BUILDING_ID, a.PEN_ID,
@@ -27,13 +27,13 @@ try {
     $stmt->execute();
     $checkups_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Fetch Locations (Level 1 Cascade)
+    // 2. Fetch Locations
     $locations_sql = "SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS ORDER BY LOCATION_NAME ASC";
     $stmt = $conn->prepare($locations_sql);
     $stmt->execute();
     $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Fetch Animal Types for Table Filter
+    // 3. Fetch Animal Types
     $animal_types_sql = "SELECT ANIMAL_TYPE_ID, ANIMAL_TYPE_NAME FROM ANIMAL_TYPE ORDER BY ANIMAL_TYPE_NAME ASC";
     $stmt = $conn->prepare($animal_types_sql);
     $stmt->execute();
@@ -58,11 +58,49 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animal Check-ups Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Animal Check-ups Management</title>
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
     <style>
-        /* [Reusing Core Styles for Consistency] */
+        /* Base Styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .header-info p { color: #cbd5e1; }
+        
+        .add-btn { display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: scale(1.05); }
+
+        /* Filter Row */
+        .filter-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-select { padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; color: #f9f9f9ff; font-size: 14px; backdrop-filter: blur(10px); cursor: pointer; transition: all 0.3s; min-width: 200px; flex: 1; }
+        
+        /* Search */
+        .search-container { position: relative; margin-bottom: 2rem; }
+        .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
+
+        /* Table Styles (Updated for Horizontal Scrolling) */
+        .table-container { 
+            background: rgba(30, 41, 59, 0.5); 
+            backdrop-filter: blur(10px); 
+            border-radius: 0.75rem; 
+            border: 1px solid #475569; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            /* Enable horizontal scroll */
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; 
+        }
+        .table { width: 100%; border-collapse: collapse; white-space: nowrap; /* Prevent wrapping */ }
+        .table th { padding: 1rem 1.5rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; background: linear-gradient(135deg, #475569, #334155); }
+        .table tbody tr { border-bottom: 1px solid #475569; transition: background-color 0.2s; }
+        .table tbody tr:hover { background: rgba(55, 65, 81, 0.5); }
+        .table td { padding: 1rem 1.5rem; vertical-align: middle; }
+
+        /* Content Styles */
         .checkup-info { display: flex; flex-direction: column; gap: 4px; }
         .animal-name { font-weight: 600; color: #f9f9f9ff; font-size: 15px; }
         .animal-type { font-size: 13px; color: #94a3b8; }
@@ -71,16 +109,15 @@ try {
         .remarks-text { color: #cbd5e1; font-size: 14px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .cost-text { font-weight: bold; color: #fbbf24; }
 
-        /* Filter Row */
-        .filter-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .filter-select { padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; color: #f9f9f9ff; font-size: 14px; backdrop-filter: blur(10px); cursor: pointer; transition: all 0.3s; min-width: 200px; }
-        
-        /* CASCADING GRID */
-        .form-row-cascading { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; background: rgba(255, 255, 255, 0.03); padding: 15px; border-radius: 8px; border: 1px dashed rgba(148, 163, 184, 0.2); }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        @media (max-width: 768px) { .form-row-cascading, .form-row { grid-template-columns: 1fr; } }
+        /* Actions */
+        .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
+        .action-btn.view { color: #a78bfa; } .action-btn.view:hover { background: rgba(139, 92, 246, 0.2); }
+        .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { background: rgba(59, 130, 246, 0.2); }
+        .action-btn.delete { color: #f87171; } .action-btn.delete:hover { background: rgba(239, 68, 68, 0.2); }
+        .icon { width: 18px; height: 18px; }
 
-        /* MODAL FIXES */
+        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
         .modal.show { display: flex; }
         .modal-content { background: #1e293b; border-radius: 20px; width: 100%; max-width: 650px; max-height: 90vh; display: flex; flex-direction: column; border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); animation: slideUp 0.3s ease; }
@@ -88,11 +125,47 @@ try {
         .modal-body { padding: 2rem; overflow-y: auto; flex-grow: 1; }
         .modal-footer { padding: 1.5rem 2rem; border-top: 1px solid rgba(148, 163, 184, 0.1); display: flex; justify-content: flex-end; gap: 1rem; flex-shrink: 0; background: #1e293b; border-radius: 0 0 20px 20px; }
         
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+        .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 1rem; }
+        
+        .form-row-cascading { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; background: rgba(255, 255, 255, 0.03); padding: 15px; border-radius: 8px; border: 1px dashed rgba(148, 163, 184, 0.2); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; border: none; color: #cbd5e1; cursor: pointer; }
+        .btn-save { padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; }
+        
+        .empty-state { text-align: center; padding: 3rem 1rem; display: none; }
         .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
         .alert.show { display: block; }
         .alert.success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
         .alert.error { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* --- MOBILE RESPONSIVE CSS --- */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            
+            /* Header Stack */
+            .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
+            .header-info h1 { font-size: 1.75rem; }
+            .add-btn { width: 100%; justify-content: center; }
+
+            /* Filter Stack */
+            .filter-container { flex-direction: column; gap: 10px; }
+            .filter-select { width: 100%; }
+
+            /* FORCE HORIZONTAL SCROLL ON TABLE */
+            .table { 
+                min-width: 900px; /* Ensure table is wide enough to trigger scroll */
+            }
+            .remarks-text { white-space: normal; max-width: 200px; }
+
+            /* Modal Forms Stack */
+            .form-row, .form-row-cascading { grid-template-columns: 1fr; }
+            .modal-content { width: 95%; margin: 0 auto; max-height: 90vh; }
+        }
     </style>
 </head>
 <body>
@@ -138,8 +211,9 @@ try {
                         <th>Check-up ID</th>
                         <th>Animal</th>
                         <th>Veterinarian</th>
-                        <th>Check-up Date & Time</th>
-                        <th>Cost</th> <th>Remarks</th>
+                        <th>Date & Time</th>
+                        <th>Cost</th> 
+                        <th>Remarks</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -148,7 +222,7 @@ try {
                         // Proper Date Handling
                         $dateObj = new DateTime($checkup['CHECKUP_DATE']);
                         $displayDate = $dateObj->format('M d, Y h:i A');
-                        $isoDate = $dateObj->format('Y-m-d\TH:i'); // For datetime-local input
+                        $isoDate = $dateObj->format('Y-m-d\TH:i'); 
                     ?>
                     <tr data-checkup-id="<?php echo $checkup['CHECK_UP_ID']; ?>"
                         data-animal-id="<?php echo $checkup['ANIMAL_ID']; ?>"
@@ -165,16 +239,22 @@ try {
                         data-remarks="<?php echo htmlspecialchars($checkup['REMARKS'] ?? ''); ?>">
                         
                         <td><div class="item-id">CU-<?php echo str_pad($checkup['CHECK_UP_ID'], 4, '0', STR_PAD_LEFT); ?></div></td>
+                        
                         <td>
                             <div class="checkup-info">
                                 <span class="animal-name"><?php echo htmlspecialchars($checkup['TAG_NO'] ?? 'Unknown'); ?></span>
                                 <span class="animal-type"><?php echo htmlspecialchars($checkup['ANIMAL_TYPE_NAME'] ?? 'N/A'); ?></span>
                             </div>
                         </td>
+                        
                         <td><span class="vet-name"><?php echo htmlspecialchars($checkup['VET_NAME']); ?></span></td>
+                        
                         <td><span class="date-badge"><?php echo $displayDate; ?></span></td>
+                        
                         <td><span class="cost-text">₱<?php echo number_format($checkup['COST'], 2); ?></span></td>
+                        
                         <td><div class="remarks-text"><?php echo htmlspecialchars($checkup['REMARKS'] ?? '-'); ?></div></td>
+                        
                         <td>
                             <div class="actions">
                                 <button class="action-btn view" onclick="viewCheckup(this)" title="View"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
@@ -186,7 +266,7 @@ try {
                     <?php endforeach; ?>
                 </tbody>
             </table>
-            <div id="empty-state" class="empty-state">
+            <div id="empty-state" class="empty-state" style="display: <?php echo empty($checkups_data) ? 'block' : 'none'; ?>">
                 <h3>No check-ups found</h3>
                 <p>Try adjusting your filters or add a new check-up</p>
             </div>
@@ -287,13 +367,11 @@ try {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             checkEmptyState();
-            // Set Default Time to Now (ISO local format)
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('checkup-date').value = now.toISOString().slice(0,16);
         });
 
-        // --- CASCADING LOGIC (PROMISE BASED) ---
         function loadBuildings(locId) {
             return new Promise((resolve) => {
                 const bldgSel = document.getElementById('building_id');
@@ -364,15 +442,9 @@ try {
                         
                         if(list.length > 0) {
                             list.forEach(a => {
-                                if(a.IS_ACTIVE == 0)
-                                {
-                                    return; 
-                                } 
-                                else
-                                {
+                                if(a.IS_ACTIVE != 0) {
                                     animalSel.innerHTML += `<option value="${a.ANIMAL_ID}">${a.TAG_NO}</option>`;
                                 }
-                                
                             });
                             animalSel.disabled = false;
                         } else { animalSel.innerHTML = '<option value="">No Animals</option>'; }
@@ -381,14 +453,12 @@ try {
             });
         }
 
-        // --- CRUD OPERATIONS ---
         function openAddModal() {
             document.getElementById('checkup-form').reset();
             document.getElementById('checkup-id').value = '';
             document.getElementById('modal-title').textContent = 'Add New Check-up';
             document.getElementById('btn-save').textContent = 'Save Check-up';
             
-            // Reset Cascades
             document.getElementById('location_id').value = "";
             document.getElementById('building_id').innerHTML = '<option value="">Select Loc First</option>';
             document.getElementById('building_id').disabled = true;
@@ -397,7 +467,6 @@ try {
             document.getElementById('animal-id').innerHTML = '<option value="">Select Pen First</option>';
             document.getElementById('animal-id').disabled = true;
 
-            // Set Default Time
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('checkup-date').value = now.toISOString().slice(0,16);
@@ -414,34 +483,29 @@ try {
             document.getElementById('btn-save').textContent = 'Update Check-up';
             document.getElementById('checkup-id').value = d.checkupId;
 
-            // 1. Set Location
             document.getElementById('location_id').value = d.locationId || "";
             
-            // 2. Load Buildings & Set
             if(d.locationId) {
                 await loadBuildings(d.locationId);
                 document.getElementById('building_id').value = d.buildingId || "";
             }
 
-            // 3. Load Pens & Set
             if(d.buildingId) {
                 await loadPens(d.buildingId);
                 document.getElementById('pen_id').value = d.penId || "";
             }
 
-            // 4. Load Animals & Set
             if(d.penId) {
                 await loadAnimals(d.penId);
                 document.getElementById('animal-id').value = d.animalId;
             } else {
-                // Fallback
                 const animalSel = document.getElementById('animal-id');
                 animalSel.innerHTML = `<option value="${d.animalId}" selected>${d.animalName}</option>`;
                 animalSel.disabled = false;
             }
 
             document.getElementById('vet-name').value = d.vetName;
-            document.getElementById('checkup-date').value = d.checkupDate; // Using ISO value from PHP
+            document.getElementById('checkup-date').value = d.checkupDate; 
             document.getElementById('checkup-cost').value = d.cost;
             document.getElementById('remarks').value = d.remarks;
             
@@ -459,7 +523,6 @@ try {
             
             btn.disabled = true; btn.innerHTML = 'Saving...';
             
-            // Re-enable for submission
             document.getElementById('animal-id').disabled = false;
 
             fetch(url, { method: 'POST', body: new FormData(form) })
@@ -478,7 +541,6 @@ try {
             }
         }
 
-        // --- HELPERS ---
         function closeModal() { document.getElementById('modal').classList.remove('show'); }
         function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
         function showAlert(msg, type) {
@@ -490,7 +552,6 @@ try {
         function viewCheckup(button) {
             const d = button.closest('tr').dataset;
             const row = button.closest('tr');
-            // Get formatted date from the table cell itself for display consistency
             const displayDate = row.querySelector('.date-badge').innerText; 
 
             const html = `

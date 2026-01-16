@@ -29,7 +29,7 @@ if (isset($_GET['action'])) {
         if ($action === 'get_animals_editable') {
             $animalsStmt = $conn->prepare("
                 SELECT a.ANIMAL_ID, a.TAG_NO, a.SEX, a.BIRTH_DATE, a.BREED_ID, a.ANIMAL_TYPE_ID,
-                       at.ANIMAL_TYPE_NAME, b.BREED_NAME
+                       at.ANIMAL_TYPE_NAME, b.BREED_NAME, a.INITIAL_WEIGHT, a.ACQUISITION_COST
                 FROM animal_records a
                 LEFT JOIN animal_type at ON a.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
                 LEFT JOIN breeds b ON a.BREED_ID = b.BREED_ID
@@ -55,8 +55,7 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Edit Bio Info</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Bulk Edit Bio Info</title>
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -77,6 +76,8 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
             margin-bottom: 2rem; 
             padding-bottom: 1.5rem;
             border-bottom: 2px solid rgba(250, 204, 21, 0.2);
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            gap: 1rem;
         }
         .header-content h1 { 
             font-size: 2.5rem; 
@@ -200,10 +201,15 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
             overflow: hidden; 
             border: 1px solid rgba(250, 204, 21, 0.1);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            
+            /* Responsive Scroll */
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .data-table { 
             width: 100%; 
             border-collapse: collapse; 
+            min-width: 800px; /* Ensure table doesn't squish */
         }
         .data-table thead {
             background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(234, 179, 8, 0.15));
@@ -217,6 +223,7 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
             font-weight: 700;
             letter-spacing: 0.5px;
             border-bottom: 2px solid rgba(250, 204, 21, 0.3);
+            white-space: nowrap;
         }
         .data-table td { 
             padding: 1rem; 
@@ -230,18 +237,6 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
             background: rgba(250, 204, 21, 0.05);
         }
         
-        /* Tag Badge - Read Only */
-        .tag-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            letter-spacing: 0.5px;
-        }
-
         /* Table Inputs */
         .tbl-input { 
             width: 100%; 
@@ -315,6 +310,7 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
         .btn-save-all {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
             background: linear-gradient(135deg, #eab308, #ca8a04);
             color: #0f172a; 
@@ -382,58 +378,47 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
         }
 
         @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Responsive */
+        /* --- MOBILE STYLES --- */
         @media (max-width: 768px) {
-            .filter-grid {
-                grid-template-columns: 1fr;
-            }
+            .container { padding: 1rem; }
+            
+            .header-content h1 { font-size: 1.8rem; }
+            
+            .filter-card { padding: 1.5rem; }
+            .filter-grid { grid-template-columns: 1fr; } /* Stack filters */
+            
             .save-bar {
                 flex-direction: column;
                 align-items: stretch;
+                padding: 1rem;
             }
             .save-bar-info {
                 justify-content: space-around;
+                margin-bottom: 10px;
             }
             .save-bar-actions {
                 width: 100%;
+                gap: 10px;
             }
             .btn-save-all, .btn-cancel {
                 flex: 1;
+                padding: 12px;
+                font-size: 1rem;
             }
+            
+            .data-table th, .data-table td { padding: 0.8rem; }
         }
-        /* Add these styles to your select elements */
-.form-select option,
-.tbl-input option {
-    background-color: #0f172a !important; /* Dark background */
-    color: #ffffff !important; /* White text */
-    padding: 10px !important;
-}
 
-/* Ensure the select itself has proper styling */
-.form-select,
-.tbl-input {
-    background-color: #0f172a !important;
-    color: #ffffff !important;
-}
-
-/* Fix for option hover state */
-.form-select option:hover,
-.tbl-input option:hover,
-.form-select option:checked,
-.tbl-input option:checked {
-    background-color: #1e293b !important;
-    color: #facc15 !important; /* Yellow highlight */
-}
+        /* Option Colors Fix */
+        .form-select option, .tbl-input option {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+            padding: 10px !important;
+        }
     </style>
 </head>
 <body>
@@ -441,7 +426,7 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
 <div class="container">
     <div class="page-header">
         <div class="header-content">
-            <h1>🧬 Bulk Edit Animal Bio Info</h1>
+            <h1>🧬 Bulk Edit Bio Info</h1>
             <p>Efficiently update animal records by location, building, and pen</p>
         </div>
         <a href="farm_dashboard.php" class="back-link">
@@ -533,16 +518,10 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
             </div>
             <div class="save-bar-actions">
                 <button type="button" class="btn-cancel" onclick="resetForm()">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: inline-block; vertical-align: middle;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
                     Cancel
                 </button>
                 <button type="submit" class="btn-save-all">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    Save All Changes
+                    💾 Save Changes
                 </button>
             </div>
         </div>
@@ -622,28 +601,28 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
                 return;
             }
 
-            // GENERATE ROWS
+            // Stats
+            let males = 0, females = 0;
+
             animals.forEach(a => {
+                if(a.SEX === 'M') males++;
+                if(a.SEX === 'F') females++;
+
                 const row = document.createElement('tr');
-                
-                // SAFE VALUES (Handle nulls from DB to prevent JS errors)
                 const tagVal = a.TAG_NO || ''; 
                 const sexVal = a.SEX || 'U';
                 const dobVal = a.BIRTH_DATE || '';
                 const typeVal = a.ANIMAL_TYPE_ID || '';
                 const breedVal = a.BREED_ID || '';
-                // Handle optional numerics
                 const weightVal = (a.INITIAL_WEIGHT !== null) ? a.INITIAL_WEIGHT : 0;
                 const costVal = (a.ACQUISITION_COST !== null) ? a.ACQUISITION_COST : 0;
 
-                // TYPE OPTIONS
                 let typeOpts = '<option value="">-- Select --</option>';
                 ALL_TYPES.forEach(t => {
                     const sel = t.ANIMAL_TYPE_ID == typeVal ? 'selected' : '';
                     typeOpts += `<option value="${t.ANIMAL_TYPE_ID}" ${sel}>${t.ANIMAL_TYPE_NAME}</option>`;
                 });
 
-                // BREED OPTIONS (Based on current type)
                 let breedOpts = getBreedOptions(typeVal, breedVal);
 
                 row.innerHTML = `
@@ -675,7 +654,12 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
                 tbody.appendChild(row);
             });
 
+            document.getElementById('totalAnimals').innerText = animals.length;
             document.getElementById('changeCount').innerText = animals.length;
+            document.getElementById('maleCount').innerText = males;
+            document.getElementById('femaleCount').innerText = females;
+            
+            document.getElementById('statsBar').style.display = 'flex';
             saveBar.classList.add('visible');
         }
     }
@@ -709,7 +693,7 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
         const btn = document.querySelector('.btn-save-all');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⏳</span> Saving...';
+        btn.innerHTML = '⏳ Saving...';
 
         const formData = new FormData(document.getElementById('bulkEditForm'));
 
@@ -735,13 +719,6 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
         }
     }
 </script>
-
-<style>
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-</style>
 
 </body>
 </html>

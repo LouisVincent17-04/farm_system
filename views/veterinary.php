@@ -2,8 +2,8 @@
 // ../views/veterinary.php
 
 $page="admin_dashboard";
-include '../common/navbar.php';
 include '../config/Connection.php';
+include '../common/navbar.php';
 include '../config/Queries.php';
 include '../functions/getInitialsFunction.php';
 include '../security/checkRole.php';    
@@ -304,4 +304,3 @@ $vet_data = retrieveData($conn, $sql);
     </script>
 </body>
 </html>
-<?php oci_close($conn); ?>

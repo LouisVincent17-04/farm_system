@@ -14,21 +14,36 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Transfer Animal Group</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Transfer Animal Group</title>
     <style>
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: sans-serif; min-height: 100vh; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; min-height: 100vh; margin: 0; }
+        
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
         /* Header */
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 1rem; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
         .page-title { font-size: 1.8rem; font-weight: 800; color: #60a5fa; margin: 0; }
-        .back-link { color: #94a3b8; text-decoration: none; }
+        .back-link { color: #94a3b8; text-decoration: none; font-size: 1rem; }
 
         /* Transfer Grid */
-        .transfer-grid { display: grid; grid-template-columns: 1fr 80px 1fr; gap: 20px; align-items: start; }
+        .transfer-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 80px 1fr; 
+            gap: 20px; 
+            align-items: stretch; /* Stretch height to match */
+        }
         
         /* Panels */
-        .panel { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; border-radius: 12px; padding: 1.5rem; height: 100%; display: flex; flex-direction: column; }
+        .panel { 
+            background: rgba(30, 41, 59, 0.6); 
+            border: 1px solid #475569; 
+            border-radius: 12px; 
+            padding: 1.5rem; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; /* Fill grid cell */
+            box-sizing: border-box;
+        }
         .panel-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #475569; padding-bottom: 10px; }
         .panel-src { border-color: #f472b6; }
         .panel-dest { border-color: #34d399; }
@@ -38,7 +53,7 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
         /* Form Elements */
         .form-group { margin-bottom: 1rem; }
         .form-label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 5px; }
-        .form-select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 6px; }
+        .form-select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
         
         /* Animal List Box */
         .animal-list-box { 
@@ -54,36 +69,84 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
         
         .animal-item { 
             display: flex; align-items: center; gap: 10px; 
-            padding: 8px; border-bottom: 1px solid #334155; 
+            padding: 12px 8px; /* Larger tap area */
+            border-bottom: 1px solid #334155; 
             transition: background 0.2s; 
         }
         .animal-item:hover { background: rgba(255,255,255,0.05); }
-        .animal-item label { cursor: pointer; flex-grow: 1; display: flex; justify-content: space-between; }
-        .tag { font-weight: bold; color: #e2e8f0; }
-        .type { font-size: 0.8rem; color: #94a3b8; }
+        .animal-item label { cursor: pointer; flex-grow: 1; display: flex; justify-content: space-between; align-items: center; }
+        .tag { font-weight: bold; color: #e2e8f0; font-size: 1.1rem; }
+        .type { font-size: 0.85rem; color: #94a3b8; }
 
         /* Middle Arrow */
-        .middle-action { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding-top: 100px; }
-        .arrow-icon { font-size: 2rem; color: #64748b; margin-bottom: 20px; }
+        .middle-action { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100%; 
+        }
+        .arrow-icon { font-size: 2.5rem; color: #64748b; }
 
         /* Footer Action */
-        .action-footer { margin-top: 20px; text-align: right; padding: 20px; background: rgba(15, 23, 42, 0.5); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .count-display { color: #94a3b8; font-weight: 600; }
+        .action-footer { 
+            margin-top: 20px; 
+            text-align: right; 
+            padding: 20px; 
+            background: rgba(15, 23, 42, 0.5); 
+            border-radius: 12px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .count-display { color: #94a3b8; font-weight: 600; font-size: 1.1rem; }
         .btn-transfer { 
             background: linear-gradient(135deg, #3b82f6, #2563eb); 
-            color: white; border: none; padding: 12px 30px; 
+            color: white; border: none; padding: 15px 30px; 
             border-radius: 8px; font-weight: bold; cursor: pointer; 
-            font-size: 1rem; transition: transform 0.1s; 
+            font-size: 1.1rem; transition: transform 0.1s; 
+            width: auto;
         }
         .btn-transfer:hover { transform: scale(1.02); filter: brightness(1.1); }
         .btn-transfer:disabled { background: #475569; cursor: not-allowed; transform: none; }
 
         /* Checkbox styling */
-        input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
+        input[type="checkbox"] { width: 20px; height: 20px; accent-color: #3b82f6; cursor: pointer; }
 
+        /* --- MOBILE RESPONSIVENESS --- */
         @media (max-width: 900px) {
-            .transfer-grid { grid-template-columns: 1fr; }
-            .middle-action { flex-direction: row; padding: 20px; transform: rotate(90deg); }
+            .container { padding: 1rem; }
+            
+            .page-title { font-size: 1.5rem; }
+
+            .transfer-grid { 
+                grid-template-columns: 1fr; /* Stack vertically */
+                gap: 10px;
+            }
+            
+            .middle-action { 
+                flex-direction: row; 
+                padding: 10px; 
+                transform: rotate(90deg); /* Point arrow down */
+                height: auto;
+            }
+            
+            .panel { min-height: auto; }
+            
+            .animal-list-box { 
+                min-height: 250px; /* Slightly smaller on mobile */
+                max-height: 400px;
+            }
+
+            .action-footer { 
+                flex-direction: column; 
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .btn-transfer { width: 100%; }
         }
     </style>
 </head>
@@ -123,12 +186,14 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
                     </select>
                 </div>
 
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <label class="form-label">Select Animals</label>
-                    <a href="#" onclick="selectAll(true); return false;" style="color:#60a5fa; font-size:0.8rem;">Select All</a>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                    <label class="form-label" style="margin:0;">Select Animals</label>
+                    <button type="button" onclick="selectAll(true)" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:0.9rem; padding:5px;">Select All</button>
                 </div>
                 <div id="animalList" class="animal-list-box">
-                    <div style="text-align:center; padding:20px; color:#64748b;">Select a Source Pen first.</div>
+                    <div style="text-align:center; padding:40px 20px; color:#64748b;">
+                        Select a Source Pen first.
+                    </div>
                 </div>
             </div>
 
@@ -161,9 +226,9 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
                     </select>
                 </div>
 
-                <div style="margin-top:auto; padding: 20px; background: rgba(52, 211, 153, 0.1); border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.2);">
+                <div style="margin-top:auto; padding: 15px; background: rgba(52, 211, 153, 0.1); border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.2);">
                     <strong style="color:#34d399">Note:</strong>
-                    <p style="font-size:0.9rem; color:#cbd5e1; margin-top:5px;">
+                    <p style="font-size:0.9rem; color:#cbd5e1; margin-top:5px; line-height: 1.4;">
                         Selected animals will be officially moved to this new location. Their history log will be updated.
                     </p>
                 </div>
@@ -311,8 +376,7 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
             if(result.success) {
                 alert("✅ Transfer Successful!");
                 loadAnimals(); // Refresh source list
-                // Optionally reset destination
-                // document.getElementById('dest_pen').value = '';
+                // document.getElementById('dest_pen').value = ''; // Optional reset
             } else {
                 alert("❌ Error: " + result.message);
             }

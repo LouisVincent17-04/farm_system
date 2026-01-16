@@ -6,7 +6,6 @@ ini_set('display_errors', 0);
 $page="admin_dashboard";
 include '../common/navbar.php';
 include '../config/Connection.php';
-// include '../config/Queries.php'; // Not needed for direct PDO
 
 // Check for status messages from redirects
 $status = $_GET['status'] ?? '';
@@ -50,23 +49,27 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Breed Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Breed Management System</title>
     <style>
-        /* Styles remain identical */
+        /* Base Styles */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
         .header-info p { color: #cbd5e1; }
+        
         .add-btn { display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
+        
         .search-container { position: relative; margin-bottom: 2rem; }
         .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
         .search-input::placeholder { color: #94a3b8; }
         .search-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
         .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
+        
+        /* Table Styles */
         .table-container { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
         .table { width: 100%; border-collapse: collapse; }
         .table thead { background: linear-gradient(135deg, #475569, #334155); }
@@ -74,38 +77,94 @@ try {
         .table tbody tr { border-bottom: 1px solid #475569; transition: background-color 0.2s; }
         .table tbody tr:hover { background: rgba(55, 65, 81, 0.5); }
         .table td { padding: 1rem 1.5rem; vertical-align: middle; }
+        
         .breed-info { display: flex; align-items: center; gap: 1rem; }
         .breed-details h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
-        .animal-type-info { color: #cbd5e1; font-size: 0.875rem; }
+        .animal-type-info { color: #cbd5e1; font-size: 0.875rem; background: rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 12px; }
+        
         .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
         .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); }
         .action-btn.delete { color: #f87171; } .action-btn.delete:hover { color: #fca5a5; background: rgba(239, 68, 68, 0.2); }
+        
+        /* Modal Styles */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; }
         .modal.show { display: flex; align-items: center; justify-content: center; }
         .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 28rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
         .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; }
         .modal-header h2 { font-size: 1.5rem; font-weight: bold; }
         .modal-body { padding: 1.5rem; }
+        
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
         .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
         .form-group input, .form-group select { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 1rem; }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
         .form-group select option { background: #374151; color: white; }
+        
         .modal-footer { padding: 1.5rem; border-top: 1px solid #475569; display: flex; justify-content: flex-end; gap: 0.75rem; }
         .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; border: none; color: #cbd5e1; cursor: pointer; transition: color 0.2s; }
         .btn-cancel:hover { color: white; }
         .btn-save { padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-save:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); }
+        
         .empty-state { text-align: center; padding: 3rem 1rem; display: none; }
         .empty-state h3 { font-size: 1.125rem; color: #94a3b8; margin-bottom: 0.5rem; }
         .empty-state p { color: #64748b; font-size: 0.875rem; }
         .icon { width: 18px; height: 18px; }
-        /* Alert Message Styles */
+        
         .alert-box { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; text-align: center; font-weight: 500; }
         .alert-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }
         .alert-error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
-        .alert-info { background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; }
+
+        /* --- MOBILE RESPONSIVE CSS --- */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            
+            /* Header Adjustments */
+            .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
+            .header-info h1 { font-size: 1.75rem; }
+            .add-btn { width: 100%; justify-content: center; }
+
+            /* Table to Card View Transformation */
+            .table thead { display: none; } /* Hide Headers */
+            .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
+            
+            .table tbody tr {
+                background: rgba(30, 41, 59, 0.6);
+                border: 1px solid #475569;
+                border-radius: 12px;
+                margin-bottom: 1rem;
+                padding: 1rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+
+            .table td {
+                padding: 0.5rem 0;
+                text-align: right;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+            }
+
+            .table td:last-child { border-bottom: none; justify-content: center; padding-top: 1rem; }
+
+            /* Add Labels via Data Attributes */
+            .table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #94a3b8;
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                margin-right: 1rem;
+            }
+
+            /* Adjust styling for specific cells inside cards */
+            .breed-info { justify-content: flex-end; }
+            
+            /* Modals */
+            .modal-content { width: 100%; margin: 0 10px; max-height: 90vh; overflow-y: auto; }
+        }
     </style>
 </head>
 <body>
@@ -129,8 +188,6 @@ try {
             </div>
         <?php endif; ?>
 
-        
-
         <div class="search-container">
             <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -153,20 +210,20 @@ try {
                         <?php else: ?>
                         <?php foreach($breed_data as $data): ?>
                         <tr data-id="<?php echo $data['BREED_ID']; ?>" data-animal-type-id="<?php echo $data['ANIMAL_TYPE_ID']; ?>">
-                            <td>
-                                <?php echo $data['BREED_ID']; ?>
+                            <td data-label="Breed ID">
+                                <span style="font-family: monospace; color: #94a3b8;">#<?php echo $data['BREED_ID']; ?></span>
                             </td>
-                            <td>
+                            <td data-label="Breed Name">
                                 <div class="breed-info">
                                     <div class="breed-details">
                                         <h3><?php echo htmlspecialchars($data['BREED_NAME']); ?></h3>
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Animal Type">
                                  <span class="animal-type-info"><?php echo htmlspecialchars($data['ANIMAL_TYPE_NAME']); ?></span>
                             </td>
-                            <td>
+                            <td data-label="Actions">
                                 <div class="actions">
                                     <button class="action-btn edit" onclick="editBreed(this)" title="Edit">
                                         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +346,9 @@ try {
 
         // Open edit modal
         function editBreed(button) {
+            // Find the closest TR, whether in desktop table or mobile card view
             const row = button.closest('tr');
+            
             const breedId = row.getAttribute('data-id');
             const animalTypeId = row.getAttribute('data-animal-type-id');
             const name = row.querySelector('.breed-details h3').textContent.trim();

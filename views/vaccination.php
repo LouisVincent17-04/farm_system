@@ -43,8 +43,7 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vaccination Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Vaccination Management</title>
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
     <style>
         /* --- CORE STYLES --- */
@@ -57,6 +56,7 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
         .header-info p { color: #cbd5e1; }
@@ -76,6 +76,7 @@ try {
             background: rgba(15, 23, 42, 0.5);
             border-radius: 12px; padding: 6px; 
             backdrop-filter: blur(10px);
+            flex-wrap: wrap; 
         }
         .nav-tab {
             flex: 1; padding: 14px 28px; 
@@ -86,11 +87,12 @@ try {
             display: flex; align-items: center; justify-content: center;
             gap: 8px; position: relative;
             text-decoration: none;
+            white-space: nowrap;
         }
         .nav-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.05); }
         .nav-tab.active { 
             color: white; 
-            background: linear-gradient(135deg, #2563eb, #1d4ed8); /* Blue for Vaccination */
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); 
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); 
         }
         .nav-tab svg { width: 20px; height: 20px; }
@@ -107,13 +109,16 @@ try {
             transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px;
         }
 
-        /* --- TABLE --- */
+        /* --- TABLE WITH HORIZONTAL SCROLL --- */
         .table-container {
             background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px);
             border-radius: 0.75rem; border: 1px solid #475569;
-            overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            /* Enable Scrolling */
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
-        .table { width: 100%; border-collapse: collapse; }
+        .table { width: 100%; border-collapse: collapse; white-space: nowrap; /* Prevent wrapping */ }
         .table thead { background: linear-gradient(135deg, #475569, #334155); }
         .table th {
             padding: 1rem 1.5rem; text-align: left; font-size: 0.875rem;
@@ -123,7 +128,8 @@ try {
         .table tbody tr:hover { background: rgba(55, 65, 81, 0.5); }
         .table td { padding: 1rem 1.5rem; vertical-align: middle; }
 
-        .trans-id { font-weight: 600; color: #93c5fd; }
+        /* Content Styling */
+        .trans-id { font-weight: 600; color: #93c5fd; font-family: monospace; }
         .tag-badge {
             background: rgba(147, 51, 234, 0.2); color: #c084fc;
             padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.875rem;
@@ -158,6 +164,7 @@ try {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;
+            padding: 1rem;
         }
         .modal.show { display: flex; }
         .modal-content {
@@ -199,12 +206,27 @@ try {
         .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; border: none; color: #cbd5e1; cursor: pointer; }
         
         .empty-state { text-align: center; padding: 3rem; display: none; color: #94a3b8; }
-        #animal-loading { font-size: 0.75rem; color: #fbbf24; display: none; }
         .info-group h3 { color: #93c5fd; font-size: 1rem; margin-bottom: 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
-        
+
+        /* --- MOBILE RESPONSIVE CSS --- */
         @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            
+            /* Header Stack */
+            .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
+            .header-info h1 { font-size: 1.75rem; }
+            .add-btn { width: 100%; justify-content: center; }
+
+            /* Tabs Stack */
+            .nav-tabs { flex-direction: column; gap: 5px; }
+            .nav-tab { width: 100%; }
+
+            /* SCROLLABLE TABLE (No Card View) */
+            .table { min-width: 900px; } /* Force width to trigger scroll */
+            
+            /* Modal Forms Stack */
             .form-row, .form-row-cascading { grid-template-columns: 1fr; }
-            .nav-tabs { flex-direction: column; }
+            .modal-content { width: 95%; margin: 0 auto; max-height: 90vh; }
         }
     </style>
 </head>
@@ -257,12 +279,12 @@ try {
                 </thead>
                 <tbody id="transaction-table">
                     <?php 
-                    // UPDATED QUERY with dual costs and LOCATION/BUILDING/PEN IDs
+                    // UPDATED QUERY
                     $query = "SELECT 
                                 v.VACCINATION_ID,
                                 v.VACCINATION_DATE,
-                                v.VACCINATION_COST,  -- Service Fee
-                                v.VACCINE_COST,      -- Item Cost
+                                v.VACCINATION_COST,
+                                v.VACCINE_COST,
                                 v.VET_NAME,
                                 v.REMARKS,
                                 v.ANIMAL_ID,
@@ -296,7 +318,9 @@ try {
                     ?>
                     <tr data-row-json='<?php echo $jsonData; ?>'>
                         <td><div class="trans-id">#<?php echo $row['VACCINATION_ID']; ?></div></td>
+                        
                         <td><span class="tag-badge"><?php echo htmlspecialchars($row['TAG_NO']); ?></span></td>
+                        
                         <td>
                             <div class="location-info">
                                 <div class="location-name"><?php echo htmlspecialchars($row['LOCATION_NAME'] ?? 'Unknown'); ?></div>
@@ -305,26 +329,31 @@ try {
                                 </div>
                             </div>
                         </td>
+                        
                         <td>
                             <div class="vaccine-name"><?php echo htmlspecialchars($row['VACCINE_NAME']); ?></div>
                             <div class="vet-name">Vet: <?php echo htmlspecialchars($row['VET_NAME'] ?: 'N/A'); ?></div>
                         </td>
+                        
                         <td>
                             <span class="quantity-badge">
                                 <?php echo number_format($row['QUANTITY'] ?? 0, 2); ?> 
                                 <?php echo htmlspecialchars($row['UNIT_ABBR'] ?? 'units'); ?>
                             </span>
                         </td>
+                        
                         <td>
                             <div style="color: #cbd5e1;">
                                 <?php echo $displayDate; ?>
                             </div>
                         </td>
+                        
                         <td>
                             <div style="color: #86efac; font-weight: 600;">
                                 <?php echo $totalCost > 0 ? '₱' . number_format($totalCost, 2) : 'Free'; ?>
                             </div>
                         </td>
+                        
                         <td>
                             <div class="actions">
                                 <button class="action-btn view" onclick='viewRecord(this)' title="View">
@@ -556,10 +585,9 @@ try {
                         
                         if(list.length > 0) {
                             list.forEach(a => {
-                                let opt = document.createElement('option');
-                                opt.value = a.ANIMAL_ID;
-                                opt.text = a.TAG_NO;
-                                animalSel.add(opt);
+                                if(a.IS_ACTIVE != 0) {
+                                    animalSel.innerHTML += `<option value="${a.ANIMAL_ID}">${a.TAG_NO}</option>`;
+                                }
                             });
                             animalSel.disabled = false;
                         } else {

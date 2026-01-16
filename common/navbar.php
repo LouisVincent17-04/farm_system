@@ -434,7 +434,7 @@ session_start();
             <!-- Brand Section -->
             <a href="#" class="navbar-brand">
                 <div class="brand-icon">🌱</div>
-                <span class="brand-text">FarmPro</span>
+                <span class="brand-text">SmartFarm</span>
             </a>
             
             <!-- Main Navigation Menu -->

@@ -42,7 +42,6 @@ if (isset($_GET['action'])) {
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
         if ($action === 'search_tag' && isset($_GET['query'])) {
-            // Global search regardless of location, respecting status filter
             $q = "%" . $_GET['query'] . "%";
             $sql = "SELECT ANIMAL_ID, TAG_NO, CURRENT_STATUS FROM animal_records WHERE TAG_NO LIKE ? $statusClause LIMIT 5";
             $stmt = $conn->prepare($sql);
@@ -80,7 +79,7 @@ if ($animal_id) {
     $animal_info = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($animal_info) {
-        // B. Fetch All Transactions
+        // B. Fetch All Transactions (Unchanged SQL)
         $sql = "SELECT * FROM (
             -- 1. FEEDING
             SELECT ft.TRANSACTION_DATE as LOG_DATE, 'Feeding' as LOG_TYPE, f.FEED_NAME as ITEM_NAME, 
@@ -140,7 +139,7 @@ if ($animal_id) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Operational History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Operational History</title>
     <style>
         /* --- THEME STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -217,6 +216,50 @@ if ($animal_id) {
         .cost-val { font-family: monospace; font-weight: 600; color: #fbbf24; }
         
         .empty-state { text-align: center; padding: 4rem; color: #64748b; }
+
+        /* --- MOBILE RESPONSIVE CSS --- */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-title { font-size: 1.5rem; }
+
+            /* Stack Profile Card */
+            .profile-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .profile-stats { text-align: left; border-top: 1px solid rgba(16, 185, 129, 0.3); padding-top: 1rem; width: 100%; }
+
+            /* Table to Card View Transformation */
+            .data-table thead { display: none; } /* Hide Headers */
+            .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
+            
+            .data-table tr {
+                background: rgba(30, 41, 59, 0.6);
+                border: 1px solid #475569;
+                border-radius: 12px;
+                margin-bottom: 1rem;
+                padding: 1rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+
+            .data-table td {
+                padding: 0.5rem 0;
+                text-align: right;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+            }
+
+            .data-table td:last-child { border-bottom: none; }
+
+            /* Data Labels via CSS */
+            .data-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #94a3b8;
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                margin-right: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -314,12 +357,12 @@ if ($animal_id) {
                         $badgeClass = 'type-' . strtolower($row['LOG_TYPE']);
                     ?>
                     <tr>
-                        <td><?= date('M d, Y h:i A', strtotime($row['LOG_DATE'])) ?></td>
-                        <td><span class="type-badge <?= $badgeClass ?>"><?= $row['LOG_TYPE'] ?></span></td>
-                        <td><?= htmlspecialchars($row['ITEM_NAME'] ?? '-') ?></td>
-                        <td><?= number_format($row['QTY'], 2) ?> <?= $row['UNIT'] ?></td>
-                        <td style="color:#94a3b8; font-size:0.85rem;"><?= htmlspecialchars($row['REMARKS'] ?? '-') ?></td>
-                        <td class="cost-val">₱<?= number_format($row['COST'], 2) ?></td>
+                        <td data-label="Date & Time"><?= date('M d, Y h:i A', strtotime($row['LOG_DATE'])) ?></td>
+                        <td data-label="Type"><span class="type-badge <?= $badgeClass ?>"><?= $row['LOG_TYPE'] ?></span></td>
+                        <td data-label="Item / Desc"><?= htmlspecialchars($row['ITEM_NAME'] ?? '-') ?></td>
+                        <td data-label="Qty"><?= number_format($row['QTY'], 2) ?> <?= $row['UNIT'] ?></td>
+                        <td data-label="Remarks" style="color:#94a3b8; font-size:0.85rem;"><?= htmlspecialchars($row['REMARKS'] ?? '-') ?></td>
+                        <td data-label="Cost" class="cost-val">₱<?= number_format($row['COST'], 2) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -405,10 +448,8 @@ if ($animal_id) {
         const data = await fetchJson(`?action=search_tag&query=${encodeURIComponent(tag)}&status_filter=${status}`);
         
         if(data.length === 1) {
-            // Exact match or single result -> Go directly
             goToAnimal(data[0].ANIMAL_ID);
         } else if (data.length > 1) {
-            // Multiple matches (rare for unique tags, but possible with partial search)
             alert("Multiple animals found. Please be more specific.");
         } else {
             alert("Animal not found (Check your Status Filter).");

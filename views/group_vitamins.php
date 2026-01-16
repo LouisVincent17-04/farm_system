@@ -61,6 +61,7 @@ try {
             padding: 1.5rem;
             position: sticky; top: 1.5rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            z-index: 10;
         }
         .panel-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
         .panel-subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem; }
@@ -88,7 +89,7 @@ try {
         .section-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
         
         .animal-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Adjusted for mobile */
             gap: 0.75rem; max-height: 250px; overflow-y: auto; padding-right: 5px;
         }
         .animal-card {
@@ -136,11 +137,11 @@ try {
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; color: #94a3b8; }
         .summary-total { margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; font-weight: 700; color: #fff; display: block; }
         
-        /* Apply Button */
+        /* Buttons */
         .btn-mini {
             background: #334155; border: 1px solid #475569; color: #fff;
-            border-radius: 8px; padding: 0 12px; cursor: pointer; font-size: 0.8rem;
-            white-space: nowrap; transition: 0.2s;
+            border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem;
+            white-space: nowrap; transition: 0.2s; flex-shrink: 0;
         }
         .btn-mini:hover { background: #475569; border-color: #94a3b8; }
 
@@ -148,12 +149,49 @@ try {
             width: 100%; margin-top: 1.5rem; padding: 1rem;
             background: linear-gradient(135deg, #ec4899, #be185d);
             border: none; border-radius: 12px; color: white; font-weight: 700;
-            cursor: pointer; transition: all 0.2s;
+            cursor: pointer; transition: all 0.2s; font-size: 1rem;
         }
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
         .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4); }
 
-        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } .control-panel { position: relative; top: 0; } }
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 1024px) {
+            .container { padding: 1rem; }
+            .main-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .control-panel { position: static; margin-bottom: 1rem; }
+            
+            /* Table Card Transformation */
+            .custom-table, .custom-table tbody, .custom-table tr, .custom-table td {
+                display: block; width: 100%;
+            }
+            .custom-table thead { display: none; } /* Hide Headers */
+            
+            .custom-table tr {
+                background: rgba(30, 41, 59, 0.3);
+                margin-bottom: 1rem;
+                border: 1px solid #334155;
+                border-radius: 12px;
+                padding: 1rem;
+                position: relative;
+            }
+            
+            .custom-table td {
+                padding: 8px 0;
+                display: flex; justify-content: space-between; align-items: center;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                text-align: right;
+            }
+            .custom-table td:last-child { border-bottom: none; justify-content: flex-end; }
+            
+            /* Data Labels */
+            .custom-table td::before {
+                content: attr(data-label);
+                font-weight: 600; font-size: 0.85rem; color: #94a3b8;
+                text-transform: uppercase; margin-right: 1rem;
+            }
+            
+            .custom-table select, .custom-table input { width: 60%; }
+        }
     </style>
 </head>
 <body>
@@ -166,7 +204,7 @@ try {
             <div class="panel-subtitle">Mass distribution of supplements.</div>
 
             <form id="settingsForm">
-                <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; margin-bottom:1rem; border:1px dashed #475569;">
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:8px; margin-bottom:1.5rem; border:1px dashed #475569;">
                     <label class="form-label" style="margin-bottom:8px; color:#f472b6;">STEP 1: Locate Group</label>
                     <div class="form-group" style="margin-bottom:0.5rem;">
                         <select id="location_id" class="form-control" onchange="loadBuildings(this.value)">
@@ -186,7 +224,7 @@ try {
                 
                 <div class="form-group">
                     <label class="form-label">Default Supplement <span style="color:#f87171">*</span></label>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:8px;">
                         <select id="default_vitamin" class="form-control" onchange="updateAllSupplements()">
                             <option value="">Select Item</option>
                             <?php foreach($vits as $v): ?>
@@ -201,7 +239,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Default Dosage <span style="color:#94a3b8; font-size:0.8em;">(e.g., 5x a day)</span></label>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:8px;">
                         <input type="text" id="default_dosage" class="form-control" placeholder="e.g. 5ml" onchange="updateAllDosages()">
                         <button type="button" class="btn-mini" onclick="updateAllDosages()">Apply All</button>
                     </div>
@@ -209,7 +247,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Default Qty / Head <span style="color:#f87171">*</span></label>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:8px;">
                         <input type="number" id="default_qty" class="form-control" step="0.01" min="0.01" value="1.00" onchange="updateAllQuantities()" placeholder="Qty">
                         <button type="button" class="btn-mini" onclick="updateAllQuantities()">Apply All</button>
                     </div>
@@ -239,7 +277,7 @@ try {
             <div class="picker-section">
                 <div class="section-header">
                     <div class="section-title">🐖 Step 3: Select Animals</div>
-                    <div style="font-size:0.85rem; color:#94a3b8;">Animals in selected pen</div>
+                    <div style="font-size:0.85rem; color:#94a3b8;">Tap to select</div>
                 </div>
                 <div id="animal-grid" class="animal-grid">
                     <div style="grid-column:1/-1; text-align:center; padding:2rem; color:#64748b; border:1px dashed #475569; border-radius:8px;">
@@ -251,7 +289,7 @@ try {
             <div class="table-section">
                 <div class="section-header" style="padding:1rem; border-bottom:1px solid #334155; margin-bottom:0;">
                     <div class="section-title">📋 Step 4: Confirm Details</div>
-                    <button onclick="clearTable()" style="background:transparent; border:1px solid #f87171; color:#f87171; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">Clear All</button>
+                    <button onclick="clearTable()" style="background:transparent; border:1px solid #f87171; color:#f87171; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:0.85rem;">Clear All</button>
                 </div>
                 
                 <table class="custom-table">
@@ -278,7 +316,6 @@ try {
 <script>
     // --- DATA STORE ---
     let selectedAnimals = new Set(); 
-    // Store inventory in JS object for fast lookup { id: {name: "", stock: 10, unit: "ml"} }
     const inventory = {};
     <?php foreach($vits as $v): ?>
         inventory[<?= $v['SUPPLY_ID'] ?>] = {
@@ -295,7 +332,7 @@ try {
         document.getElementById('txn_date').value = now.toISOString().slice(0, 16);
     });
 
-    // --- CASCADING DROPDOWNS ---
+    // --- 1. CASCADING DROPDOWNS ---
     function loadBuildings(locId) {
         document.getElementById('building_id').innerHTML = '<option>Loading...</option>';
         document.getElementById('pen_id').innerHTML = '<option>Select Pen</option>';
@@ -325,7 +362,7 @@ try {
             });
     }
 
-    // --- LOAD GRID ---
+    // --- 2. LOAD GRID ---
     function loadAnimals(penId) {
         const grid = document.getElementById('animal-grid');
         grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">Loading...</div>';
@@ -341,12 +378,7 @@ try {
                 }
 
                 animals.forEach(a => {
-                    if(a.IS_ACTIVE == 0)
-                    {
-                        return; 
-                    } 
-                    else
-                    {
+                    if(a.IS_ACTIVE != 0) {
                         const card = document.createElement('div');
                         card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
                         card.id = `card-${a.ANIMAL_ID}`;
@@ -361,7 +393,7 @@ try {
             });
     }
 
-    // --- TABLE OPERATIONS ---
+    // --- 3. TABLE OPERATIONS ---
     function addAnimalToTable(animal) {
         if(selectedAnimals.has(animal.ANIMAL_ID)) return;
 
@@ -371,10 +403,8 @@ try {
         const tbody = document.getElementById('vitamin-list');
         const defaultQty = document.getElementById('default_qty').value;
         const defaultVit = document.getElementById('default_vitamin').value;
-        // NEW: Get Default Dosage
         const defaultDosage = document.getElementById('default_dosage').value;
 
-        // Build Select Options dynamically
         let optionsHtml = '<option value="">Select Item</option>';
         for (const [id, item] of Object.entries(inventory)) {
             const isSelected = (id === defaultVit) ? 'selected' : '';
@@ -385,23 +415,24 @@ try {
         tr.id = `row-${animal.ANIMAL_ID}`;
         tr.dataset.id = animal.ANIMAL_ID;
         
+        // Added data-label attributes for mobile
         tr.innerHTML = `
-            <td style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
-            <td>
+            <td data-label="Tag No" style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
+            <td data-label="Supplement">
                 <select class="vit-select" name="item[${animal.ANIMAL_ID}]" onchange="updateCalculations()">${optionsHtml}</select>
             </td>
-            <td>
+            <td data-label="Dosage">
                 <input type="text" class="dosage-input" name="dosage[${animal.ANIMAL_ID}]" 
                        value="${defaultDosage}" placeholder="e.g., 5x a day">
             </td>
-            <td>
+            <td data-label="Qty">
                 <input type="number" class="qty-input" name="qty[${animal.ANIMAL_ID}]" 
                        value="${defaultQty}" step="0.01" min="0.01" oninput="updateCalculations()">
             </td>
-            <td>
+            <td data-label="Remarks">
                 <input type="text" name="remarks[${animal.ANIMAL_ID}]" placeholder="Notes...">
             </td>
-            <td style="text-align:center;">
+            <td data-label="Remove" style="text-align:right;">
                 <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})">×</button>
             </td>
         `;
@@ -439,7 +470,6 @@ try {
         updateCalculations();
     }
 
-    // NEW: Bulk update dosage
     function updateAllDosages() {
         const newDosage = document.getElementById('default_dosage').value;
         document.querySelectorAll('.dosage-input').forEach(inp => inp.value = newDosage);
@@ -456,7 +486,6 @@ try {
         const count = selectedAnimals.size;
         document.getElementById('sum-count').innerText = count;
 
-        // Calculate Totals per Item
         const totals = {}; 
         let hasError = false;
         
@@ -464,13 +493,12 @@ try {
             const itemId = tr.querySelector('.vit-select').value;
             const qty = parseFloat(tr.querySelector('.qty-input').value) || 0;
 
-            if(!itemId) { hasError = true; return; } // Item not selected
+            if(!itemId) { hasError = true; return; }
 
             if (!totals[itemId]) totals[itemId] = 0;
             totals[itemId] += qty;
         });
 
-        // Validate Against Stock
         const warningDiv = document.getElementById('stock-warning');
         const submitBtn = document.getElementById('btn-submit');
         let warnings = [];
@@ -520,7 +548,6 @@ try {
                 return;
             }
 
-            // Retrieve unit_id from our JS inventory object
             const itemData = inventory[itemId]; 
 
             records.push({
@@ -528,7 +555,7 @@ try {
                 item_id: itemId,
                 unit_id: itemData ? itemData.unit_id : null,
                 quantity: tr.querySelector('.qty-input').value,
-                dosage: tr.querySelector('.dosage-input').value, // NEW: Grab Dosage
+                dosage: tr.querySelector('.dosage-input').value, 
                 remarks: tr.querySelector('input[name^="remarks"]').value
             });
         });
