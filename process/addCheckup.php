@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $remarks = trim($_POST['remarks'] ?? '');
         
         // Capture Cost (Default to 0 if empty)
-        $cost = !empty($_POST['cost']) ? $_POST['cost'] : 0.00;
+        $cost = !empty($_POST['cost']) ? floatval($_POST['cost']) : 0.00;
         
         if (empty($animal_id) || empty($vet_name) || empty($checkup_date)) {
             throw new Exception('Please fill in all required fields.');
@@ -73,8 +73,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Capture the new ID
         $new_checkup_id = $conn->lastInsertId();
+
+        // 3. INSERT INTO OPERATIONAL_COST (NEW) 
+        // This ensures the cost is tracked in the general ledger immediately.
+        if ($cost > 0) {
+            $op_sql = "INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) 
+                       VALUES (:animal_id, :cost, :desc, :date)";
+            $op_stmt = $conn->prepare($op_sql);
+            
+            $op_desc = "Checkup Cost (ID: $new_checkup_id)"; // Link back to specific checkup
+            
+            $op_stmt->execute([
+                ':animal_id' => $animal_id,
+                ':cost'      => $cost,
+                ':desc'      => $op_desc,
+                ':date'      => $checkup_date // Use same timestamp as checkup
+            ]);
+        }
         
-        // 3. INSERT AUDIT LOG
+        // 4. INSERT AUDIT LOG
         // Format date nicely for the log (e.g., Jan 08, 2026 02:30 PM)
         $prettyDate = date("M d, Y h:i A", strtotime($checkup_date));
         
@@ -98,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             throw new Exception("Audit Log Failed.");
         }
 
-        // 4. COMMIT EVERYTHING
+        // 5. COMMIT EVERYTHING
         $conn->commit();
         
         echo json_encode([

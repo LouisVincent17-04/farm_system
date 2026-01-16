@@ -1,186 +1,110 @@
 <?php
 // process/saveCostTransfer.php
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+session_start();
+require_once '../config/Connection.php';
 header('Content-Type: application/json');
 
-require '../config/Connection.php';
+function getFloat($val) { return floatval($val ?: 0); }
 
-// Helper to ensure float
-if (!function_exists('getFloat')) {
-    function getFloat($val) {
-        return floatval($val ?: 0);
+// --- HELPER: Get Total Variable Costs (SINGLE SOURCE OF TRUTH) ---
+function getVariableCosts($conn, $animal_id) {
+    if (!$animal_id) return 0.00;
+
+    $stmt = $conn->prepare("SELECT LAST_COST_RESET_DATE FROM animal_records WHERE ANIMAL_ID = ?");
+    $stmt->execute([$animal_id]);
+    $resetDate = $stmt->fetchColumn(); 
+
+    // Query ONLY the operational_cost table
+    $sql = "SELECT COALESCE(SUM(operation_cost), 0) FROM operational_cost WHERE animal_id = ?";
+    $params = [$animal_id];
+
+    if ($resetDate) {
+        $sql .= " AND datetime_created > ?";
+        $params[] = $resetDate;
     }
+
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    return getFloat($stmt->fetchColumn());
 }
 
-// Check Request Method
-$method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? '';
+// --- MAIN PROCESS ---
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']); exit;
+}
 
 try {
-    if (!isset($conn)) {
-        throw new Exception("Database connection failed.");
+    $user_id = $_SESSION['user_id'] ?? 1;
+    $sow_id = $_POST['sow_id'] ?? null;
+    $boar_id = !empty($_POST['boar_id']) ? $_POST['boar_id'] : null;
+    $piglet_ids = json_decode($_POST['piglet_ids'] ?? '[]', true);
+    
+    $input_sow_cost = getFloat($_POST['sow_cost']);
+    $input_boar_cost = getFloat($_POST['boar_cost']);
+
+    // 1. Calculate Available Variable Costs
+    $avail_sow_variable = getVariableCosts($conn, $sow_id);
+    $avail_boar_variable = getVariableCosts($conn, $boar_id);
+
+    // 2. Strict Check (With tolerance)
+    if ($input_sow_cost > ($avail_sow_variable + 0.01)) {
+       throw new Exception("STRICT ERROR: Sow Transfer (₱$input_sow_cost) exceeds available operational costs (₱$avail_sow_variable).");
+    }
+    if ($input_boar_cost > ($avail_boar_variable + 0.01)) {
+       throw new Exception("STRICT ERROR: Boar Transfer (₱$input_boar_cost) exceeds available operational costs (₱$avail_boar_variable).");
     }
 
-    // ==================================================================
-    //  HANDLE DATA RETRIEVAL (GET)
-    // ==================================================================
-    if ($method === 'GET') {
-        
-        if ($action == 'get_buildings') {
-            $stmt = $conn->prepare("SELECT BUILDING_ID, BUILDING_NAME FROM buildings WHERE LOCATION_ID = ?");
-            $stmt->execute([$_GET['loc_id']]);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-        }
+    $total_amount = $input_sow_cost + $input_boar_cost;
 
-        elseif ($action == 'search_sow') {
-            $term = $_GET['term'] . "%";
-            $sql = "SELECT ar.ANIMAL_ID, ar.TAG_NO, ar.CURRENT_STATUS as STATUS 
-                    FROM animal_records ar
-                    LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID
-                    WHERE (ar.TAG_NO LIKE ? OR ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%') 
-                    AND ar.IS_ACTIVE = 1";
-            
-            $params = [$term];
-            if(!empty($_GET['loc_id'])) { $sql .= " AND ar.LOCATION_ID = ?"; $params[] = $_GET['loc_id']; }
-            if(!empty($_GET['bldg_id'])) { $sql .= " AND ar.BUILDING_ID = ?"; $params[] = $_GET['bldg_id']; }
-            
-            $sql .= " LIMIT 10";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute($params);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-        }
+    if (empty($piglet_ids)) throw new Exception("No piglets selected.");
+    if ($total_amount <= 0) throw new Exception("Total amount must be greater than zero.");
 
-        elseif ($action == 'get_piglets_by_mother') {
-            $mother_id = $_GET['mother_id'];
-            $sql = "SELECT ANIMAL_ID, TAG_NO 
-                    FROM animal_records 
-                    WHERE MOTHER_ID = ? 
-                    AND IS_ACTIVE = 1 
-                    AND (ACQUISITION_COST = 0 OR ACQUISITION_COST IS NULL)
-                    ORDER BY TAG_NO ASC";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute([$mother_id]);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-        }
+    $count = count($piglet_ids);
+    $cost_per_head = $total_amount / $count;
 
-        elseif ($action == 'get_sow_net_worth') {
-            $id = $_GET['animal_id'];
-            
-            // 1. Get Reset Date
-            $stmt = $conn->prepare("SELECT LAST_COST_RESET_DATE FROM animal_records WHERE ANIMAL_ID = ?");
-            $stmt->execute([$id]);
-            $resetDate = $stmt->fetchColumn(); 
-            
-            $params = [$id];
-            if ($resetDate) {
-                // Use precise DATETIME comparison
-                $dateCond = "AND TRANSACTION_DATE > ?";
-                $dateCondCheck = "AND CHECKUP_DATE > ?";
-                $dateCondVacc = "AND VACCINATION_DATE > ?";
-                $params[] = $resetDate;
-            } else {
-                $dateCond = $dateCondCheck = $dateCondVacc = "";
-            }
+    $conn->beginTransaction();
 
-            // Sum Feeds
-            $st = $conn->prepare("SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ? $dateCond");
-            $st->execute($params);
-            $feed = getFloat($st->fetchColumn());
-            
-            // Sum Meds
-            $st = $conn->prepare("SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ? $dateCond");
-            $st->execute($params);
-            $meds = getFloat($st->fetchColumn());
+    // A. Log Transfer (Historical Record)
+    $logStmt = $conn->prepare("INSERT INTO cost_transfers (SOW_ID, BOAR_ID, SOW_COST, BOAR_COST, TOTAL_AMOUNT, PIGLET_COUNT, COST_PER_HEAD, CREATED_BY) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $logStmt->execute([$sow_id, $boar_id, $input_sow_cost, $input_boar_cost, $total_amount, $count, $cost_per_head, $user_id]);
+    $transfer_id = $conn->lastInsertId(); // Get ID for reference
 
-            // Sum Vaccines (Service + Item)
-            $st = $conn->prepare("SELECT SUM(COALESCE(VACCINATION_COST,0) + COALESCE(VACCINE_COST,0)) FROM vaccination_records WHERE ANIMAL_ID = ? $dateCondVacc");
-            $st->execute($params);
-            $vac = getFloat($st->fetchColumn());
-
-            // Sum Vitamins
-            $st = $conn->prepare("SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ? $dateCond");
-            $st->execute($params);
-            $vit = getFloat($st->fetchColumn());
-
-            // Sum Checkups
-            $st = $conn->prepare("SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ? $dateCondCheck");
-            $st->execute($params);
-            $check = getFloat($st->fetchColumn());
-
-            $total = $feed + $meds + $vac + $vit + $check;
-
-            echo json_encode([
-                'total' => $total,
-                'feed' => $feed,
-                'meds' => $meds,
-                'vac' => $vac,
-                'vit' => $vit,
-                'checkup' => $check
-            ]);
-        }
+    // B. Distribute to Piglets
+    $updateStmt = $conn->prepare("UPDATE animal_records SET ACQUISITION_COST = ACQUISITION_COST + ? WHERE ANIMAL_ID = ?");
+    foreach ($piglet_ids as $pid) {
+        $updateStmt->execute([$cost_per_head, $pid]);
     }
 
-    // ==================================================================
-    //  HANDLE TRANSFER EXECUTION (POST) - This was missing!
-    // ==================================================================
-    elseif ($method === 'POST') {
-        
-        $sow_id = $_POST['sow_id'] ?? null;
-        $piglet_ids_json = $_POST['piglet_ids'] ?? '[]';
-        $total_amount = getFloat($_POST['total_amount'] ?? 0);
+    // --------------------------------------------------------
+    // C. LEDGER UPDATE (Save Negative Cost)
+    // --------------------------------------------------------
+    // We insert a negative entry.
+    // Sum = (Existing Positive Costs) + (New Negative Transfer) = Remaining Balance.
+    // We DO NOT reset the date anymore.
+    
+    $opStmt = $conn->prepare("INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, NOW())");
+    
+    $ref = "Ref: TRF-" . $transfer_id; // Unique reference
 
-        $piglet_ids = json_decode($piglet_ids_json, true);
-
-        if (!$sow_id || empty($piglet_ids)) {
-            throw new Exception("Missing Sow ID or Piglets list.");
-        }
-
-        if ($total_amount <= 0) {
-            throw new Exception("Total amount to transfer must be greater than zero.");
-        }
-
-        $count = count($piglet_ids);
-        $cost_per_piglet = $total_amount / $count;
-
-        $conn->beginTransaction();
-
-        // 1. Update Piglets: Add Cost
-        // We use string interpolation for the IDs safely because they come from internal ID list
-        // but parameterized query is better. Let's loop for safety.
-        $updatePiglet = $conn->prepare("UPDATE animal_records SET ACQUISITION_COST = ACQUISITION_COST + :cost, UPDATED_AT = NOW() WHERE ANIMAL_ID = :id");
-        
-        foreach ($piglet_ids as $pid) {
-            $updatePiglet->execute([':cost' => $cost_per_piglet, ':id' => $pid]);
-        }
-
-        // 2. Reset Sow: Set Reset Date to NOW()
-        $resetSow = $conn->prepare("UPDATE animal_records SET LAST_COST_RESET_DATE = NOW(), UPDATED_AT = NOW() WHERE ANIMAL_ID = :sid");
-        $resetSow->execute([':sid' => $sow_id]);
-
-        // 3. Log the Transfer (Optional but recommended)
-        // Check if `cost_transfers` table exists, otherwise skip or log to audit_logs
-        // For now, let's log to audit_logs if it exists
-        $auditSql = "INSERT INTO audit_logs (ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, LOG_DATE) 
-                     VALUES ('COST_TRANSFER', 'ANIMAL_RECORDS', :details, NOW())";
-        $auditStmt = $conn->prepare($auditSql);
-        $details = "Transferred ₱" . number_format($total_amount, 2) . " from Sow #$sow_id to $count piglets (₱" . number_format($cost_per_piglet, 2) . "/each).";
-        $auditStmt->execute([':details' => $details]);
-
-        $conn->commit();
-
-        echo json_encode([
-            'success' => true,
-            'message' => 'Transfer successful! Sow cost reset.',
-            'transferred_amount' => $total_amount,
-            'piglet_count' => $count
-        ]);
+    // Deduct from Sow
+    if ($input_sow_cost > 0) {
+        $neg_sow = $input_sow_cost * -1; // Convert to negative
+        $desc_sow = "Transfer: Cost to Piglets ($ref)";
+        $opStmt->execute([$sow_id, $neg_sow, $desc_sow]);
     }
+
+    // Deduct from Boar
+    if ($input_boar_cost > 0) {
+        $neg_boar = $input_boar_cost * -1; // Convert to negative
+        $desc_boar = "Transfer: Cost to Piglets ($ref)";
+        $opStmt->execute([$boar_id, $neg_boar, $desc_boar]);
+    }
+
+    $conn->commit();
+    echo json_encode(['success' => true, 'message' => "Transfer successful. Costs deducted from parents."]);
 
 } catch (Exception $e) {
-    if (isset($conn) && $conn->inTransaction()) {
-        $conn->rollBack();
-    }
+    if (isset($conn) && $conn->inTransaction()) $conn->rollBack();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>

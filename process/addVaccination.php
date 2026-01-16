@@ -1,5 +1,5 @@
 <?php
-// ../process/addVaccination.php
+// process/addVaccination.php
 session_start();
 header('Content-Type: application/json');
 require_once '../config/Connection.php';
@@ -121,9 +121,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Vaccination record insert failed.");
         }
 
-        // 7. AUDIT LOG
-        $total_value = $vaccination_cost + $vaccine_cost_calculated;
-        $cost_fmt = number_format($total_value, 2);
+        // ---------------------------------------------------------
+        // 7. INSERT INTO OPERATIONAL_COST (NEW)
+        // ---------------------------------------------------------
+        // Total Cost = Service Fee + Item Cost
+        $total_op_cost = $vaccination_cost + $vaccine_cost_calculated;
+
+        if ($total_op_cost > 0) {
+            $opSql = "INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) 
+                      VALUES (:animal_id, :cost, :desc, :date)";
+            $opStmt = $conn->prepare($opSql);
+            
+            $opDesc = "Vaccine: " . $vaccine_name . " (Qty: " . $quantity . ")";
+            
+            $opStmt->execute([
+                ':animal_id' => $animal_id,
+                ':cost'      => $total_op_cost,
+                ':desc'      => $opDesc,
+                ':date'      => $vaccination_date
+            ]);
+        }
+
+        // 8. AUDIT LOG
+        $cost_fmt = number_format($total_op_cost, 2);
         $prettyDate = date("M d, Y h:i A", strtotime($vaccination_date));
 
         $logDetails = "Vaccinated Animal $animal_tag with $quantity of $vaccine_name on $prettyDate (Vet: $vet_name). Total Value: ₱$cost_fmt";
@@ -140,7 +160,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':ip'       => $ip_address
         ]);
 
-        // 8. COMMIT
+        // 9. COMMIT
         $conn->commit(); 
         $response['success'] = true;
         $response['message'] = "✅ Vaccination recorded successfully.";

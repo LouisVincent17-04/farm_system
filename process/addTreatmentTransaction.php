@@ -21,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $item_id     = $_POST['item_id'] ?? null; // Maps to MEDICINES.SUPPLY_ID
     $dosage      = $_POST['dosage'] ?? '';
     $quantity    = floatval($_POST['quantity_used'] ?? 0);
-    $trans_date  = $_POST['transaction_date'] ?? date('Y-m-d');
+    $trans_date  = $_POST['transaction_date'] ?? date('Y-m-d H:i:s');
     $remarks     = $_POST['remarks'] ?? '';
 
     // 1. Basic Validation
@@ -42,7 +42,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $conn->beginTransaction();
 
         // 2. Check Stock & Cost in MEDICINES Table (Lock Row)
-        // We need TOTAL_COST to calculate the unit price dynamically
         $stockSql = "SELECT TOTAL_STOCK, TOTAL_COST, SUPPLY_NAME 
                      FROM MEDICINES 
                      WHERE SUPPLY_ID = :id 
@@ -81,7 +80,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $animal_tag = $animalRow['TAG_NO'] ?? 'Unknown Animal';
 
         // 5. Update MEDICINES Inventory
-        // We deduct the Quantity AND the calculated Cost Value to keep inventory valuation accurate
         $updateStockSql = "UPDATE MEDICINES 
                            SET TOTAL_STOCK = TOTAL_STOCK - :qty, 
                                TOTAL_COST = TOTAL_COST - :cost_val,
@@ -97,7 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Stock update failed.");
         }
 
-        // 6. Insert into TREATMENT_TRANSACTIONS with TOTAL_COST
+        // 6. Insert into TREATMENT_TRANSACTIONS
         $insertSql = "INSERT INTO TREATMENT_TRANSACTIONS 
                       (ANIMAL_ID, ITEM_ID, DOSAGE, QUANTITY_USED, TOTAL_COST, TRANSACTION_DATE, REMARKS, CREATED_AT) 
                       VALUES 
@@ -110,7 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':item_id'    => $item_id,
             ':dosage'     => $dosage,
             ':qty'        => $quantity,
-            ':total_cost' => $transaction_cost, // Insert calculated cost
+            ':total_cost' => $transaction_cost,
             ':t_date'     => $trans_date,
             ':remarks'    => $remarks
         ];
@@ -119,8 +117,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Transaction insert failed.");
         }
 
-        // 7. INSERT AUDIT LOG
-        // Formatted cost for log
+        // ---------------------------------------------------------
+        // 7. INSERT INTO OPERATIONAL_COST (NEW)
+        // ---------------------------------------------------------
+        if ($transaction_cost > 0) {
+            $opSql = "INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) 
+                      VALUES (:animal_id, :cost, :desc, :date)";
+            $opStmt = $conn->prepare($opSql);
+            
+            $opDesc = "Treatment: " . $medicine_name . " (Qty: " . $quantity . ")";
+            
+            $opStmt->execute([
+                ':animal_id' => $animal_id,
+                ':cost'      => $transaction_cost,
+                ':desc'      => $opDesc,
+                ':date'      => $trans_date
+            ]);
+        }
+
+        // 8. INSERT AUDIT LOG
         $cost_display = number_format($transaction_cost, 2);
         $logDetails = "Administered $quantity of $medicine_name (Cost: ₱$cost_display) to Animal $animal_tag (ID $animal_id). Dosage: $dosage.";
 
@@ -142,14 +157,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Audit Log Failed.");
         }
 
-        // 8. COMMIT EVERYTHING
+        // 9. COMMIT EVERYTHING
         $conn->commit();
         
         $response['success'] = true;
         $response['message'] = "✅ Treatment saved! Cost: ₱" . number_format($transaction_cost, 2);
 
     } catch (Exception $e) {
-        // Rollback on error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }

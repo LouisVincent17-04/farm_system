@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $remarks = trim($_POST['remarks'] ?? '');
     
     // Capture Cost
-    $cost = !empty($_POST['cost']) ? $_POST['cost'] : 0.00;
+    $cost = !empty($_POST['cost']) ? floatval($_POST['cost']) : 0.00;
 
     try {
         if (empty($checkup_id) || empty($animal_id) || empty($vet_name) || empty($checkup_date)) {
@@ -41,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $conn->beginTransaction();
 
         // 1. Fetch Original Data (For Audit Log) & Lock Row
-        // Fetch raw CHECKUP_DATE to compare accurately with input
         $sqlFetch = "SELECT c.ANIMAL_ID, c.VET_NAME, c.REMARKS, c.COST,
                             c.CHECKUP_DATE,
                             a.TAG_NO
@@ -55,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $original = $fetch_stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$original) {
-            // Release lock
             $conn->rollBack();
             throw new Exception("Check-up record not found.");
         }
@@ -63,12 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // 2. Compare Changes
         $changes = [];
         
-        if ($original['VET_NAME'] !== $vet_name) {
-            $changes[] = "Vet: '{$original['VET_NAME']}' -> '$vet_name'";
-        }
+        if ($original['VET_NAME'] !== $vet_name) $changes[] = "Vet: '{$original['VET_NAME']}' -> '$vet_name'";
         
-        // Normalize Dates for Comparison
-        // DB might return "2026-01-08 14:30:00", Input is "2026-01-08T14:30"
+        // Normalize Dates
         $origTime = strtotime($original['CHECKUP_DATE']);
         $newTime = strtotime($checkup_date);
         
@@ -78,36 +73,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $changes[] = "Date: '$origStr' -> '$newStr'";
         }
         
-        // Compare Cost
-        if ((float)$original['COST'] !== (float)$cost) {
+        if (abs((float)$original['COST'] - $cost) > 0.01) {
             $changes[] = "Cost: '{$original['COST']}' -> '$cost'";
         }
         
-        // Remarks Change
         $old_remarks = $original['REMARKS'] ?? '';
-        if ($old_remarks !== $remarks) {
-            $changes[] = "Remarks updated";
-        }
+        if ($old_remarks !== $remarks) $changes[] = "Remarks updated";
 
-        // Animal ID Change
         if ($original['ANIMAL_ID'] != $animal_id) {
             $sqlTag = "SELECT TAG_NO FROM ANIMAL_RECORDS WHERE ANIMAL_ID = :aid";
             $tag_stmt = $conn->prepare($sqlTag);
             $tag_stmt->execute([':aid' => $animal_id]);
             $new_tag_row = $tag_stmt->fetch(PDO::FETCH_ASSOC);
             $new_tag = $new_tag_row['TAG_NO'] ?? 'Unknown';
-
             $changes[] = "Animal: '{$original['TAG_NO']}' -> '$new_tag'";
         }
 
-        // If no changes, return success immediately
+        // If no changes, return success
         if (empty($changes)) {
             $conn->rollBack();
             echo json_encode(['success' => true, 'message' => 'No changes detected.']);
             exit;
         }
 
-        // 3. Update Record (Include COST & Full Date)
+        // 3. Update CHECK_UPS Record
         $sqlUpdate = "UPDATE CHECK_UPS SET 
                       ANIMAL_ID = :aid, 
                       VET_NAME = :vet, 
@@ -121,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $update_params = [
             ':aid'   => $animal_id,
             ':vet'   => $vet_name,
-            ':cdate' => $checkup_date, // Saves YYYY-MM-DDTHH:MM
+            ':cdate' => $checkup_date,
             ':rem'   => $remarks,
             ':cost'  => $cost,
             ':id'    => $checkup_id
@@ -131,7 +120,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             throw new Exception("Database Update Failed.");
         }
 
-        // 4. Audit Log
+        // ---------------------------------------------------------
+        // 4. SYNC OPERATIONAL COST (NEW LOGIC)
+        // ---------------------------------------------------------
+        // We link via description string. If ID matches, we update it.
+        $op_desc_key = "Checkup Cost (ID: " . $checkup_id . ")";
+
+        // Check if an entry already exists for this checkup
+        $checkOpStmt = $conn->prepare("SELECT op_cost_id FROM operational_cost WHERE description = ?");
+        $checkOpStmt->execute([$op_desc_key]);
+        $op_row = $checkOpStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($cost > 0) {
+            if ($op_row) {
+                // UPDATE existing operational cost record
+                $upOp = $conn->prepare("UPDATE operational_cost SET animal_id = ?, operation_cost = ?, datetime_created = ? WHERE op_cost_id = ?");
+                $upOp->execute([$animal_id, $cost, $checkup_date, $op_row['op_cost_id']]);
+            } else {
+                // INSERT new record (if previously cost was 0 and didn't exist)
+                $inOp = $conn->prepare("INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, ?)");
+                $inOp->execute([$animal_id, $cost, $op_desc_key, $checkup_date]);
+            }
+        } else {
+            // If new cost is 0, DELETE the existing operational cost record if it exists
+            if ($op_row) {
+                $delOp = $conn->prepare("DELETE FROM operational_cost WHERE op_cost_id = ?");
+                $delOp->execute([$op_row['op_cost_id']]);
+            }
+        }
+
+        // 5. Audit Log
         $logDetails = "Updated Check-up (ID: $checkup_id). " . implode("; ", $changes);
         
         $sqlLog = "INSERT INTO AUDIT_LOGS 
@@ -151,12 +169,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             throw new Exception("Audit Log Failed.");
         }
 
-        // 5. Commit
+        // 6. Commit
         $conn->commit();
         echo json_encode(['success' => true, 'message' => '✅ Check-up updated successfully!']);
 
     } catch (Exception $e) {
-        // Rollback on error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }

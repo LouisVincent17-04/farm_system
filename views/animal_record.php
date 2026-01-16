@@ -41,13 +41,14 @@ try {
     // --- 3. FETCH ANIMALS ---
     if (!empty($filter_loc) || !empty($filter_bld) || !empty($filter_pen)) {
         
-        // UPDATED QUERY: Added FATHER_ID join
+        // UPDATED QUERY: JOIN animal_classifications to get STAGE_NAME
         $sql = "SELECT 
                     a.ANIMAL_ID, a.TAG_NO, a.SEX, a.BIRTH_DATE, a.CURRENT_STATUS, 
                     a.LOCATION_ID, a.BUILDING_ID, a.PEN_ID, a.ANIMAL_TYPE_ID, a.BREED_ID, a.ANIMAL_ITEM_ID,
                     a.WEIGHT_AT_BIRTH, a.CURRENT_ESTIMATED_WEIGHT, a.CURRENT_ACTUAL_WEIGHT, a.ACQUISITION_COST,
                     a.MOTHER_ID, a.FATHER_ID,
                     at.ANIMAL_TYPE_NAME, b.BREED_NAME, l.LOCATION_NAME, 
+                    ac.STAGE_NAME,  -- Added Stage Name
                     bld.BUILDING_NAME, p.PEN_NAME,
                     m.TAG_NO as MOTHER_TAG,
                     f.TAG_NO as FATHER_TAG,
@@ -58,6 +59,7 @@ try {
                 LEFT JOIN Locations l ON a.LOCATION_ID = l.LOCATION_ID
                 LEFT JOIN Buildings bld ON a.BUILDING_ID = bld.BUILDING_ID
                 LEFT JOIN Pens p ON a.PEN_ID = p.PEN_ID
+                LEFT JOIN animal_classifications ac ON a.CLASS_ID = ac.CLASS_ID -- Join Classification
                 LEFT JOIN Animal_Records m ON a.MOTHER_ID = m.ANIMAL_ID 
                 LEFT JOIN Animal_Records f ON a.FATHER_ID = f.ANIMAL_ID 
                 WHERE a.IS_ACTIVE = 1";
@@ -90,42 +92,42 @@ try {
         /* --- CORE STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
-        .header-info p { color: #cbd5e1; }
-        .header-buttons { display: flex; gap: 10px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .header-info h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; }
+        .header-info p { color: #cbd5e1; font-size: clamp(0.875rem, 2vw, 1rem); }
+        .header-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
         
         /* Buttons */
-        .add-btn { display: flex; align-items: center; gap: 0.5rem; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .add-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-size: 0.875rem; white-space: nowrap; }
         .add-btn:hover { transform: scale(1.05); }
         .btn-purchase { background: linear-gradient(135deg, #2563eb, #9333ea); }
         .btn-existing { background: linear-gradient(135deg, #f59e0b, #d97706); } 
         
         /* Filter Bar */
-        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
-        .filter-group { display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 200px; }
+        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
         .filter-group label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
-        .filter-select { width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 0.5rem; }
-        .btn-reset { padding: 0.6rem 1.5rem; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+        .filter-select { width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 0.5rem; font-size: 0.875rem; }
+        .btn-reset { padding: 0.6rem 1.5rem; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
         .btn-reset:hover { border-color: white; color: white; }
 
         /* Search */
         .search-container { position: relative; margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; }
+        .search-input { width: 100%; padding: 1rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; }
         
         /* Table */
-        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; min-height: 200px; }
-        .table { width: 100%; border-collapse: collapse; }
+        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 0.75rem; border: 1px solid #475569; overflow-x: auto; min-height: 200px; }
+        .table { width: 100%; border-collapse: collapse; min-width: 900px; }
         .table thead { background: linear-gradient(135deg, #475569, #334155); }
-        .table th { padding: 1rem 1.5rem; text-align: left; color: #e2e8f0; text-transform: uppercase; font-size: 0.875rem; font-weight: 600; }
-        .table td { padding: 1rem 1.5rem; vertical-align: middle; border-bottom: 1px solid #475569; }
+        .table th { padding: 0.75rem 1rem; text-align: left; color: #e2e8f0; text-transform: uppercase; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+        .table td { padding: 0.75rem 1rem; vertical-align: middle; border-bottom: 1px solid #475569; font-size: 0.875rem; }
         
-        .animal-details h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .animal-details h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; }
         .animal-type-info { color: #cbd5e1; font-size: 0.875rem; }
 
-        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; display: inline-block; }
         .status-badge.active { background: rgba(34, 197, 94, 0.2); color: #86efac; }
         .status-badge.sold { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
         .status-badge.deceased { background: rgba(107, 114, 128, 0.2); color: #d1d5db; }
@@ -134,43 +136,64 @@ try {
         .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; background: transparent; }
         .action-btn.edit { color: #60a5fa; }
         .action-btn.delete { color: #f87171; }
-        .action-btn.add-link { color: #86efac; background: rgba(34, 197, 94, 0.1); padding: 5px 10px; font-size: 0.8rem; font-weight: bold; border: 1px solid rgba(34, 197, 94, 0.2); }
 
         /* Modal Styles */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; overflow-y: auto; }
         .modal.show { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 36rem; padding: 0; border: 1px solid #475569; }
+        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 36rem; padding: 0; border: 1px solid #475569; margin: 1rem auto; max-height: 90vh; display: flex; flex-direction: column; }
         .modal-content.large { max-width: 50rem; }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; }
-        .modal-body { padding: 1.5rem; max-height: 70vh; overflow-y: auto; }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; flex-shrink: 0; }
+        .modal-header h2 { font-size: clamp(1.25rem, 4vw, 1.5rem); }
+        .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
         
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
         .form-group.full-width { grid-column: 1 / -1; }
         
         .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
-        .form-group input, .form-group select { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; }
+        .form-group input, .form-group select { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 0.875rem; }
         
         .input-group { display: flex; gap: 10px; }
-        .btn-select { background: #475569; color: white; border: none; padding: 0 1rem; border-radius: 0.5rem; cursor: pointer; white-space: nowrap; }
+        .input-group input { flex: 1; }
+        .btn-select { background: #475569; color: white; border: none; padding: 0 1rem; border-radius: 0.5rem; cursor: pointer; white-space: nowrap; font-size: 0.875rem; }
         
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #475569; display: flex; justify-content: flex-end; gap: 0.75rem; }
+        /* Lineage Container Fix */
+        .lineage-container { background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .lineage-container > label { color: #cbd5e1; margin-bottom: 0.75rem; display: block; font-weight: 600; }
+        .lineage-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        
+        .modal-footer { padding: 1.5rem; border-top: 1px solid #475569; display: flex; justify-content: flex-end; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap; }
         .btn-save { padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; }
         .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; color: #cbd5e1; border: none; cursor: pointer; }
         
-        .empty-state { text-align: center; padding: 3rem; display: block; color: #94a3b8; }
-        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: none; }
+        .empty-state { text-align: center; padding: 3rem 1rem; display: block; color: #94a3b8; }
+        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: none; font-size: 0.875rem; }
         .alert.success { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #86efac; }
         .alert.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
         
         .icon { width: 18px; height: 18px; }
         
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            .header { flex-direction: column; gap: 1rem; text-align: center; }
-            .header-buttons { flex-direction: column; width: 100%; }
-            .filter-bar { flex-direction: column; align-items: stretch; }
-            .table-container { overflow-x: auto; }
-            .table { min-width: 900px; }
+            .container { padding: 0.5rem; }
+            .header { flex-direction: column; align-items: stretch; }
+            .header-buttons { flex-direction: column; }
+            .add-btn { width: 100%; justify-content: center; }
+            .filter-bar { grid-template-columns: 1fr; }
+            .btn-reset { width: 100%; }
+            .form-row { grid-template-columns: 1fr; }
+            .lineage-row { grid-template-columns: 1fr; }
+            .modal-content { max-width: 100%; margin: 0.5rem; }
+            .modal-body { padding: 1rem; }
+            .modal-header, .modal-footer { padding: 1rem; }
+            .table th, .table td { padding: 0.5rem; font-size: 0.75rem; }
+        }
+        
+        @media (max-width: 480px) {
+            .header-info h1 { font-size: 1.25rem; }
+            .add-btn { padding: 0.6rem 1rem; font-size: 0.8rem; }
+            .input-group { flex-direction: column; }
+            .btn-select { width: 100%; padding: 0.75rem 1rem; }
         }
     </style>
 </head>
@@ -233,18 +256,20 @@ try {
                 <thead>
                     <tr>
                         <th>Tag No</th>
-                        <th>Type / Breed</th>
-                        <th>Sex</th>
-                        <th>Age</th> <th>Birth Date</th>
+                        <th>Class / Breed</th> <th>Sex</th>
+                        <th>Age</th>
+                        <th>Birth Date</th>
                         <th>Weight (kg)<br><small>Est / Act</small></th>
-                        <th>Lineage (M/F)</th> <th>Status</th>
-                        <th>Cost</th> <th>Location</th>
+                        <th>Lineage (Dam/Sire)</th>
+                        <th>Status</th>
+                        <th>Cost</th>
+                        <th>Location</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="animal-table">
                     <?php if (empty($animal_data)): ?>
-                        <?php else: ?>
+                    <?php else: ?>
                         <?php foreach ($animal_data as $data): ?>
                             <tr data-id="<?php echo $data['ANIMAL_ID']; ?>">
                                 <td>
@@ -254,7 +279,9 @@ try {
                                 </td>
                                 <td>
                                     <div class="animal-type-info">
-                                        <?php echo htmlspecialchars($data['ANIMAL_TYPE_NAME']); ?><br>
+                                        <span style="color:#e2e8f0; font-weight:600;">
+                                            <?php echo htmlspecialchars($data['STAGE_NAME'] ?? 'Unclassified'); ?>
+                                        </span><br>
                                         <small style="color:#94a3b8"><?php echo htmlspecialchars($data['BREED_NAME']); ?></small>
                                     </div>
                                 </td>
@@ -269,8 +296,8 @@ try {
                                 </td>
                                 <td>
                                     <div style="font-size:0.85rem;">
-                                        <span style="color: #f472b6;">SOW: <?php echo $data['MOTHER_TAG'] ? $data['MOTHER_TAG'] : '-'; ?></span><br>
-                                        <span style="color: #60a5fa;">BOAR: <?php echo $data['FATHER_TAG'] ? $data['FATHER_TAG'] : '-'; ?></span>
+                                        <span style="color: #f472b6;">Dam: <?php echo $data['MOTHER_TAG'] ? $data['MOTHER_TAG'] : '-'; ?></span><br>
+                                        <span style="color: #60a5fa;">Sire: <?php echo $data['FATHER_TAG'] ? $data['FATHER_TAG'] : '-'; ?></span>
                                     </div>
                                 </td>
                                 <td>
@@ -312,10 +339,10 @@ try {
                     <input type="hidden" id="entry_type" name="entry_type" value="existing">
                     <input type="hidden" id="acquisition_type" name="acquisition_type" value="0">
 
-                    <div id="lineage-group" class="form-group full-width" style="display:none; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
-                        <label style="color: #cbd5e1; margin-bottom:10px; display:block;">Lineage (Optional)</label>
-                        <div class="form-row">
-                            <div class="form-group">
+                    <div id="lineage-group" class="lineage-container" style="display:none;">
+                        <label>Lineage (Optional)</label>
+                        <div class="lineage-row">
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label style="color: #f472b6;">Mother (Sow)</label>
                                 <div class="input-group">
                                     <input type="hidden" id="add_mother_id" name="mother_id">
@@ -323,7 +350,7 @@ try {
                                     <button type="button" class="btn-select" onclick="openSelectParentModal('sow')">🔍</button>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label style="color: #60a5fa;">Father (Boar)</label>
                                 <div class="input-group">
                                     <input type="hidden" id="add_father_id" name="father_id">
@@ -376,7 +403,8 @@ try {
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" id="acquisition-cost-group"> <label style="color:#fbbf24;">Acquisition Cost (PHP)</label>
+                        <div class="form-group" id="acquisition-cost-group">
+                            <label style="color:#fbbf24;">Acquisition Cost (PHP)</label>
                             <input type="number" id="add_acquisition_cost" name="acquisition_cost" step="0.01" placeholder="0.00" style="border-color:#fbbf24;">
                         </div>
                         <div id="birth-date-group" class="form-group">
@@ -469,10 +497,10 @@ try {
                     <input type="hidden" id="edit_animal_id" name="animal_id">
                     <input type="hidden" id="edit_has_purchase" name="has_purchase" value="0">
 
-                    <div class="form-group full-width" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
-                        <label style="color: #cbd5e1; margin-bottom:10px; display:block;">Lineage</label>
-                        <div class="form-row">
-                            <div class="form-group">
+                    <div class="lineage-container">
+                        <label>Lineage</label>
+                        <div class="lineage-row">
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label style="color: #f472b6;">Mother (Sow)</label>
                                 <div class="input-group">
                                     <input type="hidden" id="edit_mother_id" name="mother_id">
@@ -480,7 +508,7 @@ try {
                                     <button type="button" class="btn-select" onclick="openSelectParentModal('sow', 'edit')">🔍</button>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-bottom: 0;">
                                 <label style="color: #60a5fa;">Father (Boar)</label>
                                 <div class="input-group">
                                     <input type="hidden" id="edit_father_id" name="father_id">
@@ -621,9 +649,8 @@ try {
     <script>
         // --- MODAL CONTROLLERS ---
         let acquisition_type = 0;
-        // PARENT SELECTION VARIABLES
-        let currentParentMode = ''; // 'add' or 'edit'
-        let currentParentType = ''; // 'sow' or 'boar'
+        let currentParentMode = '';
+        let currentParentType = '';
 
         function openAddModal(type, acquisition = 0) {
             const form = document.getElementById('addAnimalForm');
@@ -655,7 +682,7 @@ try {
                 purchaseGroup.style.display = 'block';
                 birthGroup.style.display = 'none';
                 costGroup.style.display = 'block'; 
-                lineageGroup.style.display = 'none'; // No parents needed for purchase usually
+                lineageGroup.style.display = 'none';
                 
             } else if (type === 'existing') {
                 modalTitle.textContent = 'Add Existing Record';
@@ -663,7 +690,7 @@ try {
                 purchaseGroup.style.display = 'none';
                 birthGroup.style.display = 'flex';
                 costGroup.style.display = 'block'; 
-                lineageGroup.style.display = 'block'; // Show Parent Selectors
+                lineageGroup.style.display = 'block';
                 document.getElementById('add_birth_date').value = '';
             }
 
@@ -672,10 +699,9 @@ try {
 
         function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
-        // --- PARENT SELECTION LOGIC ---
         function openSelectParentModal(type, mode = 'add') {
-            currentParentType = type; // 'sow' or 'boar'
-            currentParentMode = mode; // 'add' or 'edit'
+            currentParentType = type;
+            currentParentMode = mode;
             
             document.getElementById('selectParentModal').classList.add('show');
             document.getElementById('parent-modal-title').textContent = type === 'sow' ? 'Select Mother' : 'Select Father';
@@ -687,27 +713,23 @@ try {
             const tbody = document.getElementById('parent-table-body');
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
             
-            // Re-using logic: You need a generic script or two scripts. 
-            // I will assume getAvailableSows.php exists and getAvailableBoars.php exists
-            // Or simple logic within one script. For now, let's target specific files.
-            
             const script = type === 'sow' ? '../process/getAvailableSows.php' : '../process/getAvailableBoars.php';
             
             fetch(script).then(res => res.json()).then(data => {
-                const list = data.sows || data.boars || []; // Handle different key names
+                const list = data.sows || data.boars || [];
                 if (data.success && list.length > 0) {
                     tbody.innerHTML = list.map(s => `
                         <tr>
                             <td style="font-weight:bold; color:${type==='sow'?'#f472b6':'#60a5fa'};">${s.TAG_NO}</td>
                             <td>${s.BREED_NAME}</td>
                             <td>${s.LOCATION_NAME} - ${s.PEN_NAME}</td>
-                            <td><button class="action-btn add-link" onclick="selectParent('${s.ANIMAL_ID}', '${s.TAG_NO}')" style="border:none;">SELECT</button></td>
+                            <td><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="selectParent('${s.ANIMAL_ID}', '${s.TAG_NO}')">SELECT</button></td>
                         </tr>`).join('');
                 } else { tbody.innerHTML = `<tr><td colspan="4">No active ${type}s found.</td></tr>`; }
             })
             .catch(err => {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="4">Error loading data (ensure getAvailableBoars.php exists).</td></tr>'; 
+                tbody.innerHTML = '<tr><td colspan="4">Error loading data.</td></tr>'; 
             });
         }
 
@@ -717,7 +739,6 @@ try {
             
             if (currentParentType === 'sow') {
                 document.getElementById(prefix + 'mother_id').value = id;
-                document.getElementById(displayPrefix + 'mother_tag' + (currentParentMode==='edit'?'':'')).value = tag; // ID fix
                 if(currentParentMode === 'edit') document.getElementById('edit_display_mother').value = tag;
                 else document.getElementById('display_mother_tag').value = tag;
             } else {
@@ -728,7 +749,6 @@ try {
             closeSelectParentModal();
         }
 
-        // --- PURCHASE SELECTION LOGIC (unchanged) ---
         function loadAvailablePurchases(targetBodyId) {
             const tbody = document.getElementById(targetBodyId);
             tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
@@ -738,7 +758,7 @@ try {
                         const funcName = targetBodyId === 'add-purchase-table-body' ? 'selectPurchaseItem' : 'selectEditPurchaseItem';
                         return `<tr>
                             <td>${i.ITEM_ID}</td><td>${i.ITEM_NAME}</td><td>${i.UNIT_COST}</td><td>${i.LOCATION_NAME}</td>
-                            <td><button class="action-btn add-link" onclick="${funcName}('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">SELECT</button></td>
+                            <td><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="${funcName}('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">SELECT</button></td>
                         </tr>`;
                     }).join('');
                 } else { tbody.innerHTML = '<tr><td colspan="5">No items found</td></tr>'; }
@@ -770,7 +790,6 @@ try {
             closeSelectPurchaseModal();
         }
 
-        // --- EDIT PURCHASE SELECTION LOGIC ---
         function openEditSelectPurchaseModal() {
             document.getElementById('editSelectPurchaseModal').classList.add('show');
             loadAvailablePurchases('edit-purchase-table-body');
@@ -795,7 +814,6 @@ try {
             closeEditSelectPurchaseModal();
         }
 
-        // --- FORM SUBMISSION ---
         function submitAddForm() {
             const form = document.getElementById('addAnimalForm');
             const formData = new FormData(form);
@@ -838,7 +856,6 @@ try {
             });
         }
 
-        // --- EDIT ANIMAL ---
         async function editAnimal(button) {
             const row = button.closest('tr');
             const animalId = row.getAttribute('data-id');
@@ -860,11 +877,8 @@ try {
                     document.getElementById('edit_weight_est').value = animal.CURRENT_ESTIMATED_WEIGHT || '';
                     document.getElementById('edit_acquisition_cost').value = animal.ACQUISITION_COST || '';
 
-                    // Lineage
                     document.getElementById('edit_mother_id').value = animal.MOTHER_ID || '';
                     document.getElementById('edit_father_id').value = animal.FATHER_ID || '';
-                    // Note: Ideally backend returns Tag No for display, assumes getAnimalDetails provides this or handled separately
-                    // For now leaving text empty if not provided in JSON response (requires getAnimalDetails update to return TAG names)
                     
                     document.getElementById('edit_animal_type').value = animal.ANIMAL_TYPE_ID;
                     await loadBreeds(animal.ANIMAL_TYPE_ID, 'edit');
@@ -905,7 +919,6 @@ try {
 
         function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
 
-        // --- DELETE ---
         function deleteAnimal(button) {
             if(!confirm("Permanently delete this animal record?")) return;
             const row = button.closest('tr');
@@ -924,7 +937,6 @@ try {
             });
         }
 
-        // --- UTILS (Promisified) ---
         function loadBreeds(id, mode) {
             return new Promise(resolve => {
                 fetch('../process/getBreedsByAnimalType.php?animal_type_id='+id)
@@ -989,9 +1001,7 @@ try {
             const el = document.getElementById(mode+'-alert');
             el.textContent = msg; el.className = 'alert ' + type; el.style.display='block';
         }
-        function hideAlert(mode) { document.getElementById(mode+'-alert').style.display='none'; }
 
-        // Click outside
         document.getElementById('addModal').addEventListener('click', function(e) { if(e.target===this) closeAddModal(); });
         document.getElementById('editModal').addEventListener('click', function(e) { if(e.target===this) closeEditModal(); });
         document.getElementById('selectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeSelectPurchaseModal(); });

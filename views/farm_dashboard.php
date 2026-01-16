@@ -84,7 +84,10 @@ checkRole(2);
         .category-icon.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
         .category-icon.teal   { background: linear-gradient(135deg, #06b6d4, #0891b2); }
         .category-icon.red    { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-        .category-icon.yellow { background: linear-gradient(135deg, #eab308, #ca8a04); } /* NEW YELLOW */
+        .category-icon.yellow { background: linear-gradient(135deg, #eab308, #ca8a04); }
+        .category-icon.indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        /* NEW COLOR FOR BIRTH CERTIFICATE */
+        .category-icon.cyan   { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
 
         .category-info { flex: 1; }
         
@@ -180,6 +183,29 @@ checkRole(2);
                 </div>
                 <div class="card-action">
                     <span>Edit Records</span>
+                    <span>→</span>
+                </div>
+            </a>
+
+            <a href="animal_transfer_pen.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon indigo">⇄</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Animal Transfer</h3>
+                        <p class="category-subtitle">Move Animals</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Relocation</div>
+                    <ul class="metrics-list">
+                        <li>Pen to Pen Transfer</li>
+                        <li>Batch Movement</li>
+                        <li>Update Location History</li>
+                        <li>Manage Capacities</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Transfer Group</span>
                     <span>→</span>
                 </div>
             </a>
@@ -295,6 +321,29 @@ checkRole(2);
                 </div>
                 <div class="card-action">
                     <span>View Sow Cards</span>
+                    <span>→</span>
+                </div>
+            </a>
+
+            <a href="animal_birth_certificate.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon cyan">📜</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Birth Certificate</h3>
+                        <p class="category-subtitle">Registration & Pedigree</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Official Records</div>
+                    <ul class="metrics-list">
+                        <li>Generate Certificates</li>
+                        <li>View Lineage / Pedigree</li>
+                        <li>Printable Formats</li>
+                        <li>Litter Registration</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>View Certificates</span>
                     <span>→</span>
                 </div>
             </a>

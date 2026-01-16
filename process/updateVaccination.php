@@ -1,5 +1,5 @@
 <?php
-// ../process/updateVaccination.php
+// process/updateVaccination.php
 session_start();
 header('Content-Type: application/json');
 error_reporting(0);
@@ -16,19 +16,19 @@ $response = ['success' => false, 'message' => ''];
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    $vaccination_id   = $_POST['vaccination_id'] ?? null;
-    $animal_id        = $_POST['animal_id'] ?? null;
-    $vaccine_item_id  = $_POST['vaccine_item_id'] ?? null; // New Item ID
-    $quantity         = floatval($_POST['quantity'] ?? 0); // New Quantity
-    $unit_id          = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
-    $vet_name         = $_POST['vet_name'] ?? '';
-    $remarks          = $_POST['remarks'] ?? '';
+    $vaccination_id       = $_POST['vaccination_id'] ?? null;
+    $animal_id            = $_POST['animal_id'] ?? null;
+    $vaccine_item_id      = $_POST['vaccine_item_id'] ?? null; // New Item ID
+    $quantity             = floatval($_POST['quantity'] ?? 0); // New Quantity
+    $unit_id              = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
+    $vet_name             = $_POST['vet_name'] ?? '';
+    $remarks              = $_POST['remarks'] ?? '';
     
     // Date & Time input
     $vaccination_date = !empty($_POST['vaccination_date']) ? $_POST['vaccination_date'] : date('Y-m-d H:i:s');
 
     // Service Cost (Manual input)
-    $service_cost     = !empty($_POST['cost']) ? floatval($_POST['cost']) : 0;
+    $service_cost         = !empty($_POST['cost']) ? floatval($_POST['cost']) : 0;
 
     if (!$vaccination_id || !$animal_id || !$vaccine_item_id || $quantity <= 0) {
         echo json_encode(['success' => false, 'message' => '❌ Missing required fields or invalid quantity.']);
@@ -64,7 +64,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $original_vaccine_name = $oldRow['OLD_VACCINE_NAME']; 
 
         // 2. REFUND OLD STOCK & VALUE TO INVENTORY
-        // We put back exactly what we took out (Quantity and Monetary Value)
         $refundSql = "UPDATE VACCINES 
                       SET TOTAL_STOCK = TOTAL_STOCK + :old_qty, 
                           TOTAL_COST = TOTAL_COST + :old_val,
@@ -152,8 +151,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Failed to update vaccination record.");
         }
 
-        // 6. INSERT AUDIT LOG
-        $total_value_display = number_format($service_cost + $new_item_cost_calculated, 2);
+        // ---------------------------------------------------------
+        // 6. SYNC OPERATIONAL COST (NEW LOGIC)
+        // ---------------------------------------------------------
+        // Total Cost = Service Fee + Item Cost
+        $total_new_op_cost = $service_cost + $new_item_cost_calculated;
+        
+        // Construct description to find the linked record
+        // We look for a record containing the unique reference "Ref: VR-[ID]"
+        $op_desc_search = "%Ref: VR-" . $vaccination_id . "%";
+        $new_op_desc = "Vaccination: " . $new_vaccine_name . " (Qty: " . $quantity . ") Ref: VR-" . $vaccination_id;
+
+        $checkOp = $conn->prepare("SELECT op_cost_id FROM operational_cost WHERE description LIKE ?");
+        $checkOp->execute([$op_desc_search]);
+        $op_row = $checkOp->fetch(PDO::FETCH_ASSOC);
+
+        if ($total_new_op_cost > 0) {
+            if ($op_row) {
+                // Update existing linked record
+                $upOp = $conn->prepare("UPDATE operational_cost SET animal_id = ?, operation_cost = ?, description = ?, datetime_created = ? WHERE op_cost_id = ?");
+                $upOp->execute([$animal_id, $total_new_op_cost, $new_op_desc, $vaccination_date, $op_row['op_cost_id']]);
+            } else {
+                // Insert new record if link not found (legacy data or previously 0 cost)
+                $inOp = $conn->prepare("INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, ?)");
+                $inOp->execute([$animal_id, $total_new_op_cost, $new_op_desc, $vaccination_date]);
+            }
+        } else {
+            // If new total cost is 0, remove the financial record
+            if ($op_row) {
+                $delOp = $conn->prepare("DELETE FROM operational_cost WHERE op_cost_id = ?");
+                $delOp->execute([$op_row['op_cost_id']]);
+            }
+        }
+
+        // 7. INSERT AUDIT LOG
+        $total_value_display = number_format($total_new_op_cost, 2);
         
         $logDetails = "Updated Vaccination (ID: $vaccination_id) for Animal $animal_tag. Vaccine: {$original_vaccine_name} ({$oldQty}) -> {$new_vaccine_name} ({$quantity}). New Total Value: ₱$total_value_display";
         
@@ -170,7 +202,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':ip'       => $ip_address
         ]);
 
-        // 7. COMMIT EVERYTHING
+        // 8. COMMIT EVERYTHING
         $conn->commit();
         $response['success'] = true;
         $response['message'] = '✅ Record updated and inventory adjusted.';

@@ -51,15 +51,24 @@ try {
     // 5. Generate a Unique BATCH ID
     $batch_id = uniqid('BATCH-', true);
 
-    // 6. Loop Insert Transactions with BATCH_ID
+    // 6. Prepare Statements
+    // A. Feed Transaction Statement
     $insertSql = "INSERT INTO FEED_TRANSACTIONS (FEED_ID, ANIMAL_ID, TRANSACTION_DATE, QUANTITY_KG, TRANSACTION_COST, REMARKS, BATCH_ID) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $insertStmt = $conn->prepare($insertSql);
+
+    // B. Operational Cost Statement (NEW) 
+
+    $opCostSql = "INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, ?)";
+    $opCostStmt = $conn->prepare($opCostSql);
 
     // Get Pen Name for Remark
     $penName = $conn->query("SELECT PEN_NAME FROM PENS WHERE PEN_ID = $pen_id")->fetchColumn();
     $remarks = "Bulk Feed: $penName";
+    $op_description = "Feed: " . $feed['FEED_NAME'] . " (" . $qty_per_head . "kg)";
 
+    // 7. Loop Insert Transactions
     foreach ($animals as $animal) {
+        // A. Insert into Feed Transactions
         $insertStmt->execute([
             $feed_id,
             $animal['ANIMAL_ID'],
@@ -67,18 +76,28 @@ try {
             $qty_per_head,
             $cost_per_animal,
             $remarks,
-            $batch_id // <--- Linking them all together
+            $batch_id 
         ]);
+
+        // B. Insert into Operational Cost (NEW)
+        if ($cost_per_animal > 0) {
+            $opCostStmt->execute([
+                $animal['ANIMAL_ID'],
+                $cost_per_animal,
+                $op_description,
+                $trans_date
+            ]);
+        }
     }
 
-    // 7. Update Inventory (Once for the total amount)
+    // 8. Update Inventory (Once for the total amount)
     $new_weight = $feed['TOTAL_WEIGHT_KG'] - $total_deduction;
     $new_cost = $feed['TOTAL_COST'] - ($total_deduction * $cost_per_kg);
     
     $upd = $conn->prepare("UPDATE FEEDS SET TOTAL_WEIGHT_KG = ?, TOTAL_COST = ?, DATE_UPDATED = NOW() WHERE FEED_ID = ?");
     $upd->execute([$new_weight, $new_cost, $feed_id]);
 
-    // 8. Audit Log
+    // 9. Audit Log
     $audit_msg = "Bulk Feeding (Batch: $batch_id): Pen '$penName'. Fed $animal_count animals ($qty_per_head kg each). Total Deducted: $total_deduction kg.";
     
     $audit = $conn->prepare("INSERT INTO AUDIT_LOGS (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) VALUES (?, ?, 'BULK_FEED', 'FEED_TRANSACTIONS', ?, ?)");

@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $item_id     = $_POST['item_id'] ?? null; // ID from VITAMINS_SUPPLEMENTS
     $dosage      = trim($_POST['dosage'] ?? '');
     $quantity    = floatval($_POST['quantity_used'] ?? 0);
-    $trans_date  = $_POST['transaction_date'] ?? date('Y-m-d');
+    $trans_date  = $_POST['transaction_date'] ?? date('Y-m-d H:i:s');
     $remarks     = trim($_POST['remarks'] ?? '');
 
     // 1. Basic Validation
@@ -107,7 +107,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':rem'  => $remarks
         ]);
 
-        // 7. Audit Log
+        // ---------------------------------------------------------
+        // 7. INSERT INTO OPERATIONAL_COST (NEW)
+        // ---------------------------------------------------------
+        if ($transaction_cost > 0) {
+            $opSql = "INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) 
+                      VALUES (:animal_id, :cost, :desc, :date)";
+            $opStmt = $conn->prepare($opSql);
+            
+            $opDesc = "Vitamin: " . $supply_name . " (Qty: " . $quantity . ")";
+            
+            $opStmt->execute([
+                ':animal_id' => $animal_id,
+                ':cost'      => $transaction_cost,
+                ':desc'      => $opDesc,
+                ':date'      => $trans_date
+            ]);
+        }
+
+        // 8. Audit Log
         $cost_fmt = number_format($transaction_cost, 2);
         $logDetails = "Gave $quantity of $supply_name (Cost: ₱$cost_fmt) to Animal $animal_tag. Dosage: $dosage";
 
@@ -123,7 +141,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':ip' => $ip_address
         ]);
 
-        // 8. Commit
+        // 9. Commit
         $conn->commit();
         
         echo json_encode([
