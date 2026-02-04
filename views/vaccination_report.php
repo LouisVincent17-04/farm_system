@@ -3,11 +3,12 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "reports";
-
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
+include '../security/checkAccess.php';
+checkAccess('vaccination_report');
+include '../common/navbar.php';
+
 
 // --- 1. GET FILTER INPUTS ---
 $date_from   = $_GET['date_from'] ?? '';
@@ -19,13 +20,13 @@ try {
 
     // --- 2. BUILD SQL QUERY ---
     // Joins:
-    // - VACCINES (to get Vaccine Name from VACCINE_ITEM_ID or SUPPLY_ID depending on your schema link)
-    //   (Based on your screenshot, VACCINE_ITEM_ID likely links to your vaccines table or items table)
+    // - VACCINES (to get Vaccine Name from ITEM_ID or SUPPLY_ID depending on your schema link)
+    //   (Based on your screenshot, ITEM_ID likely links to your vaccines table or items table)
     // - ANIMAL_RECORDS (to get Tag No from ANIMAL_ID)
     // - UNITS (to get Unit Name from UNIT_ID)
     
-    // Assuming VACCINE_ITEM_ID links to the 'vaccines' table (SUPPLY_ID) or 'items' table based on your previous messages.
-    // I will assume it links to the 'vaccines' table you showed earlier since the column is VACCINE_ITEM_ID.
+    // Assuming ITEM_ID links to the 'vaccines' table (SUPPLY_ID) or 'items' table based on your previous messages.
+    // I will assume it links to the 'vaccines' table you showed earlier since the column is ITEM_ID.
     
     $sql = "SELECT 
             vr.VACCINATION_ID,
@@ -40,7 +41,7 @@ try {
             u.UNIT_NAME, 
             ar.TAG_NO
         FROM vaccination_records vr
-        LEFT JOIN vaccines v ON vr.VACCINE_ITEM_ID = v.SUPPLY_ID
+        LEFT JOIN vaccines v ON vr.ITEM_ID = v.SUPPLY_ID
         LEFT JOIN animal_records ar ON vr.ANIMAL_ID = ar.ANIMAL_ID
         LEFT JOIN units u ON vr.UNIT_ID = u.UNIT_ID
         WHERE 1=1";

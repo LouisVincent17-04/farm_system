@@ -1,10 +1,12 @@
 <?php
 // views/farm_dashboard.php
 $page = "farm"; // Active Tab
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2); 
+
+include '../security/checkAccess.php';
+checkAccess('farm');
+include '../common/navbar.php';
+
 ?>
 
 <!DOCTYPE html>
@@ -86,8 +88,9 @@ checkRole(2);
         .category-icon.red    { background: linear-gradient(135deg, #ef4444, #b91c1c); }
         .category-icon.yellow { background: linear-gradient(135deg, #eab308, #ca8a04); }
         .category-icon.indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-        /* NEW COLOR FOR BIRTH CERTIFICATE */
         .category-icon.cyan   { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+        /* NEW COLOR FOR EVENT SCHEDULER */
+        .category-icon.rose   { background: linear-gradient(135deg, #f43f5e, #e11d48); }
 
         .category-info { flex: 1; }
         
@@ -183,6 +186,29 @@ checkRole(2);
                 </div>
                 <div class="card-action">
                     <span>Edit Records</span>
+                    <span>→</span>
+                </div>
+            </a>
+
+            <a href="events_scheduler.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon rose">📅</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Event Scheduler</h3>
+                        <p class="category-subtitle">Plan & Automate</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Calendar Management</div>
+                    <ul class="metrics-list">
+                        <li>Schedule Vaccinations</li>
+                        <li>Plan Medication Routines</li>
+                        <li>Set Checkup Reminders</li>
+                        <li>Track Recurring Tasks</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Manage Schedule</span>
                     <span>→</span>
                 </div>
             </a>

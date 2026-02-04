@@ -1,10 +1,12 @@
 <?php
 // views/manage_sow_status.php
 $page = "farm";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('sow_status');
+include '../common/navbar.php';
+
 
 // --- 1. INITIALIZE VARIABLES ---
 $locations = [];

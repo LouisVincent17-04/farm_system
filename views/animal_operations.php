@@ -5,10 +5,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
 $page = "farm";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2); 
+
+include '../security/checkAccess.php';
+checkAccess('animal_operations');
+include '../common/navbar.php';
+
 
 // =========================================================
 // 1. AJAX HANDLER (For Dropdowns)
@@ -103,7 +105,7 @@ if ($animal_id) {
             SELECT vr.VACCINATION_DATE as LOG_DATE, 'Vaccination' as LOG_TYPE, v.SUPPLY_NAME as ITEM_NAME, 
                    (vr.VACCINE_COST + vr.VACCINATION_COST) as COST, vr.REMARKS, vr.QUANTITY as QTY, 'doses' as UNIT
             FROM VACCINATION_RECORDS vr
-            JOIN VACCINES v ON vr.VACCINE_ITEM_ID = v.SUPPLY_ID
+            JOIN VACCINES v ON vr.ITEM_ID = v.SUPPLY_ID
             WHERE vr.ANIMAL_ID = ?
 
             UNION ALL

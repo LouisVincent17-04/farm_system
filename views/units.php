@@ -1,12 +1,14 @@
 <?php
 
 $page="settings";
-include '../common/navbar.php';
 include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('settings');
+
+include '../common/navbar.php';
 include '../config/Queries.php';
-include '../security/checkRole.php';    
-checkRole(3);
-// Correct query for users
+
 $sql = "SELECT * FROM Units order by UNIT_ID ASC";
 $unit_data = retrieveData($conn, $sql);
 

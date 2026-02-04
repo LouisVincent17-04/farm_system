@@ -2,12 +2,13 @@
 // views/group_checkup.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('group_checkup');
 $page = "transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(3); // Farm Vet / Admin
+
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -35,6 +36,14 @@ try {
             min-height: 100vh; color: #e2e8f0;
         }
         .container { max-width: 1600px; margin: 0 auto; padding: 1.5rem; }
+
+        /* --- BACK LINK STYLE --- */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
 
         .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; align-items: start; }
 
@@ -67,6 +76,16 @@ try {
         }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         .section-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
+
+        /* Select All Toggle */
+        .select-all-container {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; color: #22d3ee; cursor: pointer;
+            padding: 5px 10px; border-radius: 6px;
+            background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+        .select-all-container:hover { background: rgba(6, 182, 212, 0.2); }
+        .select-all-container input { cursor: pointer; accent-color: #06b6d4; width: 16px; height: 16px; }
         
         .animal-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -112,6 +131,14 @@ try {
         }
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; color: #94a3b8; }
         
+        /* Buttons */
+        .btn-mini {
+            background: #334155; border: 1px solid #475569; color: #fff;
+            border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem;
+            white-space: nowrap; transition: 0.2s; flex-shrink: 0;
+        }
+        .btn-mini:hover { background: #475569; border-color: #94a3b8; }
+
         .btn-submit {
             width: 100%; margin-top: 1.5rem; padding: 1rem;
             background: linear-gradient(135deg, #06b6d4, #0891b2);
@@ -127,6 +154,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="transactions.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Transactions
+    </a>
+
     <div class="main-grid">
         
         <div class="control-panel">
@@ -153,6 +186,14 @@ try {
                 <label class="form-label" style="color:#22d3ee;">STEP 2: Inspection Details</label>
                 
                 <div class="form-group">
+                    <label class="form-label">Default Remarks</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="default_remarks" class="form-control" placeholder="e.g. Routine Inspection">
+                        <button type="button" class="btn-mini" onclick="updateAllRemarks()">Apply All</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Veterinarian <span style="color:#f87171">*</span></label>
                     <select id="vet_name" class="form-control" onchange="updateCalculations()" required>
                         <option value="">Select Veterinarian</option>
@@ -167,7 +208,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Date of Inspection</label>
-                    <input type="datetime-local" id="checkup_date" class="form-control">
+                    <input type="datetime-local" id="checkup_date" class="form-control" step="1">
                 </div>
 
                 <div class="summary-box">
@@ -186,7 +227,10 @@ try {
             <div class="picker-section">
                 <div class="section-header">
                     <div class="section-title">🩺 Step 3: Select Animals</div>
-                    <div style="font-size:0.85rem; color:#94a3b8;">Animals in selected pen</div>
+                    
+                    <label class="select-all-container" style="display:none;" id="select-all-wrapper">
+                        <input type="checkbox" id="select-all-check" onchange="toggleSelectAll(this)"> Select All
+                    </label>
                 </div>
                 <div id="animal-grid" class="animal-grid">
                     <div style="grid-column:1/-1; text-align:center; padding:2rem; color:#64748b; border:1px dashed #475569; border-radius:8px;">
@@ -220,12 +264,14 @@ try {
 </div>
 
 <script>
+    // --- STATE MANAGEMENT ---
     let selectedAnimals = new Set(); 
+    let currentPenAnimals = []; // Stores full animal objects for current pen
 
     document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('checkup_date').value = now.toISOString().slice(0, 16);
+        document.getElementById('checkup_date').value = now.toISOString().slice(0, 19);
     });
 
     // --- CASCADING DROPDOWNS ---
@@ -261,38 +307,73 @@ try {
     // --- LOAD GRID ---
     function loadAnimals(penId) {
         const grid = document.getElementById('animal-grid');
+        const selectAllWrapper = document.getElementById('select-all-wrapper');
+
         grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">Loading...</div>';
-        
+        selectAllWrapper.style.display = 'none';
+
         fetch(`../process/getAnimalsByPen.php?pen_id=${penId}`)
             .then(r=>r.json())
             .then(data => {
                 grid.innerHTML = '';
+                currentPenAnimals = []; // Reset list
+
                 const animals = data.animal_record || [];
-                if(animals.length === 0) {
+                
+                // Filter active animals
+                animals.forEach(a => {
+                    if(a.IS_ACTIVE == 1) currentPenAnimals.push(a);
+                });
+
+                if(currentPenAnimals.length === 0) {
                     grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">No animals found.</div>';
                     return;
                 }
 
-                animals.forEach(a => {
-                    if(a.IS_ACTIVE == 0)
-                    {
-                        return; 
-                    } 
-                    else
-                    {
-                        const card = document.createElement('div');
-                        card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
-                        card.id = `card-${a.ANIMAL_ID}`;
-                        card.onclick = () => addAnimalToTable(a);
-                        card.innerHTML = `
-                            <div style="font-size:1.5rem;">🐖</div>
-                            <div style="font-weight:700; color:#fff;">${a.TAG_NO}</div>
-                        `;
-                        grid.appendChild(card);
-                    }
-                    
+                // Show Select All Checkbox
+                selectAllWrapper.style.display = 'flex';
+                updateSelectAllState();
+
+                currentPenAnimals.forEach(a => {
+                    const card = document.createElement('div');
+                    card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
+                    card.id = `card-${a.ANIMAL_ID}`;
+                    card.onclick = () => addAnimalToTable(a);
+                    card.innerHTML = `
+                        <div style="font-size:1.5rem;">🐖</div>
+                        <div style="font-weight:700; color:#fff;">${a.TAG_NO}</div>
+                    `;
+                    grid.appendChild(card);
                 });
             });
+    }
+
+    // --- SELECT ALL LOGIC ---
+    function toggleSelectAll(checkbox) {
+        if(checkbox.checked) {
+            currentPenAnimals.forEach(animal => {
+                if(!selectedAnimals.has(animal.ANIMAL_ID)) {
+                    addAnimalToTable(animal);
+                }
+            });
+        } else {
+            currentPenAnimals.forEach(animal => {
+                if(selectedAnimals.has(animal.ANIMAL_ID)) {
+                    removeAnimal(animal.ANIMAL_ID);
+                }
+            });
+        }
+    }
+
+    function updateSelectAllState() {
+        const checkbox = document.getElementById('select-all-check');
+        if(currentPenAnimals.length === 0) {
+            checkbox.checked = false;
+            return;
+        }
+        // Check if all displayed animals are in selected set
+        const allSelected = currentPenAnimals.every(a => selectedAnimals.has(a.ANIMAL_ID));
+        checkbox.checked = allSelected;
     }
 
     // --- TABLE OPERATIONS ---
@@ -303,6 +384,8 @@ try {
         if(emptyRow) emptyRow.remove();
 
         const tbody = document.getElementById('checkup-list');
+        const defaultRem = document.getElementById('default_remarks').value;
+
         const tr = document.createElement('tr');
         tr.id = `row-${animal.ANIMAL_ID}`;
         tr.dataset.id = animal.ANIMAL_ID;
@@ -310,7 +393,7 @@ try {
         tr.innerHTML = `
             <td style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
             <td>
-                <input type="text" name="remarks[${animal.ANIMAL_ID}]" placeholder="Routine check (Optional)...">
+                <input type="text" name="remarks[${animal.ANIMAL_ID}]" value="${defaultRem}" placeholder="Routine check (Optional)...">
             </td>
             <td style="text-align:center;">
                 <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})">×</button>
@@ -324,10 +407,13 @@ try {
         if(card) card.classList.add('in-table');
 
         updateCalculations();
+        updateSelectAllState();
     }
 
     function removeAnimal(id) {
         document.getElementById(`row-${id}`).remove();
+        
+        selectedAnimals.delete(String(id));
         selectedAnimals.delete(id);
         
         const card = document.getElementById(`card-${id}`);
@@ -337,11 +423,18 @@ try {
             document.getElementById('checkup-list').innerHTML = '<tr id="empty-row"><td colspan="3" style="text-align:center; padding:2rem; color:#64748b;">No animals added yet.</td></tr>';
         }
         updateCalculations();
+        updateSelectAllState();
     }
 
     function clearTable() {
         if(!confirm("Clear all rows?")) return;
-        selectedAnimals.forEach(id => removeAnimal(id));
+        Array.from(selectedAnimals).forEach(id => removeAnimal(id));
+    }
+
+    // --- BULK UPDATES ---
+    function updateAllRemarks() {
+        const newRemark = document.getElementById('default_remarks').value;
+        document.querySelectorAll('input[name^="remarks"]').forEach(inp => inp.value = newRemark);
     }
 
     // --- CALCULATIONS ---

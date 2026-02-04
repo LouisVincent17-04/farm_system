@@ -4,11 +4,13 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $page = "admin_dashboard";
+include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('diseases');
 // Ensure these paths are correct for your setup
 include '../common/navbar.php'; 
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
 
 $message = "";
 $error = "";

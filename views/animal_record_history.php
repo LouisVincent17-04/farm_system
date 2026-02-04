@@ -1,10 +1,12 @@
 <?php
 // views/animal_record_history.php
 $page = "admin_dashboard"; // Active Tab
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('animal_record');
+include '../common/navbar.php';
+
 
 // --- 1. HANDLE FILTERS ---
 $filter_loc    = $_GET['location_id'] ?? '';

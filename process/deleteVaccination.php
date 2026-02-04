@@ -35,10 +35,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // 1. GET RECORD DETAILS (for Stock Refund and Audit Log)
         // Using FOR UPDATE to lock vaccine record and stock
-        $getSql = "SELECT vr.VACCINE_ITEM_ID, vr.QUANTITY, ar.TAG_NO, v.SUPPLY_NAME 
+        $getSql = "SELECT vr.ITEM_ID, vr.QUANTITY, ar.TAG_NO, v.SUPPLY_NAME 
                    FROM VACCINATION_RECORDS vr
                    JOIN ANIMAL_RECORDS ar ON vr.ANIMAL_ID = ar.ANIMAL_ID
-                   JOIN VACCINES v ON vr.VACCINE_ITEM_ID = v.SUPPLY_ID
+                   JOIN VACCINES v ON vr.ITEM_ID = v.SUPPLY_ID
                    WHERE vr.VACCINATION_ID = :id FOR UPDATE";
         
         $getStmt = $conn->prepare($getSql);
@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Vaccination record not found or already deleted.");
         }
 
-        $itemId = $row['VACCINE_ITEM_ID']; 
+        $itemId = $row['ITEM_ID']; 
         $qty    = $row['QUANTITY'];
         $animal_tag = $row['TAG_NO'];
         $vaccine_name = $row['SUPPLY_NAME'];

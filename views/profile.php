@@ -2,6 +2,7 @@
 ob_start(); // Start output buffering
 
 $page 	= 'profile';
+include '../config/Connection.php';
 include '../common/navbar.php';
 
 // Redirect to login if user not logged in
@@ -10,7 +11,8 @@ if(!isset($_SESSION['user'])){
     exit;
 }
 
-include '../process/autoUpdateAnimalClasses.php';
+
+// print_r($_SESSION['user']);
 
 // Safely retrieve user data
 $fullName = $_SESSION['user']['FULL_NAME'] ?? '';

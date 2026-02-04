@@ -5,12 +5,12 @@ header('Content-Type: application/json');
 include '../config/Connection.php';
 include '../security/checkRole.php';
 
-// Ensure user is authorized
 session_start();
-// if (!isset($_SESSION['ROLE']) || $_SESSION['ROLE'] != 2) {
-//     echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
-//     exit;
-// }
+
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 try {
     // 1. Get JSON Input
@@ -27,7 +27,7 @@ try {
     $date       = $input['date'] ?? date('Y-m-d H:i:s');
     $records    = $input['records'] ?? [];
     
-    // Optional service fee per head (if sent by JS, otherwise 0)
+    // Optional service fee per head
     $service_fee = isset($input['service_fee']) ? floatval($input['service_fee']) : 0;
 
     if (empty($vaccine_id) || empty($records)) {
@@ -38,8 +38,7 @@ try {
     $conn->beginTransaction();
 
     // 3. Check Inventory & Calculate Cost
-    // We lock the row 'FOR UPDATE' to prevent race conditions during deduction
-    $stockSql = "SELECT TOTAL_STOCK, TOTAL_COST FROM VACCINES WHERE SUPPLY_ID = :id FOR UPDATE";
+    $stockSql = "SELECT TOTAL_STOCK, TOTAL_COST, SUPPLY_NAME FROM VACCINES WHERE SUPPLY_ID = :id FOR UPDATE";
     $stockStmt = $conn->prepare($stockSql);
     $stockStmt->execute([':id' => $vaccine_id]);
     $inventory = $stockStmt->fetch(PDO::FETCH_ASSOC);
@@ -59,40 +58,40 @@ try {
         throw new Exception("Insufficient stock! Available: {$inventory['TOTAL_STOCK']}, Needed: {$total_qty_needed}");
     }
 
-    // Calculate Average Cost Per Unit (Total Cost / Total Stock)
-    // Avoid division by zero
+    // Calculate Average Cost Per Unit
     $current_unit_cost = ($inventory['TOTAL_STOCK'] > 0) 
         ? ($inventory['TOTAL_COST'] / $inventory['TOTAL_STOCK']) 
         : 0;
 
     // 4. Prepare Insert Statement
     $insertSql = "INSERT INTO VACCINATION_RECORDS 
-        (ANIMAL_ID, VACCINE_ITEM_ID, VACCINATION_DATE, VET_NAME, REMARKS, QUANTITY, UNIT_ID, VACCINE_COST, VACCINATION_COST) 
+        (ANIMAL_ID, ITEM_ID, VACCINATION_DATE, VET_NAME, REMARKS, QUANTITY, UNIT_ID, VACCINE_COST, VACCINATION_COST) 
         VALUES 
         (:animal_id, :vaccine_id, :date, :vet, :remarks, :qty, :unit, :item_cost, :service_cost)";
     
     $insertStmt = $conn->prepare($insertSql);
 
     // 5. Loop & Insert Records
+    $inserted_count = 0;
     foreach ($records as $row) {
         $qty_used = floatval($row['quantity']);
-        $item_cost = $qty_used * $current_unit_cost; // Cost of the specific dose
+        $item_cost = $qty_used * $current_unit_cost; 
 
         $insertStmt->execute([
-            ':animal_id'   => $row['animal_id'],
-            ':vaccine_id'  => $vaccine_id,
-            ':date'        => $date,
-            ':vet'         => $vet_name,
-            ':remarks'     => $row['remarks'] ?? '',
-            ':qty'         => $qty_used,
-            ':unit'        => $unit_id,
-            ':item_cost'   => $item_cost,
-            ':service_cost'=> $service_fee // Fee per animal
+            ':animal_id'    => $row['animal_id'],
+            ':vaccine_id'   => $vaccine_id,
+            ':date'         => $date,
+            ':vet'          => $vet_name,
+            ':remarks'      => $row['remarks'] ?? '',
+            ':qty'          => $qty_used,
+            ':unit'         => $unit_id,
+            ':item_cost'    => $item_cost,
+            ':service_cost' => $service_fee 
         ]);
+        $inserted_count++;
     }
 
     // 6. Deduct from Inventory
-    // We deduct both the physical stock and the monetary value associated with it
     $total_cost_deducted = $total_qty_needed * $current_unit_cost;
 
     $updateSql = "UPDATE VACCINES 
@@ -107,7 +106,19 @@ try {
         ':id'   => $vaccine_id
     ]);
 
-    // 7. Commit Transaction
+    // 7. Insert Audit Log (Inside Transaction)
+    if ($inserted_count > 0) {
+        $supply_name = $inventory['SUPPLY_NAME'] ?? 'Unknown Vaccine';
+        $audit_action = "BATCH_VACCINATION";
+        $audit_details = "Vaccinated $inserted_count animals with $supply_name. Total Qty: $total_qty_needed. Vet: $vet_name";
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'VACCINATION_RECORDS', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+    }
+
+    // 8. Commit Transaction
     $conn->commit();
 
     echo json_encode(['success' => true, 'message' => "Batch processed for " . count($records) . " animals."]);

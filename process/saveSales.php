@@ -1,5 +1,11 @@
 <?php
 
+// --- AUDIT LOG CONTEXT ---
+// Ensure this runs if not already defined in the header
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1;
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+
 // --- 2. PROCESS SALE (SAVE LOGIC) ---
 $message = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
@@ -8,6 +14,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
 
         $animal_id = $_POST['animal_id'];
         
+        // 0. Fetch Tag Number for Audit Log (Before processing)
+        $tagStmt = $conn->prepare("SELECT TAG_NO FROM animal_records WHERE ANIMAL_ID = ?");
+        $tagStmt->execute([$animal_id]);
+        $tag_no = $tagStmt->fetchColumn() ?? 'Unknown Tag';
+
         // 1. Calculate Net Worth & Profit (Server-side validation)
         $net_worth = $_POST['cost_acquisition'] + 
                      $_POST['cost_feed'] + 
@@ -54,6 +65,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
                                       WHERE ANIMAL_ID = ?");
         $updateStmt->execute([$_POST['weight_at_sale'], $animal_id]);
 
+        // 4. Insert Audit Log
+        $audit_action = "SINGLE_SALE";
+        $audit_details = "Sold Animal $tag_no to '{$_POST['customer_name']}'. Price: " . number_format($final_price, 2) . ". Profit: " . number_format($profit, 2);
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'ANIMAL_SALES', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+
         $conn->commit();
         $message = "<div class='alert alert-success'>✅ Sale Confirmed! Profit: ₱" . number_format($profit, 2) . "</div>";
         
@@ -62,5 +82,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
         $message = "<div class='alert alert-danger'>Error: " . $e->getMessage() . "</div>";
     }
 }
-
 ?>

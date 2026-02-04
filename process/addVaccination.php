@@ -97,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // 6. INSERT INTO 'VACCINATION_RECORDS'
         $insertSql = "INSERT INTO VACCINATION_RECORDS 
-                      (ANIMAL_ID, VACCINE_ITEM_ID, VET_NAME, QUANTITY, UNIT_ID, 
+                      (ANIMAL_ID, ITEM_ID, VET_NAME, QUANTITY, UNIT_ID, 
                        VACCINATION_COST, VACCINE_COST, REMARKS, VACCINATION_DATE, DATE_UPDATED) 
                       VALUES 
                       (:animal_id, :vac_id, :vet_name, :qty, :unit_id, 

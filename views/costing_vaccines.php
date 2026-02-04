@@ -7,11 +7,12 @@ ini_set('display_errors', 0);
 ob_start();
 
 $page = "costing";
-include '../common/navbar.php';
-include '../security/checkRole.php';
 include '../config/Connection.php';
 
-checkRole(3);
+include '../security/checkAccess.php';
+checkAccess('vaccinations');
+include '../common/navbar.php';
+
 
 // --- AJAX HANDLER ---
 if (isset($_GET['action'])) {
@@ -56,7 +57,7 @@ if (isset($_GET['action'])) {
                         vr.VACCINE_COST,
                         vr.REMARKS 
                       FROM VACCINATION_RECORDS vr
-                      JOIN VACCINES v ON vr.VACCINE_ITEM_ID = v.SUPPLY_ID
+                      JOIN VACCINES v ON vr.ITEM_ID = v.SUPPLY_ID
                       JOIN ANIMAL_RECORDS ar ON vr.ANIMAL_ID = ar.ANIMAL_ID
                       WHERE ar.PEN_ID = ?
                       ORDER BY vr.VACCINATION_DATE DESC";
@@ -107,7 +108,7 @@ if (isset($_GET['action'])) {
                         vr.VACCINE_COST,
                         vr.REMARKS 
                       FROM VACCINATION_RECORDS vr
-                      JOIN VACCINES v ON vr.VACCINE_ITEM_ID = v.SUPPLY_ID
+                      JOIN VACCINES v ON vr.ITEM_ID = v.SUPPLY_ID
                       WHERE vr.ANIMAL_ID = ?
                       ORDER BY vr.VACCINATION_DATE DESC";
             

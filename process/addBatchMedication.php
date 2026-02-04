@@ -6,6 +6,11 @@ include '../config/Connection.php';
 include '../security/checkRole.php';
 session_start();
 
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+
 try {
     $input = json_decode(file_get_contents('php://input'), true);
     if (!$input) { throw new Exception("Invalid data received."); }
@@ -55,6 +60,8 @@ try {
                   (:aid, :iid, :date, :qty, :rem, :cost, :dos)";
     $insertStmt = $conn->prepare($insertSql);
 
+    $inserted_count = 0;
+
     foreach ($records as $row) {
         $iid = $row['item_id'];
         $qty = floatval($row['quantity']);
@@ -70,6 +77,7 @@ try {
             ':cost' => $cost,
             ':dos'  => $dosage
         ]);
+        $inserted_count++;
     }
 
     // 4. DEDUCT INVENTORY
@@ -86,6 +94,17 @@ try {
             ':cost' => $total_cost_deducted,
             ':id'   => $id
         ]);
+    }
+
+    // 5. INSERT AUDIT LOG
+    if ($inserted_count > 0) {
+        $audit_action = "BATCH_MEDICATION";
+        $audit_details = "Processed $inserted_count medication records. Date: $date";
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'TREATMENT_TRANSACTIONS', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
     }
 
     $conn->commit();

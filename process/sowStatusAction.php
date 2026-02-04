@@ -3,7 +3,10 @@
 session_start();
 require_once '../config/Connection.php';
 
-$user_id = $_SESSION['user_id'] ?? 1; 
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $animal_id = $_POST['animal_id'];
@@ -20,11 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $conn->beginTransaction();
 
+        // Fetch Tag Number for Audit Log
+        $tagStmt = $conn->prepare("SELECT TAG_NO FROM animal_records WHERE ANIMAL_ID = ?");
+        $tagStmt->execute([$animal_id]);
+        $tag_no = $tagStmt->fetchColumn() ?: 'Unknown';
+
         // =========================================================
         // LOGIC FOR UNDO
         // =========================================================
         if ($action_type === 'undo') {
-            // ... (Undo logic remains exactly the same as your previous code) ...
             
             $stmt = $conn->prepare("SELECT STATUS_ID, STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ? AND IS_ACTIVE = 1");
             $stmt->execute([$animal_id]);
@@ -37,11 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("Undo is only allowed for SERVICE or ABORTION statuses.");
             }
 
-            $stmtPrev = $conn->prepare("SELECT STATUS_ID FROM sow_status_history WHERE ANIMAL_ID = ? AND STATUS_ID < ? ORDER BY STATUS_ID DESC LIMIT 1");
+            $stmtPrev = $conn->prepare("SELECT STATUS_ID, STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ? AND STATUS_ID < ? ORDER BY STATUS_ID DESC LIMIT 1");
             $stmtPrev->execute([$animal_id, $currentStatusRow['STATUS_ID']]);
-            $prevStatusId = $stmtPrev->fetchColumn();
+            $prevStatusRow = $stmtPrev->fetch(PDO::FETCH_ASSOC);
 
-            if (!$prevStatusId) throw new Exception("No previous status found to revert to.");
+            if (!$prevStatusRow) throw new Exception("No previous status found to revert to.");
 
             $stmtClose = $conn->prepare("UPDATE sow_status_history SET IS_ACTIVE = 0, STATUS_END_DATE = NOW() WHERE STATUS_ID = ?");
             $stmtClose->execute([$currentStatusRow['STATUS_ID']]);
@@ -50,7 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtCancel->execute([$animal_id]);
 
             $stmtReactivate = $conn->prepare("UPDATE sow_status_history SET IS_ACTIVE = 1, STATUS_END_DATE = NULL WHERE STATUS_ID = ?");
-            $stmtReactivate->execute([$prevStatusId]);
+            $stmtReactivate->execute([$prevStatusRow['STATUS_ID']]);
+
+            $audit_action = "SOW_STATUS_UNDO";
+            $audit_details = "Reverted Sow $tag_no from '{$currentStatusRow['STATUS_NAME']}' back to '{$prevStatusRow['STATUS_NAME']}'.";
 
         } 
         // =========================================================
@@ -102,6 +112,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $stmtServNew->execute([$animal_id, $service_num, $service_type, $boar_id, $service_date, $user_id]);
             }
+
+            $audit_action = "SOW_STATUS_CHANGE";
+            $audit_details = "Updated Sow $tag_no status: '$current_status' -> '$new_status'. Action: $action_type";
+        }
+
+        // --- INSERT AUDIT LOG ---
+        if (isset($audit_action)) {
+            $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                          VALUES (?, ?, ?, 'SOW_STATUS_HISTORY', ?, ?)";
+            $audit_stmt = $conn->prepare($audit_sql);
+            $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
         }
 
         $conn->commit();

@@ -1,7 +1,9 @@
 <?php
 // views/print_certificate.php
-require_once '../config/Connection.php';
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('birth_certificate');
 $id = $_GET['id'] ?? 0;
 
 

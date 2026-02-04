@@ -1,10 +1,12 @@
 <?php
 // views/transfer_group.php
 $page = "farm";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('animal_transfer');
+include '../common/navbar.php';
+
 
 // Pre-fetch Locations for dropdowns
 $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll(PDO::FETCH_ASSOC);

@@ -2,12 +2,13 @@
 // views/purch_vitamins_supplements.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('purchases');
 $page="transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
 
 // --- CONFIGURATION ---
 $ITEM_TYPE_ID = 10; // Vitamins & Supplements

@@ -7,11 +7,11 @@ ini_set('display_errors', 0);
 ob_start();
 
 $page = "costing";
-include '../common/navbar.php';
-include '../security/checkRole.php';
 include '../config/Connection.php';
+include '../security/checkAccess.php';
+checkAccess('veterinary_checkups');
+include '../common/navbar.php';
 
-checkRole(3);
 
 // --- AJAX HANDLER ---
 if (isset($_GET['action'])) {

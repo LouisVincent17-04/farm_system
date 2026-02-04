@@ -8,7 +8,10 @@ require_once '../config/Connection.php';
 error_reporting(0);
 ini_set('display_errors', 0);
 
-$user_id = $_SESSION['user']['USER_ID'] ?? 1;
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1;
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -22,10 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new_fcr      = floatval($_POST['fcr'] ?? 0);
     $weigh_date   = $_POST['weigh_date'] ?? date('Y-m-d');
     
-    // --- UPDATED LOGIC (User Request) ---
-    // Gain = Feed * FCR
-    // Est Weight = Birth + Gain
-    
+    // --- CALCULATION LOGIC ---
+    // Gain = Feed Share * FCR
+    // Est Weight = Birth Weight + Gain
     $gain_est = $feed_share * $new_fcr; 
     $est_weight = $birth_weight + $gain_est;
     
@@ -40,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $conn->beginTransaction();
 
-        // 1. UPDATE ANIMAL RECORD
+        // 2. UPDATE ANIMAL RECORD
         $sqlAnimal = "UPDATE animal_records 
                       SET CURRENT_ESTIMATED_WEIGHT = :est_weight,
                           CURRENT_ACTUAL_WEIGHT = :act_weight,
@@ -53,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':id' => $animal_id
         ]);
 
-        // 2. UPDATE CLASSIFICATION
+        // 3. UPDATE CLASSIFICATION FCR (Optional, if class_id provided)
         if ($class_id && $new_fcr > 0) {
             $sqlClass = "UPDATE animal_classifications 
                          SET FCR = :fcr 
@@ -62,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt2->execute([':fcr' => $new_fcr, ':class_id' => $class_id]);
         }
 
-        // 3. INSERT LOG
+        // 4. INSERT FCR LOG
         $sqlLog = "INSERT INTO animal_fcr_logs 
                    (ANIMAL_ID, PEN_ID, LOG_DATE, BIRTH_WEIGHT, FEED_SHARE_KG, 
                     FCR_USED, TOTAL_GAIN_EST, ESTIMATED_WEIGHT, ACTUAL_WEIGHT, 
@@ -86,6 +88,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':var'     => $variance,
             ':user'    => $user_id
         ]);
+
+        // 5. INSERT AUDIT LOG
+        if ($stmt3->rowCount() > 0) {
+            // Fetch Tag No for clearer logs
+            $stmtTag = $conn->prepare("SELECT TAG_NO FROM animal_records WHERE ANIMAL_ID = ?");
+            $stmtTag->execute([$animal_id]);
+            $tag_no = $stmtTag->fetchColumn() ?: 'Unknown';
+
+            $audit_action = "UPDATE_FCR_WEIGHT";
+            $audit_details = "Updated FCR/Weight for Animal $tag_no. Actual: $actual_weight kg. Est: $est_weight kg. FCR: $new_fcr";
+
+            $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                          VALUES (?, ?, ?, 'ANIMAL_RECORDS', ?, ?)";
+            $audit_stmt = $conn->prepare($audit_sql);
+            $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+        }
 
         $conn->commit();
 

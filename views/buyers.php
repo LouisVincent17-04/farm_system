@@ -4,9 +4,12 @@ ob_start(); // Start output buffering
 
 $page = "farm"; 
 include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('buyer');
+
 include '../common/navbar.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
 
 // --- 1. HANDLE POST REQUESTS (Add/Edit/Delete) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

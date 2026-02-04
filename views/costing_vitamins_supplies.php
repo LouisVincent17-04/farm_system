@@ -7,11 +7,12 @@ ini_set('display_errors', 0);
 ob_start();
 
 $page = "costing";
-include '../common/navbar.php';
-include '../security/checkRole.php';
 include '../config/Connection.php';
 
-checkRole(3);
+include '../security/checkAccess.php';
+checkAccess('vitamins_supplements');
+include '../common/navbar.php';
+
 
 // --- AJAX HANDLER ---
 if (isset($_GET['action'])) {

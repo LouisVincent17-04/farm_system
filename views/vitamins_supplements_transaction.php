@@ -2,12 +2,14 @@
 // views/vitamins_supplements_transaction.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('vitamins_supplements');
 $page="transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
+
 
 try {
     if (!isset($conn)) {
@@ -15,7 +17,6 @@ try {
     }
 
     // 1. Fetch Transaction History
-    // UPDATED: Joined Location, Building, Pen for Smart Edit
     $transactions_sql = "SELECT t.*, 
                           t.TRANSACTION_DATE, -- Get full datetime
                           a.TAG_NO,
@@ -108,6 +109,15 @@ try {
             margin-bottom: 15px; background: rgba(255, 255, 255, 0.03);
             padding: 15px; border-radius: 8px; border: 1px dashed rgba(255, 255, 255, 0.1);
         }
+
+        /* --- BACK LINK STYLE --- */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         @media (max-width: 768px) { .form-row-cascading { grid-template-columns: 1fr; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -115,6 +125,12 @@ try {
 </head>
 <body>
     <div class="container">
+        
+        <a href="transactions.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Transactions
+        </a>
+
         <div class="header">
             <div class="header-info">
                 <h1>Vitamins & Supplements</h1>

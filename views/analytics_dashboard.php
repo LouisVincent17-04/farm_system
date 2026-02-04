@@ -2,9 +2,12 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "analytics";
+include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('analytics_dashboard');
 include '../common/navbar.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
 ?>
 
 <!DOCTYPE html>

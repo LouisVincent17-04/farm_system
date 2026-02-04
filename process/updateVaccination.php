@@ -43,10 +43,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $conn->beginTransaction();
 
         // 1. GET OLD RECORD & ANIMAL TAG (Lock for update)
-        $oldSql = "SELECT VR.VACCINE_ITEM_ID, VR.QUANTITY, VR.VACCINE_COST, AR.TAG_NO, V.SUPPLY_NAME AS OLD_VACCINE_NAME 
+        $oldSql = "SELECT VR.ITEM_ID, VR.QUANTITY, VR.VACCINE_COST, AR.TAG_NO, V.SUPPLY_NAME AS OLD_VACCINE_NAME 
                    FROM VACCINATION_RECORDS VR
                    JOIN ANIMAL_RECORDS AR ON VR.ANIMAL_ID = AR.ANIMAL_ID
-                   JOIN VACCINES V ON VR.VACCINE_ITEM_ID = V.SUPPLY_ID
+                   JOIN VACCINES V ON VR.ITEM_ID = V.SUPPLY_ID
                    WHERE VR.VACCINATION_ID = :id FOR UPDATE";
         
         $oldStmt = $conn->prepare($oldSql);
@@ -57,7 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             throw new Exception("Record not found or already deleted.");
         }
 
-        $oldItemId = $oldRow['VACCINE_ITEM_ID'];
+        $oldItemId = $oldRow['ITEM_ID'];
         $oldQty    = floatval($oldRow['QUANTITY']);
         $oldVal    = floatval($oldRow['VACCINE_COST']); // The monetary value previously deducted
         $animal_tag = $oldRow['TAG_NO'];
@@ -122,7 +122,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 5. UPDATE THE RECORD
         $updateSql = "UPDATE VACCINATION_RECORDS SET 
                         ANIMAL_ID = :animal_id,
-                        VACCINE_ITEM_ID = :vaccine_id,
+                        ITEM_ID = :vaccine_id,
                         VET_NAME = :vet_name,
                         QUANTITY = :qty,
                         UNIT_ID = :unit_id,

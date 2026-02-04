@@ -3,11 +3,12 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 $page = "reports";
-
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
+include '../security/checkAccess.php';
+checkAccess('animal_sales_report');
+include '../common/navbar.php';
+
 
 // --- 1. CONFIGURATION & INPUTS ---
 $limit = 50; // Rows per page

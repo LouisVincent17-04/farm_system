@@ -3,11 +3,12 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "reports";
-
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(1); // Administrator Only
+
+include '../security/checkAccess.php';
+checkAccess('audit_log_report');
+include '../common/navbar.php';
+
 
 // --- 1. CONFIGURATION & INPUTS ---
 $limit = 50; // Records per page

@@ -7,10 +7,15 @@ include '../security/checkRole.php';
 session_start();
 
 // 1. Role Check (Admin/Farm Admin only usually)
-if (!isset($_SESSION['role']) || $_SESSION['role'] > 2) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
-    exit;
-}
+// if (!isset($_SESSION['role']) || $_SESSION['role'] > 2) {
+//     echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
+//     exit;
+// }
+
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -24,8 +29,7 @@ try {
     $total_overhead   = floatval($_POST['total_overhead'] ?? 0);
     $customer_name    = trim($_POST['customer_name'] ?? '');
     $notes            = trim($_POST['notes'] ?? '');
-    $current_user     = $_SESSION['user_id'] ?? 0;
-
+    
     // 3. Validation
     $count = count($selected_ids);
     if ($count === 0) {
@@ -98,14 +102,23 @@ try {
             ':net'     => $net_worth,
             ':prof'    => $gross_profit,
             ':notes'   => $notes,
-            ':user'    => $current_user
+            ':user'    => $user_id
         ]);
 
         // Execute Archive (Update Status)
         $updateStmt->execute([':aid' => $id]);
     }
 
-    // 6. Commit Transaction
+    // 6. Insert Audit Log (Inside Transaction)
+    $audit_action = "GROUP_SALE";
+    $audit_details = "Sold $count animals to '$customer_name'. Total Sale: " . number_format($total_sale_price, 2);
+
+    $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                  VALUES (?, ?, ?, 'ANIMAL_SALES', ?, ?)";
+    $audit_stmt = $conn->prepare($audit_sql);
+    $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+
+    // 7. Commit Transaction
     $conn->commit();
     echo json_encode(['success' => true, 'message' => "Successfully sold $count animals."]);
 

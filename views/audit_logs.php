@@ -1,10 +1,12 @@
 <?php
 // views/audit_logs.php
 $page = "audit_logs"; 
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
+include '../security/checkAccess.php';
+checkAccess('audit_logs');
+include '../common/navbar.php';
+
 
 $start_date = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
 $end_date   = $_GET['end_date']   ?? date('Y-m-d');

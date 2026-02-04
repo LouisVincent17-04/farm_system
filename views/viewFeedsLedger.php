@@ -2,12 +2,13 @@
 // views/viewFeedLedger.php
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('feeding');
 $page = "transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin or higher
+
 
 $feed_id = $_GET['feed_id'] ?? null;
 

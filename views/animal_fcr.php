@@ -1,10 +1,12 @@
 <?php
 // views/manage_animal_fcr.php
 $page = "farm"; 
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('fcr_management');
+include '../common/navbar.php';
+
 
 // Fetch Initial Locations for Dropdown
 $locations = [];

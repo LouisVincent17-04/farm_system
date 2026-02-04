@@ -4,10 +4,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
 $page = "transactions";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); 
+
+include '../security/checkAccess.php';
+checkAccess('vitamins_supplements');
+include '../common/navbar.php';
+
 
 $supply_id = $_GET['id'] ?? null;
 
@@ -176,7 +178,7 @@ try {
 <body>
 
 <div class="container">
-    <a href="available_vitamins.php" class="btn-back">← Back to Vitamins</a>
+    <a href="available_vitamins_supplements.php" class="btn-back">← Back to Vitamins</a>
 
     <?php if(isset($error)): ?>
         <div style="background:rgba(239,68,68,0.2); color:#f87171; padding:20px; border-radius:12px; text-align:center;">

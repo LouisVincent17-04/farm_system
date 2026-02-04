@@ -1,5 +1,5 @@
 <?php
-// ../process/registerProcess.php
+// ../process/validateRegistration.php
 error_reporting(0);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
@@ -36,45 +36,78 @@ if (empty($password)) {
     exit;
 }
 
+if (strlen($password) < 8) {
+    echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters.']);
+    exit;
+}
+
 try {
     if (!isset($conn)) {
         throw new Exception("Database connection failed.");
     }
 
-    $sql = "INSERT INTO USERS (FULL_NAME, EMAIL, PASSWORD, CREATED_AT) 
-            VALUES (:fullname, :email, :password, NOW())";
+    // Start Transaction to ensure data integrity
+    $conn->beginTransaction();
+
+    // 1. Insert User
+    $sqlUser = "INSERT INTO USERS (FULL_NAME, EMAIL, PASSWORD, CREATED_AT) 
+                VALUES (:fullname, :email, :password, NOW())";
     
-    $stmt = $conn->prepare($sql);
+    $stmtUser = $conn->prepare($sqlUser);
     
-    $params = [
+    $paramsUser = [
         ":fullname" => $fullname,
         ":email"    => $email,
         ":password" => password_hash($password, PASSWORD_BCRYPT)
     ];
 
-    if ($stmt->execute($params)) {
-        echo json_encode(['success' => true, 'message' => 'Registration successful!']);
-        header('Location: ../views/admin_dashboard.php');
-        exit;
-    } else {
-        throw new Exception("Registration failed.");
+    if (!$stmtUser->execute($paramsUser)) {
+        throw new Exception("User registration failed.");
     }
 
+    // 2. Get the new User ID
+    $newUserId = $conn->lastInsertId();
+
+    // 3. Insert Default Access Controls (All Zeros)
+    // Note: Since your DB schema defaults all permission columns to 0, 
+    // we only need to insert the user_id and creation date.
+    $sqlAccess = "INSERT INTO access_control (user_id, created_at) VALUES (:uid, NOW())";
+    
+    $stmtAccess = $conn->prepare($sqlAccess);
+    
+    if (!$stmtAccess->execute([':uid' => $newUserId])) {
+        throw new Exception("Failed to initialize user permissions.");
+    }
+
+    // Commit Transaction if both inserts succeed
+    $conn->commit();
+
+    echo json_encode(['success' => true, 'message' => 'Registration successful!']);
+    exit;
+
 } catch (PDOException $e) {
-    $errorMsg = $e->getMessage();
+    // Rollback changes if database error occurs
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+
+    $errorMsg = "Database error.";
     
     // Check for Duplicate Email (MySQL Error 1062 / SQLSTATE 23000)
-    if ($e->getCode() == '23000' || strpos($errorMsg, 'Duplicate entry') !== false) {
+    if ($e->getCode() == '23000' || strpos($e->getMessage(), 'Duplicate entry') !== false) {
         $errorMsg = "This email address is already registered.";
     }
 
     echo json_encode(['success' => false, 'message' => $errorMsg]);
-    header('Location: ../views/login.php');
     exit;
 
 } catch (Exception $e) {
+    // Rollback changes for generic errors
+    if (isset($conn) && $conn->inTransaction()) {
+        $conn->rollBack();
+    }
+    
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    header('Location: ../views/dashboard.php');
     exit;
 }
 ?>

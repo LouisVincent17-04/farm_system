@@ -2,12 +2,13 @@
 // views/group_vaccination.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('group_vaccination');
 $page = "transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -82,8 +83,8 @@ try {
             font-size: 0.8rem; margin-top: 5px; padding: 5px 10px; 
             border-radius: 4px; background: rgba(0,0,0,0.2); text-align: center; 
         }
-        .stock-ok { color: #4ade80; border: 1px solid #4ade80; }
-        .stock-low { color: #f87171; border: 1px solid #f87171; }
+        .stock-ok { color: #4ade80; font-size: 0.85rem; margin-top: 5px; display: block; }
+        .stock-low { color: #f87171; font-size: 0.85rem; margin-top: 5px; display: block; }
 
         /* --- RIGHT PANEL: SELECTION & TABLE --- */
         .workspace-panel { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -96,6 +97,16 @@ try {
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         .section-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
         
+        /* Select All Toggle */
+        .select-all-container {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; color: #a78bfa; cursor: pointer;
+            padding: 5px 10px; border-radius: 6px;
+            background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .select-all-container:hover { background: rgba(139, 92, 246, 0.2); }
+        .select-all-container input { cursor: pointer; accent-color: #8b5cf6; width: 16px; height: 16px; }
+
         .animal-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 0.75rem; max-height: 250px; overflow-y: auto; padding-right: 5px;
@@ -190,7 +201,7 @@ try {
                                     data-stock="<?= $v['TOTAL_STOCK'] ?>" 
                                     data-unit="<?= $v['UNIT_ABBR'] ?>"
                                     data-unit-id="<?= $v['UNIT_ID'] ?>">
-                                <?= htmlspecialchars($v['SUPPLY_NAME']) ?>
+                                <?= htmlspecialchars($v['SUPPLY_NAME']) ?> (<?= $v['TOTAL_STOCK'] ?> <?= $v['UNIT_ABBR'] ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -207,6 +218,14 @@ try {
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Default Remarks</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="default_remarks" class="form-control" placeholder="e.g. Routine Booster">
+                        <button type="button" onclick="updateAllRemarks()" style="background:#334155; border:1px solid #475569; color:#fff; border-radius:8px; padding:0 10px; cursor:pointer;" title="Apply to all rows">Apply All</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Veterinarian</label>
                     <select id="vet_name" class="form-control">
                         <?php foreach($vets as $vet): echo "<option value='{$vet['FULL_NAME']}'>{$vet['FULL_NAME']}</option>"; endforeach; ?>
@@ -215,7 +234,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Date Administered</label>
-                    <input type="datetime-local" id="vaccination_date" class="form-control">
+                    <input type="datetime-local" id="vaccination_date" class="form-control" step="1">
                 </div>
 
                 <div class="summary-box">
@@ -232,7 +251,10 @@ try {
             <div class="picker-section">
                 <div class="section-header">
                     <div class="section-title">🐷 Step 3: Click to Add Animals</div>
-                    <div style="font-size:0.85rem; color:#94a3b8;">Only showing animals in selected pen</div>
+                    
+                    <label class="select-all-container" style="display:none;" id="select-all-wrapper">
+                        <input type="checkbox" id="select-all-check" onchange="toggleSelectAll(this)"> Select All
+                    </label>
                 </div>
                 <div id="animal-grid" class="animal-grid">
                     <div style="grid-column:1/-1; text-align:center; padding:2rem; color:#64748b; border:1px dashed #475569; border-radius:8px;">
@@ -269,16 +291,16 @@ try {
 <script>
     // --- STATE MANAGEMENT ---
     let selectedAnimals = new Set(); // Stores IDs of animals currently in the table
+    let currentPenAnimals = []; // Stores full animal objects for the current pen
 
     document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('vaccination_date').value = now.toISOString().slice(0, 16);
+        document.getElementById('vaccination_date').value = now.toISOString().slice(0, 19);
     });
 
     // --- CASCADING DROPDOWNS ---
     function loadBuildings(locId) {
-        // Reset Logic
         document.getElementById('building_id').innerHTML = '<option>Loading...</option>';
         document.getElementById('pen_id').innerHTML = '<option>Select Pen</option>';
         document.getElementById('pen_id').disabled = true;
@@ -310,38 +332,76 @@ try {
     // --- LOAD GRID ---
     function loadAnimals(penId) {
         const grid = document.getElementById('animal-grid');
+        const selectAllWrapper = document.getElementById('select-all-wrapper');
+        
         grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">Loading...</div>';
+        selectAllWrapper.style.display = 'none'; // Hide checkbox during load
         
         fetch(`../process/getAnimalsByPen.php?pen_id=${penId}`)
             .then(r=>r.json())
             .then(data => {
                 grid.innerHTML = '';
+                currentPenAnimals = []; // Reset local cache
+
                 const animals = data.animal_record || [];
-                if(animals.length === 0) {
-                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">No animals found.</div>';
+                
+                // Filter active only
+                animals.forEach(a => {
+                    if(a.IS_ACTIVE == 1) currentPenAnimals.push(a);
+                });
+
+                if(currentPenAnimals.length === 0) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">No animals found in this pen.</div>';
                     return;
                 }
 
-                animals.forEach(a => {
-                    if(a.IS_ACTIVE == 0)
-                    {
-                        return; 
-                    } 
-                    else
-                    {
-                        const card = document.createElement('div');
-                        card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
-                        card.id = `card-${a.ANIMAL_ID}`;
-                        card.onclick = () => addAnimalToTable(a);
-                        card.innerHTML = `
-                            <div style="font-size:1.5rem;">🐖</div>
-                            <div style="font-weight:700; color:#fff;">${a.TAG_NO}</div>
-                        `;
-                        grid.appendChild(card);
-                    }
-                    
+                // Show Select All Checkbox
+                selectAllWrapper.style.display = 'flex';
+                updateSelectAllState(); // Sync checkbox state
+
+                currentPenAnimals.forEach(a => {
+                    const card = document.createElement('div');
+                    card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
+                    card.id = `card-${a.ANIMAL_ID}`;
+                    card.onclick = () => addAnimalToTable(a);
+                    card.innerHTML = `
+                        <div style="font-size:1.5rem;">🐖</div>
+                        <div style="font-weight:700; color:#fff;">${a.TAG_NO}</div>
+                    `;
+                    grid.appendChild(card);
                 });
             });
+    }
+
+    // --- SELECT ALL LOGIC ---
+    function toggleSelectAll(checkbox) {
+        if(checkbox.checked) {
+            // Select All
+            currentPenAnimals.forEach(animal => {
+                if(!selectedAnimals.has(animal.ANIMAL_ID)) {
+                    addAnimalToTable(animal);
+                }
+            });
+        } else {
+            // Deselect All (Only those currently in the pen)
+            currentPenAnimals.forEach(animal => {
+                if(selectedAnimals.has(animal.ANIMAL_ID)) {
+                    removeAnimal(animal.ANIMAL_ID);
+                }
+            });
+        }
+    }
+
+    function updateSelectAllState() {
+        const checkbox = document.getElementById('select-all-check');
+        if(currentPenAnimals.length === 0) {
+            checkbox.checked = false;
+            return;
+        }
+
+        // Check if ALL visible animals are selected
+        const allSelected = currentPenAnimals.every(a => selectedAnimals.has(a.ANIMAL_ID));
+        checkbox.checked = allSelected;
     }
 
     // --- TABLE OPERATIONS ---
@@ -354,10 +414,11 @@ try {
 
         const tbody = document.getElementById('vaccination-list');
         const defaultDose = document.getElementById('default_dosage').value;
+        const defaultRem = document.getElementById('default_remarks').value;
 
         const tr = document.createElement('tr');
         tr.id = `row-${animal.ANIMAL_ID}`;
-        tr.dataset.id = animal.ANIMAL_ID; // Store ID for logic
+        tr.dataset.id = animal.ANIMAL_ID; 
         tr.innerHTML = `
             <td style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
             <td>
@@ -365,7 +426,7 @@ try {
                        value="${defaultDose}" step="0.01" min="0.01" oninput="updateCalculations()">
             </td>
             <td>
-                <input type="text" name="remarks[${animal.ANIMAL_ID}]" placeholder="Notes...">
+                <input type="text" name="remarks[${animal.ANIMAL_ID}]" value="${defaultRem}" placeholder="Notes...">
             </td>
             <td style="text-align:center;">
                 <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})">×</button>
@@ -377,17 +438,19 @@ try {
         selectedAnimals.add(animal.ANIMAL_ID);
         
         // Update Visuals in Grid
-        const card = document.getElementById(`card-${animal.ANIMAL_ID}`);
+        const card = document.getElementById('card-' + animal.ANIMAL_ID);
         if(card) card.classList.add('in-table');
 
         updateCalculations();
+        updateSelectAllState(); // Update checkbox
     }
 
     function removeAnimal(id) {
         const row = document.getElementById(`row-${id}`);
         if(row) row.remove();
 
-        selectedAnimals.delete(id);
+        selectedAnimals.delete(String(id)); 
+        selectedAnimals.delete(id); 
 
         // Re-enable card in grid
         const card = document.getElementById(`card-${id}`);
@@ -399,11 +462,12 @@ try {
         }
 
         updateCalculations();
+        updateSelectAllState(); // Update checkbox
     }
 
     function clearTable() {
         if(!confirm("Clear all rows?")) return;
-        selectedAnimals.forEach(id => removeAnimal(id));
+        Array.from(selectedAnimals).forEach(id => removeAnimal(id));
     }
 
     function updateAllDosages() {
@@ -411,6 +475,13 @@ try {
         const inputs = document.querySelectorAll('.dosage-input');
         inputs.forEach(inp => inp.value = newDose);
         updateCalculations();
+    }
+
+    // NEW FUNCTION: Apply remarks to all rows
+    function updateAllRemarks() {
+        const newRemark = document.getElementById('default_remarks').value;
+        const inputs = document.querySelectorAll('input[name^="remarks"]');
+        inputs.forEach(inp => inp.value = newRemark);
     }
 
     // --- CALCULATIONS & VALIDATION ---
@@ -445,7 +516,7 @@ try {
             submitBtn.innerText = "Insufficient Stock";
             submitBtn.disabled = true;
         } else {
-            stockDisplay.innerHTML = `<div class="stock-ok">Stock Available: ${stock}</div>`;
+            stockDisplay.innerHTML = `<div class="stock-ok">Stock Available: ${stock} ${unit}</div>`;
             if(selectedAnimals.size > 0 && totalNeeded > 0) {
                 submitBtn.innerText = "Record Vaccination";
                 submitBtn.disabled = false;
@@ -482,7 +553,6 @@ try {
             date: document.getElementById('vaccination_date').value
         };
 
-        // Note: You need to create 'process/addBatchVaccination.php' to handle JSON input
         fetch('../process/addBatchVaccination.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

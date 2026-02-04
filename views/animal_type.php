@@ -2,10 +2,12 @@
 // views/animal_type.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('animal_type');
 $page = "admin_dashboard"; // Keeps the dashboard highlighted in navbar
 include '../common/navbar.php';
-include '../config/Connection.php';
 
 // Check for status messages from redirects
 $status = $_GET['status'] ?? '';

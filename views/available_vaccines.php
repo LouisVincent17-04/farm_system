@@ -4,8 +4,11 @@ error_reporting(0);
 ini_set('display_errors', 0);
 
 $page = "transactions";
-include '../common/navbar.php';
 include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('vaccination');
+include '../common/navbar.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }

@@ -2,10 +2,12 @@
 // views/vaccination.php
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('vaccination');
 $page = "transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -288,7 +290,7 @@ try {
                                 v.VET_NAME,
                                 v.REMARKS,
                                 v.ANIMAL_ID,
-                                v.VACCINE_ITEM_ID, 
+                                v.ITEM_ID, 
                                 v.QUANTITY,
                                 v.UNIT_ID,
                                 a.TAG_NO,
@@ -299,7 +301,7 @@ try {
                                 u.UNIT_ABBR
                               FROM VACCINATION_RECORDS v
                               LEFT JOIN ANIMAL_RECORDS a ON v.ANIMAL_ID = a.ANIMAL_ID
-                              LEFT JOIN VACCINES vac ON v.VACCINE_ITEM_ID = vac.SUPPLY_ID
+                              LEFT JOIN VACCINES vac ON v.ITEM_ID = vac.SUPPLY_ID
                               LEFT JOIN LOCATIONS l ON a.LOCATION_ID = l.LOCATION_ID
                               LEFT JOIN BUILDINGS b ON a.BUILDING_ID = b.BUILDING_ID
                               LEFT JOIN PENS p ON a.PEN_ID = p.PEN_ID
@@ -667,7 +669,7 @@ try {
                 document.getElementById('remarks').value = data.REMARKS || '';
                 document.getElementById('quantity').value = data.QUANTITY || '';
                 document.getElementById('unit_id').value = data.UNIT_ID || '';
-                document.getElementById('vaccine_item_id').value = data.VACCINE_ITEM_ID;
+                document.getElementById('vaccine_item_id').value = data.ITEM_ID;
                 updateStockInfo();
 
                 document.getElementById('location_id').value = data.LOCATION_ID || "";

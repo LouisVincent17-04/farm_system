@@ -2,12 +2,12 @@
 // reports/active_user_report.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 $page = "reports";
+include '../security/checkAccess.php';
+checkAccess('active_users_report');
 
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(1); // Admin Only
 
 // --- 1. GET FILTER INPUTS ---
 $user_type = $_GET['user_type'] ?? '';

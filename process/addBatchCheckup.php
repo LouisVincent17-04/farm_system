@@ -5,12 +5,12 @@ header('Content-Type: application/json');
 include '../config/Connection.php';
 include '../security/checkRole.php';
 
-// Ensure user is authorized (Vet or Admin)
 session_start();
-// if (!isset($_SESSION['ROLE']) || $_SESSION['ROLE'] != 2 && $_SESSION['ROLE'] != 3) {
-//     echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
-//     exit;
-// }
+
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System) if missing
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 try {
     // 1. Get JSON Input
@@ -40,8 +40,6 @@ try {
     $conn->beginTransaction();
 
     // 4. Prepare Insert Statement
-    // We combine the selected 'Status' and typed 'Remarks' into the database REMARKS field
-    // Format: "[Healthy] Routine check"
     $sql = "INSERT INTO CHECK_UPS 
             (ANIMAL_ID, CHECKUP_DATE, VET_NAME, REMARKS, COST) 
             VALUES 
@@ -57,7 +55,7 @@ try {
         $status    = $row['status'] ?? 'Healthy';
         $user_note = $row['remarks'] ?? '';
 
-        // Format the final remark string
+        // Format the final remark string: "[Healthy] Routine check"
         $final_remarks = "[$status]";
         if (!empty($user_note)) {
             $final_remarks .= " " . $user_note;
@@ -74,7 +72,19 @@ try {
         $inserted_count++;
     }
 
-    // 6. Commit Transaction
+    // 6. Insert Audit Log (Inside Transaction)
+    // This ensures the log is only created if the checkups are successfully saved
+    if ($inserted_count > 0) {
+        $audit_action = "BATCH_ADD";
+        $audit_details = "Recorded check-ups for $inserted_count animals. Vet: $vet_name. Date: $date";
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'CHECK_UPS', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+    }
+
+    // 7. Commit Transaction
     $conn->commit();
 
     echo json_encode([

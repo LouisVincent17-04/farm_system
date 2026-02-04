@@ -33,8 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']); exit;
 }
 
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+
 try {
-    $user_id = $_SESSION['user_id'] ?? 1;
     $sow_id = $_POST['sow_id'] ?? null;
     $boar_id = !empty($_POST['boar_id']) ? $_POST['boar_id'] : null;
     $piglet_ids = json_decode($_POST['piglet_ids'] ?? '[]', true);
@@ -78,10 +82,6 @@ try {
     // --------------------------------------------------------
     // C. LEDGER UPDATE (Save Negative Cost)
     // --------------------------------------------------------
-    // We insert a negative entry.
-    // Sum = (Existing Positive Costs) + (New Negative Transfer) = Remaining Balance.
-    // We DO NOT reset the date anymore.
-    
     $opStmt = $conn->prepare("INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, NOW())");
     
     $ref = "Ref: TRF-" . $transfer_id; // Unique reference
@@ -99,6 +99,17 @@ try {
         $desc_boar = "Transfer: Cost to Piglets ($ref)";
         $opStmt->execute([$boar_id, $neg_boar, $desc_boar]);
     }
+
+    // D. Insert Audit Log (Inside Transaction)
+    $audit_action = "COST_TRANSFER";
+    $audit_details = "Transferred Cost: ₱" . number_format($total_amount, 2) . 
+                     " (Sow: ₱" . number_format($input_sow_cost, 2) . ", Boar: ₱" . number_format($input_boar_cost, 2) . ") " .
+                     "to $count piglets.";
+
+    $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                  VALUES (?, ?, ?, 'COST_TRANSFERS', ?, ?)";
+    $audit_stmt = $conn->prepare($audit_sql);
+    $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
 
     $conn->commit();
     echo json_encode(['success' => true, 'message' => "Transfer successful. Costs deducted from parents."]);

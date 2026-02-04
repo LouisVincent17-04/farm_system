@@ -3,11 +3,13 @@
 
 $page="admin_dashboard";
 include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('veterinary');
 include '../common/navbar.php';
 include '../config/Queries.php';
 include '../functions/getInitialsFunction.php';
-include '../security/checkRole.php';    
-checkRole(3); // Admin Access
+
 
 // UPDATED SQL: Retrieve directly from VETERINARIANS table
 $sql = "SELECT VET_ID, FULL_NAME, CONTACT_INFO FROM VETERINARIANS ORDER BY VET_ID DESC";

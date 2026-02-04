@@ -7,10 +7,12 @@ ini_set('display_errors', 0);
 ob_start();
 
 $page = "costing";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('animal_cost');
+include '../common/navbar.php';
+
 
 // --- AJAX HANDLER FOR DROPDOWNS ---
 if (isset($_GET['action'])) {

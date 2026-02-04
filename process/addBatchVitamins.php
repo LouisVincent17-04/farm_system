@@ -6,7 +6,11 @@ include '../config/Connection.php';
 include '../security/checkRole.php';
 
 session_start();
-// Allow Farm Employee (2) and Admins
+
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 try {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -20,9 +24,7 @@ try {
     $conn->beginTransaction();
 
     // 1. AGGREGATE NEEDS (Calculate total quantity needed per Item)
-    // Structure: [ item_id => total_qty_needed ]
     $item_needs = [];
-    
     foreach ($records as $row) {
         $iid = $row['item_id'];
         $qty = floatval($row['quantity']);
@@ -35,10 +37,7 @@ try {
     }
 
     // 2. VALIDATE STOCK & CALCULATE COSTS
-    // Structure: [ item_id => unit_cost ]
     $unit_costs = [];
-    
-    // Lock rows for inventory integrity
     $stockSql = "SELECT TOTAL_STOCK, TOTAL_COST, SUPPLY_NAME FROM VITAMINS_SUPPLEMENTS WHERE SUPPLY_ID = :id FOR UPDATE";
     $stockStmt = $conn->prepare($stockSql);
 
@@ -59,19 +58,18 @@ try {
     }
 
     // 3. INSERT TRANSACTIONS
-    // FIX: Added 'DOSAGE' to columns and :dos to values
     $insertSql = "INSERT INTO VITAMINS_SUPPLEMENTS_TRANSACTIONS 
                   (ANIMAL_ID, ITEM_ID, TRANSACTION_DATE, QUANTITY_USED, REMARKS, TOTAL_COST, DOSAGE) 
                   VALUES 
                   (:aid, :iid, :date, :qty, :rem, :cost, :dos)";
     $insertStmt = $conn->prepare($insertSql);
 
+    $inserted_count = 0;
+
     foreach ($records as $row) {
         $iid = $row['item_id'];
         $qty = floatval($row['quantity']);
         $cost = $qty * $unit_costs[$iid];
-
-        // Capture dosage safely
         $dosage = isset($row['dosage']) ? $row['dosage'] : '';
 
         $insertStmt->execute([
@@ -81,12 +79,12 @@ try {
             ':qty'  => $qty,
             ':rem'  => $row['remarks'] ?? '',
             ':cost' => $cost,
-            ':dos'  => $dosage // Bind Dosage
+            ':dos'  => $dosage 
         ]);
+        $inserted_count++;
     }
 
     // 4. DEDUCT INVENTORY
-    // Updates VITAMINS_SUPPLEMENTS table
     $upSql = "UPDATE VITAMINS_SUPPLEMENTS 
               SET TOTAL_STOCK = TOTAL_STOCK - :qty, 
                   TOTAL_COST = TOTAL_COST - :cost 
@@ -100,6 +98,17 @@ try {
             ':cost' => $total_cost_deducted,
             ':id'   => $id
         ]);
+    }
+
+    // 5. INSERT AUDIT LOG (Inside Transaction)
+    if ($inserted_count > 0) {
+        $audit_action = "BATCH_VITAMINS";
+        $audit_details = "Processed $inserted_count vitamin/supplement records. Date: $date";
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'VITAMINS_SUPPLEMENTS_TRANSACTIONS', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
     }
 
     $conn->commit();

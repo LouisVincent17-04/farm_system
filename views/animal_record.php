@@ -3,11 +3,13 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "admin_dashboard"; // Active Tab
+include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('animal_record');
 
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2);
+
 
 // --- 1. HANDLING FILTERS ---
 $filter_loc = $_GET['f_loc'] ?? '';
@@ -94,6 +96,14 @@ try {
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
         .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
         
+        /* --- BACK LINK STYLE --- */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .header-info h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; }
         .header-info p { color: #cbd5e1; font-size: clamp(0.875rem, 2vw, 1rem); }
@@ -199,6 +209,12 @@ try {
 </head>
 <body>
     <div class="container">
+        
+        <a href="animal_record_dashboard.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Dashboard
+        </a>
+
         <div class="header">
             <div class="header-info">
                 <h1>Animal Record Management</h1>
@@ -244,7 +260,7 @@ try {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <a href="animal_records.php" class="btn-reset">Reset</a>
+            <a href="animal_record.php" class="btn-reset">Reset</a>
         </form>
 
         <div class="search-container">

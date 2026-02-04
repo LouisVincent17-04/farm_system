@@ -3,11 +3,12 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "analytics";
-
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
+include '../security/checkAccess.php';
+checkAccess('vaccine_analytics');
+include '../common/navbar.php';
+
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -48,7 +49,7 @@ try {
                         v.SUPPLY_NAME, 
                         COUNT(vr.VACCINATION_ID) as usage_count
                      FROM vaccination_records vr
-                     LEFT JOIN vaccines v ON vr.VACCINE_ITEM_ID = v.SUPPLY_ID
+                     LEFT JOIN vaccines v ON vr.ITEM_ID = v.SUPPLY_ID
                      GROUP BY v.SUPPLY_NAME
                      ORDER BY usage_count DESC
                      LIMIT 5";

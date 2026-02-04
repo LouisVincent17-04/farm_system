@@ -1,10 +1,12 @@
 <?php
 // views/animal_cost_transfers.php
 $page = "farm";
-include '../common/navbar.php';
-include '../security/checkRole.php';
 include '../config/Connection.php';
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('cost_transfer');
+include '../common/navbar.php';
+
 
 $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll(PDO::FETCH_ASSOC);
 ?>

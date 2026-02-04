@@ -2,17 +2,19 @@
 // views/feed_transactions.php
 error_reporting(0);
 ini_set('display_errors', 0);
-
 $page="transactions";
-include '../common/navbar.php';
+
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('feeding');
+include '../common/navbar.php';
+
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // 1. Transaction History (For viewing only)
+    // 1. Transaction History
     $transactions_sql = "
         SELECT 
             ft.FT_ID,
@@ -34,8 +36,10 @@ try {
     $stmt->execute();
     $transactions_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Locations/Feeds for Modal
+    // 2. Locations
     $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    
+    // 3. Feeds
     $feeds = $conn->query("SELECT FEED_ID, FEED_NAME, TOTAL_WEIGHT_KG, LOCATION_ID FROM FEEDS ORDER BY FEED_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (Exception $e) {
@@ -54,6 +58,14 @@ try {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        /* BACK LINK STYLE */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
 
         /* HEADER */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
@@ -104,46 +116,22 @@ try {
         .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
         .modal-footer { padding: 20px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; }
 
-        /* FORM ELEMENTS - FIXED */
+        /* FORM ELEMENTS */
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
         
-        .form-group label { 
-            display: block; 
-            color: #94a3b8; 
-            font-size: 0.85rem; 
-            margin-bottom: 8px; 
-            font-weight: 500; 
-        }
+        .form-group label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 8px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; transition: border-color 0.2s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        
+        /* Radio Group */
+        .radio-group { display: flex; gap: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid #334155; }
+        .radio-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #e2e8f0; font-weight: 500; }
+        .radio-label input { width: auto; accent-color: #2563eb; }
 
-        /* Unified Input Styling for Text, Number, Select, Date */
-        .form-group input, 
-        .form-group select, 
-        .form-group textarea { 
-            width: 100%; 
-            padding: 12px; 
-            background: #0f172a; 
-            border: 1px solid #334155; 
-            border-radius: 8px; 
-            color: white; 
-            font-size: 0.95rem; 
-            transition: border-color 0.2s;
-        }
-
-        .form-group input:focus, 
-        .form-group select:focus, 
-        .form-group textarea:focus { 
-            outline: none; 
-            border-color: #3b82f6; 
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        /* Specific fix for Date Inputs to have dark calendar */
-        input[type="datetime-local"] {
-            color-scheme: dark;
-        }
-
+        input[type="datetime-local"] { color-scheme: dark; }
         select[disabled], input[disabled] { opacity: 0.6; cursor: not-allowed; background: #1e293b; }
+        .hidden { display: none !important; }
 
         /* Summary Box */
         .summary-box { background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; text-align: center; margin-top: 15px; display: none; }
@@ -152,9 +140,6 @@ try {
         .stock-warning { color: #ef4444; font-size: 0.85rem; margin-top: 10px; display: none; font-weight: bold; }
         
         .alert { padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; text-align: center; }
-        .alert.success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-        .alert.error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-        
         .loading { display: inline-block; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%; border-top-color: transparent; animation: spin 0.8s linear infinite; margin-left: 5px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -165,9 +150,15 @@ try {
 </head>
 <body>
     <div class="container">
+        
+        <a href="single_feed_management.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back  
+        </a>
+
         <div class="header">
             <div class="header-info">
-                <h1>Feeding Management</h1>
+                <h1>Single Feeding Transactions</h1>
                 <p>Record and track bulk animal feeding</p>
             </div>
             
@@ -183,7 +174,7 @@ try {
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    Bulk Feed by Pen
+                    Record Feeding
                 </button>
             </div>
         </div>
@@ -225,13 +216,24 @@ try {
 
     <div id="modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header"><h2>Bulk Feed by Pen</h2></div>
+            <div class="modal-header"><h2>Record Feeding</h2></div>
             <div class="modal-body">
                 <div id="modal-alert" class="alert"></div>
                 <form id="bulk-feed-form">
                     
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="feed_mode" value="bulk" checked onchange="toggleMode()">
+                            Bulk by Pen (All Animals)
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="feed_mode" value="individual" onchange="toggleMode()">
+                            Individual Animal
+                        </label>
+                    </div>
+
                     <div class="form-group">
-                        <label style="color:#93c5fd; font-size:1rem; margin-bottom:15px;">1. Select Pen Location</label>
+                        <label style="color:#93c5fd; font-size:1rem; margin-bottom:15px;">1. Select Target</label>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Location</label>
@@ -249,7 +251,14 @@ try {
                         </div>
                         <div class="form-group">
                             <label>Pen Name <span id="pen-loading" style="display:none;" class="loading"></span></label>
-                            <select id="pen_id" onchange="getPenDetails()" disabled><option value="">Select Building First</option></select>
+                            <select id="pen_id" onchange="handlePenChange()" disabled><option value="">Select Building First</option></select>
+                        </div>
+                        
+                        <div class="form-group hidden" id="animal-wrapper">
+                            <label>Select Animal <span id="animal-loading" style="display:none;" class="loading"></span></label>
+                            <select id="animal_id" onchange="handleAnimalChange()" disabled>
+                                <option value="">Select Pen First</option>
+                            </select>
                         </div>
                     </div>
 
@@ -259,13 +268,6 @@ try {
                             <label>Feed Selection</label>
                             <select id="feed_id" onchange="calculateTotal()" disabled>
                                 <option value="">Select Location First</option>
-                                <?php foreach($feeds as $feed): ?>
-                                    <option value="<?php echo $feed['FEED_ID']; ?>" 
-                                            data-stock="<?php echo $feed['TOTAL_WEIGHT_KG']; ?>"
-                                            data-location-id="<?php echo $feed['LOCATION_ID']; ?>">
-                                        <?php echo htmlspecialchars($feed['FEED_NAME']); ?> (Stock: <?php echo $feed['TOTAL_WEIGHT_KG']; ?>kg)
-                                    </option>
-                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="form-row">
@@ -291,38 +293,65 @@ try {
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button class="btn-save" id="btn-save" onclick="saveBulkFeed()">Confirm Feeding</button>
+                <button class="btn-save" id="btn-save" onclick="saveTransaction()">Confirm Feeding</button>
             </div>
         </div>
     </div>
 
     <script>
+        const allFeeds = <?php echo json_encode($feeds); ?>;
         let currentAnimalCount = 0;
+        let feedMode = 'bulk';
 
-        // --- LOCATION & HIERARCHY ---
-        function handleLocationChange() { loadBuildings(); filterFeedsByLocation(); }
+        function toggleMode() {
+            feedMode = document.querySelector('input[name="feed_mode"]:checked').value;
+            const animalWrapper = document.getElementById('animal-wrapper');
+            const penId = document.getElementById('pen_id').value;
+
+            // Reset UI
+            document.getElementById('summary-box').style.display = 'none';
+            document.getElementById('feed-section').style.opacity = '0.5';
+            document.getElementById('feed-section').style.pointerEvents = 'none';
+
+            if (feedMode === 'individual') {
+                animalWrapper.classList.remove('hidden');
+                if(penId) loadAnimalsForPen(penId); 
+            } else {
+                animalWrapper.classList.add('hidden');
+                if(penId) handlePenChange(); 
+            }
+        }
+
+        function handleLocationChange() { 
+            loadBuildings(); 
+            filterFeedsByLocation(); 
+        }
 
         function filterFeedsByLocation() {
             const locId = document.getElementById('location_id').value;
             const feedSelect = document.getElementById('feed_id');
-            const options = feedSelect.querySelectorAll('option');
-
-            feedSelect.value = "";
-            if (!locId) { feedSelect.disabled = true; options[0].textContent = "Select Location First"; return; }
-
-            feedSelect.disabled = false;
-            options[0].textContent = "Select Feed";
-            let visibleCount = 0;
+            feedSelect.innerHTML = '<option value="">Select Feed</option>';
             
-            options.forEach(opt => {
-                if (opt.value === "") return;
-                if (opt.getAttribute('data-location-id') == locId) {
-                    opt.style.display = ""; visibleCount++;
-                } else {
-                    opt.style.display = "none";
-                }
-            });
-            if (visibleCount === 0) { options[0].textContent = "No feeds available here"; feedSelect.disabled = true; }
+            if (!locId) {
+                feedSelect.disabled = true;
+                feedSelect.innerHTML = '<option value="">Select Location First</option>';
+                return;
+            }
+
+            const filteredFeeds = allFeeds.filter(feed => feed.LOCATION_ID == locId);
+            if (filteredFeeds.length > 0) {
+                feedSelect.disabled = false;
+                filteredFeeds.forEach(feed => {
+                    const opt = document.createElement('option');
+                    opt.value = feed.FEED_ID;
+                    opt.textContent = `${feed.FEED_NAME} (Stock: ${feed.TOTAL_WEIGHT_KG}kg)`;
+                    opt.dataset.stock = feed.TOTAL_WEIGHT_KG; 
+                    feedSelect.appendChild(opt);
+                });
+            } else {
+                feedSelect.disabled = true;
+                feedSelect.innerHTML = '<option value="">No feeds available here</option>';
+            }
         }
 
         async function loadBuildings() {
@@ -354,25 +383,67 @@ try {
             pen.disabled = false;
         }
 
-        async function getPenDetails() {
+        function handlePenChange() {
             const penId = document.getElementById('pen_id').value;
-            const sec = document.getElementById('feed-section');
-            const sum = document.getElementById('summary-box');
-            
-            if(!penId) { sec.style.opacity="0.5"; sec.style.pointerEvents="none"; sum.style.display="none"; return; }
+            if(!penId) return;
 
+            if (feedMode === 'bulk') {
+                getPenCount(penId);
+            } else {
+                loadAnimalsForPen(penId);
+            }
+        }
+
+        async function getPenCount(penId) {
             document.getElementById('pen-loading').style.display='inline-block';
             const res = await fetch(`../process/getHierarchyPlaceData.php?action=get_pen_details&pen_id=${penId}`);
             const data = await res.json();
             document.getElementById('pen-loading').style.display='none';
             
             currentAnimalCount = parseInt(data.count);
-            if(currentAnimalCount === 0) {
-                alert("⚠️ This pen is empty!");
-                sec.style.opacity="0.5"; sec.style.pointerEvents="none"; sum.style.display="none";
+            updateFormState(currentAnimalCount > 0);
+        }
+
+        async function loadAnimalsForPen(penId) {
+            const animalSelect = document.getElementById('animal_id');
+            animalSelect.innerHTML = '<option>Loading...</option>';
+            animalSelect.disabled = true;
+            document.getElementById('animal-loading').style.display='inline-block';
+
+            const res = await fetch(`../process/getAnimalsByPen.php?pen_id=${penId}`);
+            const data = await res.json();
+            
+            animalSelect.innerHTML = '<option value="">Select Animal</option>';
+            
+            if(data.animal_record && data.animal_record.length > 0) {
+                data.animal_record.forEach(a => {
+                    if(a.IS_ACTIVE == 1) {
+                        animalSelect.innerHTML += `<option value="${a.ANIMAL_ID}">${a.TAG_NO}</option>`;
+                    }
+                });
+                animalSelect.disabled = false;
             } else {
+                animalSelect.innerHTML = '<option value="">No animals found</option>';
+            }
+            document.getElementById('animal-loading').style.display='none';
+        }
+
+        function handleAnimalChange() {
+            const animalId = document.getElementById('animal_id').value;
+            currentAnimalCount = animalId ? 1 : 0;
+            updateFormState(currentAnimalCount > 0);
+        }
+
+        function updateFormState(isValid) {
+            const sec = document.getElementById('feed-section');
+            const sum = document.getElementById('summary-box');
+            
+            if (isValid) {
                 sec.style.opacity="1"; sec.style.pointerEvents="auto"; sum.style.display="block";
                 calculateTotal();
+            } else {
+                if(feedMode === 'bulk') alert("⚠️ This pen is empty!");
+                sec.style.opacity="0.5"; sec.style.pointerEvents="none"; sum.style.display="none";
             }
         }
 
@@ -398,50 +469,41 @@ try {
             }
         }
 
-        // --- GLOBAL UNDO LOGIC ---
         function undoLastFeed() {
-            if(confirm("Are you sure you want to UNDO the very last feeding transaction? \n\nThis will remove the records and restore the stock.")) {
-                const btn = document.querySelector('.global-undo-btn');
-                const origText = btn.innerHTML;
-                btn.disabled = true; btn.innerHTML = 'Restoring...';
-
+            if(confirm("Undo last transaction?")) {
                 fetch('../process/undoFeedTransaction.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'action=undo_last' 
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if(data.success) {
-                        alert(data.message);
-                        window.location.reload();
-                    } else {
-                        alert("Error: " + data.message);
-                        btn.disabled = false; btn.innerHTML = origText;
-                    }
-                })
-                .catch(e => {
-                    alert("System Error");
-                    btn.disabled = false; btn.innerHTML = origText;
+                }).then(r => r.json()).then(d => {
+                    alert(d.message);
+                    if(d.success) window.location.reload();
                 });
             }
         }
 
-        // --- SAVE BULK FEED ---
-        function saveBulkFeed() {
+        function saveTransaction() {
             const penId = document.getElementById('pen_id').value;
             const feedId = document.getElementById('feed_id').value;
             const qty = document.getElementById('qty_per_head').value;
             const date = document.getElementById('transaction_date').value;
+            const animalId = document.getElementById('animal_id').value;
 
             if(!penId || !feedId || !qty || !date) { alert("Fill all fields"); return; }
+            if(feedMode === 'individual' && !animalId) { alert("Select an animal"); return; }
 
             const btn = document.getElementById('btn-save');
             btn.disabled = true; btn.innerHTML = 'Saving...';
 
             const fd = new FormData();
-            fd.append('pen_id', penId); fd.append('feed_id', feedId);
-            fd.append('qty_per_head', qty); fd.append('transaction_date', date);
+            fd.append('pen_id', penId); 
+            fd.append('feed_id', feedId);
+            fd.append('qty_per_head', qty); 
+            fd.append('transaction_date', date);
+            
+            if(feedMode === 'individual') {
+                fd.append('animal_id', animalId);
+            }
 
             fetch('../process/addFeedTransaction.php', { method: 'POST', body: fd })
             .then(r => r.json())
@@ -451,7 +513,6 @@ try {
             });
         }
 
-        // --- UTILS ---
         function openAddModal() {
             document.getElementById('modal').classList.add('show');
             const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -470,7 +531,6 @@ try {
             document.getElementById('empty-state').style.display = visible===0 ? 'block':'none';
         }
 
-        // document.getElementById('modal').addEventListener('click', function(e){ if(e.target===this) closeModal() });
         document.addEventListener('DOMContentLoaded', filterTable);
     </script>
 </body>

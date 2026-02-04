@@ -1,8 +1,11 @@
 <?php
 $page = "transactions"; 
+include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('transactions');
 include '../common/navbar.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
 ?>
 
 <!DOCTYPE html>
@@ -95,6 +98,9 @@ checkRole(2);
         .card-icon.group-vit { background: linear-gradient(135deg, #be185d, #831843); }
         .card-icon.group-chk { background: linear-gradient(135deg, #0891b2, #155e75); }
         .card-icon.group-vac { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+        
+        /* NEW GROUP FEED COLOR (Darker Orange/Rust) */
+        .card-icon.group-feed { background: linear-gradient(135deg, #ea580c, #c2410c); }
 
         /* Card Content */
         .card-title { font-size: 1.5rem; font-weight: 600; color: #22c55e; margin-bottom: 1rem; }
@@ -165,26 +171,27 @@ checkRole(2);
         <h2 class="stats-title" style="text-align: left; padding-left: 1rem; border-left: 4px solid #22c55e;">Individual Operations</h2>
         <br>
         <div class="management-grid">
-            <a href="feed_management.php" class="management-card">
+            
+            <a href="single_feed_management.php" class="management-card">
                 <div class="card-icon feeding"><span class="main-emoji">🍽️</span></div>
-                <h3 class="card-title">Feeding</h3>
-                <p class="card-description">Record and manage animal feeding schedules, locations, and nutritional tracking across all farm facilities.</p>
+                <h3 class="card-title">Individual Feeding</h3>
+                <p class="card-description">Record specialized diet or consumption for specific animals (e.g., lactating sows or boars).</p>
                 <div class="transaction-fields">
                     <div class="field-list">
                         <div class="field-title">Transaction Fields:</div>
-                        Trans. Type • Trans. Date • Tag No. • Location • Building • Pen • Remarks
+                        Trans. Date • Tag No. • Feed Type • Quantity (kg) • Remarks
                     </div>
                 </div>
                 <div class="card-stats">
                     <div class="stat-item">
-                        <div class="stat-number">127</div>
-                        <div class="stat-label">Today</div>
+                        <div class="stat-number">15</div>
+                        <div class="stat-label">Sows</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number">1,247</div>
-                        <div class="stat-label">This Week</div>
+                        <div class="stat-number">5</div>
+                        <div class="stat-label">Boars</div>
                     </div>
-                    <div class="card-action">Record Feeding →</div>
+                    <div class="card-action">Feed One →</div>
                 </div>
             </a>
 
@@ -332,6 +339,33 @@ checkRole(2);
         <br>
         
         <div class="management-grid">
+            
+            <a href="group_feed_management.php" class="management-card">
+                <div class="card-icon group-feed">
+                    <span class="main-emoji">🍽️</span>
+                    <span class="group-badge">👥</span>
+                </div>
+                <h3 class="card-title">Group Feeding</h3>
+                <p class="card-description">Bulk feed recording for entire pens or buildings. Ideal for nursery, growers, and finishers.</p>
+                <div class="transaction-fields">
+                    <div class="field-list">
+                        <div class="field-title">Transaction Fields:</div>
+                        Trans. Date • <strong>Select Pen</strong> • Feed Name • Total Bags/Kg • Feed Per Head
+                    </div>
+                </div>
+                <div class="card-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">112</div>
+                        <div class="stat-label">Today</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">1,200kg</div>
+                        <div class="stat-label">Consumed</div>
+                    </div>
+                    <div class="card-action">Batch Feed →</div>
+                </div>
+            </a>
+
             <a href="group_medication.php" class="management-card">
                 <div class="card-icon group-med">
                     <span class="main-emoji">💊</span>

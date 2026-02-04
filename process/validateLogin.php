@@ -1,144 +1,111 @@
 <?php
-// ../process/loginProcess.php
+// ../process/validateLogin.php
+error_reporting(0);
+ini_set('display_errors', 0);
+header('Content-Type: application/json');
 
 include '../config/Connection.php';
-// include '../config/Queries.php'; // Optional, not used in this specific logic
 
-function validateLogin($conn, $email, $password) {
-    // Trim inputs
-    $email = trim($email);
-    $password = trim($password);
-
-    // Check if empty
-    if (empty($email) || empty($password)) {
-        return [
-            'success' => false,
-            'error' => 'Email and password are required.'
-        ];
-    }
-
-    try {
-        if (!isset($conn)) {
-             throw new Exception("Database connection failed.");
-        }
-
-        // Prepare SQL to fetch user by email
-        $sql = "SELECT USER_ID, FULL_NAME, EMAIL, USER_TYPE, PASSWORD FROM USERS WHERE EMAIL = :email";
-
-        $stmt = $conn->prepare($sql);
-        
-        // Execute with binding
-        if (!$stmt->execute([':email' => $email])) {
-            $errorInfo = $stmt->errorInfo();
-            return [
-                'success' => false,
-                'error' => 'Database execute error: ' . $errorInfo[2]
-            ];
-        }
-
-        // Fetch the user
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$user) {
-            return [
-                'success' => false,
-                'error' => 'No account found with this email.'
-            ];
-        }
-
-        // Verify password
-        if (!password_verify($password, $user['PASSWORD'])) {
-            return [
-                'success' => false,
-                'error' => 'Incorrect password.'
-            ];
-        }
-
-        // Login successful
-        return [
-            'success' => true,
-            'user' => $user
-        ];
-
-    } catch (PDOException $e) {
-        return [
-            'success' => false,
-            'error' => 'Database error: ' . $e->getMessage()
-        ];
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'error' => 'System error: ' . $e->getMessage()
-        ];
-    }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+    exit;
 }
 
-// ======= Handle login POST request =======
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
+$email = trim($_POST['email'] ?? '');
+$password = $_POST['password'] ?? '';
 
-    $result = validateLogin($conn, $email, $password);
-    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown'; // Get User IP
+// --- Validation ---
+if (empty($email)) {
+    echo json_encode(['success' => false, 'message' => 'Email is required.']);
+    exit;
+}
 
-    if ($result['success']) {
-        session_start();
-        $_SESSION['user'] = $result['user'];
+if (empty($password)) {
+    echo json_encode(['success' => false, 'message' => 'Password is required.']);
+    exit;
+}
 
-        // --- HARDCODED AUDIT LOG (SUCCESS) ---
-        try {
-            if (isset($conn)) {
-                $logSql = "INSERT INTO AUDIT_LOGS 
-                           (USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
-                           VALUES 
-                           (:usr, 'LOGIN', 'USERS', 'User logged in successfully', :ip)";
-                
-                $logStmt = $conn->prepare($logSql);
-                
-                // Bind parameters
-                $username = $result['user']['FULL_NAME'];
-                // $userId   = $result['user']['USER_ID']; // Available if needed later
-                
-                $logStmt->execute([
-                    ':usr' => $username,
-                    ':ip'  => $ip_address
-                ]);
-            }
-        } catch (Exception $e) {
-            // Silently fail logging to allow login to proceed
-        }
-        // -------------------------------------
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid email format.']);
+    exit;
+}
 
-        header("Location: ../views/admin_dashboard.php"); // Redirect to admin dashboard
-        exit;
+try {
+    if (!isset($conn)) {
+        throw new Exception("Database connection failed.");
+    }
+
+    // Fetch user by email
+    $sql = "SELECT USER_ID, FULL_NAME, EMAIL, USER_TYPE, PASSWORD FROM USERS WHERE EMAIL = :email LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([':email' => $email]);
+    
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        // Log failed login attempt
+        logAuditTrail($conn, $email, 'LOGIN_FAILED', 'USERS', 'No account found with this email', $_SERVER['REMOTE_ADDR'] ?? 'Unknown');
         
-    } else {
-        // --- HARDCODED AUDIT LOG (FAILURE) ---
-        try {
-            if (isset($conn)) {
-                $logSql = "INSERT INTO AUDIT_LOGS 
-                           (USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
-                           VALUES 
-                           (:usr, 'LOGIN_FAILED', 'USERS', :dtl, :ip)";
-                
-                $logStmt = $conn->prepare($logSql);
-                
-                // Use the attempted email as username
-                $errorMsg = 'Login failed: ' . $result['error'];
-                
-                $logStmt->execute([
-                    ':usr' => $email,
-                    ':dtl' => $errorMsg,
-                    ':ip'  => $ip_address
-                ]);
-            }
-        } catch (Exception $e) {
-            // Silently fail logging
-        }
-        // -------------------------------------
-
-        header("Location: ../views/login.php?status=error&msg=" . urlencode($result['error']));
+        echo json_encode(['success' => false, 'message' => 'Invalid email or password.']);
         exit;
+    }
+
+    // Verify password
+    if (!password_verify($password, $user['PASSWORD'])) {
+        // Log failed login attempt
+        logAuditTrail($conn, $email, 'LOGIN_FAILED', 'USERS', 'Incorrect password', $_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+        
+        echo json_encode(['success' => false, 'message' => 'Invalid email or password.']);
+        exit;
+    }
+
+    // Login successful - start session
+    if (!isset($_SESSION)) {
+        session_start();
+    }
+    
+    $_SESSION['user'] = $user;
+
+    // Log successful login
+    logAuditTrail($conn, $user['FULL_NAME'], 'LOGIN', 'USERS', 'User logged in successfully', $_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+
+    echo json_encode([
+        'success' => true, 
+        'message' => 'Login successful!',
+        'user' => [
+            'name' => $user['FULL_NAME'],
+            'email' => $user['EMAIL'],
+            'type' => $user['USER_TYPE']
+        ]
+    ]);
+    exit;
+
+} catch (PDOException $e) {
+    echo json_encode(['success' => false, 'message' => 'Database error occurred.']);
+    exit;
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'System error occurred.']);
+    exit;
+}
+
+// Helper function for audit logging
+function logAuditTrail($conn, $username, $actionType, $tableName, $actionDetails, $ipAddress) {
+    try {
+        $logSql = "INSERT INTO AUDIT_LOGS 
+                   (USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS, CREATED_AT) 
+                   VALUES 
+                   (:usr, :action, :table, :details, :ip, NOW())";
+        
+        $logStmt = $conn->prepare($logSql);
+        $logStmt->execute([
+            ':usr' => $username,
+            ':action' => $actionType,
+            ':table' => $tableName,
+            ':details' => $actionDetails,
+            ':ip' => $ipAddress
+        ]);
+    } catch (Exception $e) {
+        // Silently fail - don't break login flow
     }
 }
 ?>

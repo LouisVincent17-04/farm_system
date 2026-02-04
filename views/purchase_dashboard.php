@@ -1,9 +1,12 @@
 <?php
 
 $page = "transactions";
+include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('purchases');
 include '../common/navbar.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
 ?>
 
 <!DOCTYPE html>

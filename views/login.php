@@ -1,6 +1,6 @@
 <?php
 ob_start(); // Start output buffering
-
+// profile.php
 $page = 'login/register';
 include '../common/navbar.php';
 
@@ -18,6 +18,111 @@ if(isset($_SESSION['user'])){
     <title>FarmPro - Login & Register</title>
     <link rel="stylesheet" href="../css/login.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        /* --- NEW MODAL STYLES (Copied/Adapted for consistency) --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-box {
+            background: #1e293b; /* Dark slate background */
+            width: 90%;
+            max-width: 400px;
+            padding: 30px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.show .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        /* Success State */
+        .modal-box.success .modal-icon-wrapper {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.05);
+        }
+
+        /* Error State */
+        .modal-box.error .modal-icon-wrapper {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.05);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .modal-message {
+            color: #94a3b8;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .modal-box.success .modal-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+
+        .modal-box.error .modal-btn {
+            background: #334155;
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
 </head>
 <body>
     <div class="parent-container">
@@ -133,8 +238,61 @@ if(isset($_SESSION['user'])){
         </div>
     </div>
 
+    <div class="modal-overlay" id="statusModal">
+        <div class="modal-box" id="modalBox">
+            <div class="modal-icon-wrapper">
+                <span id="modalIcon">✓</span>
+            </div>
+            <h3 class="modal-title" id="modalTitle">Success!</h3>
+            <p class="modal-message" id="modalMessage">Operation completed successfully.</p>
+            <button class="modal-btn" id="modalBtn" onclick="closeModal()">Continue</button>
+        </div>
+    </div>
+
     <script>
-        // Tab switching
+        // --- MODAL LOGIC ---
+        let redirectUrl = null;
+
+        function showModal(title, message, type = 'success', redirect = null) {
+            const modalOverlay = document.getElementById('statusModal');
+            const modalBox = document.getElementById('modalBox');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalBtn = document.getElementById('modalBtn');
+
+            // Reset classes
+            modalBox.classList.remove('success', 'error');
+            
+            // Set content and style
+            modalBox.classList.add(type);
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            redirectUrl = redirect;
+
+            if (type === 'success') {
+                modalIcon.textContent = '✓';
+                modalBtn.textContent = 'Continue';
+            } else {
+                modalIcon.textContent = '✕';
+                modalBtn.textContent = 'Try Again';
+            }
+
+            // Show modal
+            modalOverlay.classList.add('show');
+        }
+
+        function closeModal() {
+            const modalOverlay = document.getElementById('statusModal');
+            modalOverlay.classList.remove('show');
+            
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            }
+        }
+
+        // --- EXISTING LOGIC ---
+
         function switchTab(tab) {
             const signinForm = document.getElementById('signinForm');
             const signupForm = document.getElementById('signupForm');
@@ -153,7 +311,6 @@ if(isset($_SESSION['user'])){
             }
         }
 
-        // Password toggle
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
             const toggle = input.parentElement.querySelector('.password-toggle');
@@ -167,314 +324,212 @@ if(isset($_SESSION['user'])){
             }
         }
 
-        // Handle Sign In form submission
-        function handleSigninSubmit(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const email = document.getElementById('signinEmail');
-            const password = document.getElementById('signinPassword');
-            const submitBtn = document.getElementById('signinBtn');
-            
-            // Validate all inputs
-            let isValid = true;
-            isValid = validateInput(email) && isValid;
-            isValid = validateInput(password) && isValid;
-            
-            if (!isValid) {
-                return false;
-            }
-            
-            // Handle remember me
-            const rememberCheckbox = document.getElementById('remember');
-            if (rememberCheckbox && rememberCheckbox.checked) {
-                localStorage.setItem('rememberedEmail', email.value);
-            } else {
-                localStorage.removeItem('rememberedEmail');
-            }
-            
-            // Disable button and show loading state
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Signing in...';
-            
-            // Submit the form
-            form.submit();
-            
-            return false;
-        }
+        // --- AUTH SUBMISSION HANDLERS UPDATED TO USE MODAL ---
 
-        // Handle Sign Up form submission
+      function handleSigninSubmit(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const email = document.getElementById('signinEmail');
+    const password = document.getElementById('signinPassword');
+    const submitBtn = document.getElementById('signinBtn');
+    const originalText = submitBtn.textContent;
+
+    if (!email.value || !password.value) {
+        showModal('Validation Error', 'Please fill in all fields.', 'error');
+        return false;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+
+    const formData = new FormData(form);
+
+    fetch('../process/validateLogin.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Change this redirect to admin_dashboard.php
+            showModal('Welcome Back!', 'Login successful. Redirecting to your dashboard...', 'success', '../views/admin_dashboard.php');
+        } else {
+            showModal('Login Failed', data.message || 'Invalid email or password.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showModal('System Error', 'Something went wrong. Please try again later.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+    
+    return false;
+}
         function handleSignupSubmit(event) {
             event.preventDefault();
             
             const form = event.target;
-            const name = document.getElementById('signupName');
-            const email = document.getElementById('signupEmail');
-            const password = document.getElementById('signupPassword');
-            const terms = document.getElementById('terms');
             const submitBtn = document.getElementById('signupBtn');
+            const originalText = submitBtn.textContent;
             
-            // Validate all inputs
-            let isValid = true;
-            isValid = validateInput(name) && isValid;
-            isValid = validateInput(email) && isValid;
-            isValid = validateInput(password) && isValid;
-            
-            // Check terms checkbox
-            if (!terms.checked) {
-                showNotification('Please agree to the terms and conditions', 'error');
-                return false;
-            }
-            
-            if (!isValid) {
-                return false;
-            }
-            
-            // Disable button and show loading state
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creating account...';
             
-            // Submit the form
-            form.submit();
+            const formData = new FormData(form);
+
+            fetch('../process/validateRegistration.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showModal('Account Created', 'Your account has been created successfully!', 'success', 'login.php');
+                    // Or switch tab if preferred: switchTab('signin');
+                } else {
+                    showModal('Registration Failed', data.message || 'Unable to create account.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showModal('System Error', 'Something went wrong. Please try again later.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            });
             
             return false;
         }
 
-        // Google authentication
-        function handleGoogleAuth() {
-            showNotification('Google authentication would be integrated here', 'info');
-        }
+        // --- VALIDATION HELPERS ---
 
-        // Show notification
-        function showNotification(message, type = 'success') {
-            const existing = document.querySelector('.notification');
-            if (existing) {
-                existing.remove();
-            }
-            
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideDown 0.4s ease-out reverse';
-                setTimeout(() => notification.remove(), 400);
-            }, 3000);
-        }
-
-        // Email validation
         function validateEmail(email) {
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return re.test(email);
         }
 
-        // Password strength checker
         function checkPasswordStrength(password) {
             let strength = 0;
-            
             if (password.length >= 8) strength++;
             if (password.length >= 12) strength++;
             if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
             if (/[0-9]/.test(password)) strength++;
             if (/[^a-zA-Z0-9]/.test(password)) strength++;
-            
             return strength;
         }
 
-      function validateInput(input) {
-    const errorMessage = input.parentElement.querySelector('.error-message');
-    let isValid = true;
-    
-    if (input.required && !input.value.trim()) {
-        isValid = false;
-    }
-    
-    if (input.type === 'email' && input.value && !validateEmail(input.value)) {
-        isValid = false;
-    }
-    
-    if (input.type === 'password' && input.value && input.value.length < 8) {
-        isValid = false;
-    }
-    
-    if (input.id.includes('Name') && input.value && input.value.length < 2) {
-        isValid = false;
-    }
-    
-    if (!isValid) {
-        input.classList.add('error');
-        if (errorMessage) {
-            errorMessage.classList.add('show');
-        }
-    } else {
-        input.classList.remove('error');
-        if (errorMessage) {
-            errorMessage.classList.remove('show');
-        }
-    }
-    
-    return isValid;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const inputs = document.querySelectorAll('.form-input');
-    
-    inputs.forEach(input => {
-        if (input.value) {
-            input.parentElement.classList.add('has-value');
-        }
-        
-        input.addEventListener('input', function() {
-            if (this.value) {
-                this.parentElement.classList.add('has-value');
+        function validateInput(input) {
+            const errorMessage = input.parentElement.querySelector('.error-message');
+            let isValid = true;
+            
+            if (input.required && !input.value.trim()) isValid = false;
+            if (input.type === 'email' && input.value && !validateEmail(input.value)) isValid = false;
+            if (input.type === 'password' && input.value && input.value.length < 8) isValid = false;
+            if (input.id.includes('Name') && input.value && input.value.length < 2) isValid = false;
+            
+            if (!isValid) {
+                input.classList.add('error');
+                if (errorMessage) errorMessage.classList.add('show');
             } else {
-                this.parentElement.classList.remove('has-value');
+                input.classList.remove('error');
+                if (errorMessage) errorMessage.classList.remove('show');
+            }
+            return isValid;
+        }
+
+        // --- EVENT LISTENERS ---
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('.form-input');
+            
+            inputs.forEach(input => {
+                if (input.value) input.parentElement.classList.add('has-value');
+                input.addEventListener('input', function() {
+                    this.parentElement.classList.toggle('has-value', !!this.value);
+                    this.classList.remove('error');
+                    const err = this.parentElement.querySelector('.error-message');
+                    if (err) err.classList.remove('show');
+                });
+                input.addEventListener('blur', function() { validateInput(this); });
+            });
+            
+            const signupPassword = document.getElementById('signupPassword');
+            const passwordStrength = document.getElementById('passwordStrength');
+            const passwordStrengthBar = document.getElementById('passwordStrengthBar');
+            
+            if (signupPassword) {
+                signupPassword.addEventListener('input', function() {
+                    const strength = checkPasswordStrength(this.value);
+                    if (this.value.length > 0) {
+                        passwordStrength.style.display = 'block';
+                        passwordStrengthBar.className = 'password-strength-bar'; // Reset
+                        if (strength <= 2) passwordStrengthBar.classList.add('weak');
+                        else if (strength <= 4) passwordStrengthBar.classList.add('medium');
+                        else passwordStrengthBar.classList.add('strong');
+                    } else {
+                        passwordStrength.style.display = 'none';
+                    }
+                });
             }
             
-            this.classList.remove('error');
-            const errorMessage = this.parentElement.querySelector('.error-message');
-            if (errorMessage) {
-                errorMessage.classList.remove('show');
+            const forgotLink = document.querySelector('.forgot-link');
+            if (forgotLink) {
+                forgotLink.addEventListener('click', function(e) {
+                    window.location.href = "forgot_password.php";   
+                });
             }
         });
-        
-        input.addEventListener('blur', function() {
-            if (!this.value) {
-                this.parentElement.classList.remove('has-value');
-            }
-            validateInput(this);
-        });
-        
-        input.addEventListener('focus', function() {
-            this.classList.remove('error');
-            const errorMessage = this.parentElement.querySelector('.error-message');
-            if (errorMessage) {
-                errorMessage.classList.remove('show');
-            }
-        });
-    });
-    
-    const signupPassword = document.getElementById('signupPassword');
-    const passwordStrength = document.getElementById('passwordStrength');
-    const passwordStrengthBar = document.getElementById('passwordStrengthBar');
-    
-    if (signupPassword) {
-        signupPassword.addEventListener('input', function() {
-            const strength = checkPasswordStrength(this.value);
+
+        // --- GOOGLE AUTHENTICATION LOGIC ---
+
+        function handleGoogleAuth() {
+            // Initialize the Google Token Client
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: '791478894702-qsmtnl2j9hnrbgfh4r0uo5gpqiur2db4.apps.googleusercontent.com', 
+                scope: 'email profile',
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        verifyGoogleTokenOnBackend(tokenResponse.access_token);
+                    }
+                },
+            });
+            client.requestAccessToken();
+        }
+
+        function verifyGoogleTokenOnBackend(accessToken) {
+            const submitBtn = document.querySelector('.social-btn'); 
+            const originalText = submitBtn.innerHTML;
             
-            if (this.value.length > 0) {
-                passwordStrength.style.display = 'block';
-                passwordStrengthBar.classList.remove('weak', 'medium', 'strong');
-                
-                if (strength <= 2) {
-                    passwordStrengthBar.classList.add('weak');
-                } else if (strength <= 4) {
-                    passwordStrengthBar.classList.add('medium');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>Verifying...</span>';
+
+            fetch('../process/googleLogin.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ access_token: accessToken })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showModal('Login Successful', 'Redirecting to your dashboard...', 'success', '../views/profile.php');
                 } else {
-                    passwordStrengthBar.classList.add('strong');
+                    showModal('Google Login Failed', data.message || 'Please try again.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
                 }
-            } else {
-                passwordStrength.style.display = 'none';
-            }
-        });
-    }
-    
-    const forgotLink = document.querySelector('.forgot-link');
-    if (forgotLink) {
-        forgotLink.addEventListener('click', function(e) {
-            window.location.href = "forgot_password.php";   
-        });
-    }
-    
-    if (window.history.replaceState) {
-        window.history.replaceState(null, null, window.location.href);
-    }
-    
-    const activeForm = document.querySelector('.form-wrapper.active');
-    if (activeForm) {
-        const firstInput = activeForm.querySelector('.form-input');
-        if (firstInput) {
-            setTimeout(() => firstInput.focus(), 100);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showModal('System Error', 'An error occurred during Google login.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
         }
-    }
-    
-    const savedEmail = localStorage.getItem('rememberedEmail');
-    if (savedEmail) {
-        const emailInput = document.getElementById('signinEmail');
-        const rememberCheckbox = document.getElementById('remember');
-        
-        if (emailInput) {
-            emailInput.value = savedEmail;
-            emailInput.parentElement.classList.add('has-value');
-        }
-        
-        if (rememberCheckbox) {
-            rememberCheckbox.checked = true;
-        }
-    }
-});
-
-// ... keep your existing switchTab, togglePassword, handleSigninSubmit functions ...
-
-// --- GOOGLE AUTHENTICATION LOGIC ---
-
-function handleGoogleAuth() {
-    // Initialize the Google Token Client
-    const client = google.accounts.oauth2.initTokenClient({
-        client_id: '791478894702-qsmtnl2j9hnrbgfh4r0uo5gpqiur2db4.apps.googleusercontent.com', // <--- PASTE YOUR CLIENT ID HERE
-        scope: 'email profile',
-        callback: (tokenResponse) => {
-            if (tokenResponse && tokenResponse.access_token) {
-                // Token received, verify it on the backend
-                verifyGoogleTokenOnBackend(tokenResponse.access_token);
-            }
-        },
-    });
-
-    // Trigger the Google popup
-    client.requestAccessToken();
-}
-
-function verifyGoogleTokenOnBackend(accessToken) {
-    const submitBtn = document.querySelector('.social-btn'); // Or a specific ID
-    const originalText = submitBtn.innerHTML;
-    
-    // UI Feedback
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>Verifying...</span>';
-
-    // Send the access token to your PHP backend
-    fetch('../process/googleLogin.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ access_token: accessToken })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Login successful! Redirecting...', 'success');
-            setTimeout(() => {
-                window.location.href = '../views/profile.php'; // Redirect to profile
-            }, 1000);
-        } else {
-            showNotification(data.message || 'Google login failed.', 'error');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('An error occurred during Google login.', 'error');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    });
-}
-
-// ... keep your existing showNotification and other functions ...
     </script>
 </body>
 </html>

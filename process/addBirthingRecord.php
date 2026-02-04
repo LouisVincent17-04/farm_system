@@ -10,6 +10,12 @@ if($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit; 
 }
 
+// --- AUDIT LOG CONTEXT ---
+// Using the specific variables you requested
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+
 try {
     // Start Transaction
     $conn->beginTransaction();
@@ -22,9 +28,6 @@ try {
     $dead = (int)$_POST['dead_count'];
     $mummy = (int)$_POST['mummified_count'];
     
-    // Capture User ID (Default to 1 if session is missing/expired)
-    $user_id = $_SESSION['user_id'] ?? 1;
-
     // 2. Calculate Parity (Count existing records + 1)
     $stmtParity = $conn->prepare("SELECT COUNT(*) FROM sow_birthing_records WHERE ANIMAL_ID = ?");
     $stmtParity->execute([$mother_id]);
@@ -44,8 +47,7 @@ try {
         throw new Exception("Mother sow record not found.");
     }
 
-    // --- NEW STEP: FETCH FATHER (BOAR) ---
-    // We look for the most recent service record for this sow to find the father
+    // --- FETCH FATHER (BOAR) ---
     $stmtFather = $conn->prepare("
         SELECT BOAR_ID 
         FROM sow_service_history 
@@ -54,11 +56,9 @@ try {
         LIMIT 1
     ");
     $stmtFather->execute([$mother_id]);
-    $father_id = $stmtFather->fetchColumn(); // Returns ID or false/null
+    $father_id = $stmtFather->fetchColumn(); 
 
-    // If no record found or external AI, ensure it's NULL for database
     if (!$father_id) { $father_id = null; }
-
 
     // 4. Insert Sow Birthing Record
     $sqlInsert = "INSERT INTO sow_birthing_records 
@@ -78,8 +78,6 @@ try {
 
     // 6. Auto-Generate Piglet Records
     if ($active > 0) {
-        // Prepare Piglet Insert Statement
-        // ADDED: FATHER_ID column
         $pigletStmt = $conn->prepare("
             INSERT INTO animal_records 
             (TAG_NO, ANIMAL_TYPE_ID, BREED_ID, LOCATION_ID, BUILDING_ID, PEN_ID, 
@@ -94,18 +92,28 @@ try {
 
             $pigletStmt->execute([
                 $new_tag,
-                $mother['ANIMAL_TYPE_ID'], // Inherit Type
-                $mother['BREED_ID'],       // Inherit Breed from Mother (or you could logic this differently)
-                $mother['LOCATION_ID'],    // Inherit Location
+                $mother['ANIMAL_TYPE_ID'], 
+                $mother['BREED_ID'],       
+                $mother['LOCATION_ID'],    
                 $mother['BUILDING_ID'],
                 $mother['PEN_ID'],
-                $date,                     // Birth Date
-                $mother_id,                // Link Mother
-                $father_id                // Link Father (NEW)
+                $date,                     
+                $mother_id,                
+                $father_id                 
             ]);
         }
     }
 
+    // 7. Insert Audit Log (Inside Transaction)
+    $audit_action = "ADD_BIRTHING_RECORD";
+    $audit_details = "Recorded birthing for Sow Tag: {$mother['TAG_NO']}. Parity: $parity. Born: $born (Active: $active). Date: $date";
+
+    $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                  VALUES (?, ?, ?, 'SOW_BIRTHING_RECORDS', ?, ?)";
+    $audit_stmt = $conn->prepare($audit_sql);
+    $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+
+    // 8. Commit Transaction
     $conn->commit();
     
     echo json_encode([

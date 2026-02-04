@@ -2,13 +2,13 @@
 // views/purch_utilities_consumables.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('purchases');
 $page="transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-// include '../config/Queries.php'; // Not needed for direct PDO
-include '../security/checkRole.php';    
-checkRole(3);
+
 
 // --- CONFIGURATION ---
 $ITEM_TYPE_ID = 9; // Utilities & Consumables

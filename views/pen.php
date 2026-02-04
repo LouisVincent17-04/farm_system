@@ -4,10 +4,13 @@ error_reporting(0);
 ini_set('display_errors', 0);
 
 $page="admin_dashboard";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
+include '../security/checkAccess.php';
+checkAccess('pen');
+
+include '../common/navbar.php';
+
 
 // Check for status messages
 $status = $_GET['status'] ?? '';

@@ -4,10 +4,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
 $page = "transactions";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); 
+
+include '../security/checkAccess.php';
+checkAccess('medication');
+include '../common/navbar.php';
+
 
 $supply_id = $_GET['id'] ?? null;
 

@@ -2,10 +2,12 @@
 // views/available_feeds.php
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('feeding');
 $page="transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -60,6 +62,51 @@ try {
         }
         .add-btn:hover { transform: translateY(-2px); }
 
+        /* --- QUICK ACTIONS GRID --- */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .action-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 25px;
+            border-radius: 16px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .action-icon {
+            font-size: 2.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        .action-content h3 { font-size: 1.2rem; margin-bottom: 5px; font-weight: 700; }
+        .action-content p { font-size: 0.9rem; margin: 0; opacity: 0.9; }
+
+        /* Gradients for Actions */
+        .bg-single { background: linear-gradient(135deg, #059669 0%, #10b981 100%); } /* Emerald */
+        .bg-group { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); } /* Amber */
+
+        /* --- EXISTING STYLES --- */
         .nav-tabs { display: flex; gap: 0; margin-bottom: 30px; background: rgba(15, 23, 42, 0.5); border-radius: 12px; padding: 6px; backdrop-filter: blur(10px); }
         .nav-tab { flex: 1; padding: 14px 28px; background: transparent; border: none; color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .nav-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.05); }
@@ -83,7 +130,6 @@ try {
         .quantity-badge { display: inline-block; padding: 6px 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; border-radius: 8px; font-size: 13px; font-weight: 700; }
         .quantity-badge.low-stock { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
-        /* BUTTON STYLE FOR LEDGER LINK */
         .btn-view-ledger {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 16px;
@@ -106,6 +152,7 @@ try {
         @media (max-width: 768px) {
             .nav-tabs, .filter-section { flex-direction: column; align-items: stretch; }
             .table-container { overflow-x: auto; }
+            .action-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -118,12 +165,29 @@ try {
             </div>
             <a href="purch_feeds_feeding.php" class="add-btn">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Add New Feed
+                Add New Feed (Stock)
+            </a>
+        </div>
+
+        <div class="action-grid">
+            <a href="single_feed_transaction.php" class="action-card bg-single">
+                <div class="action-icon">🍽️</div>
+                <div class="action-content">
+                    <h3>Individual Feeding</h3>
+                    <p>Record feed for a specific animal (e.g., Sow/Boar).</p>
+                </div>
+            </a>
+            <a href="group_feed_transaction.php" class="action-card bg-group">
+                <div class="action-icon">👥</div>
+                <div class="action-content">
+                    <h3>Group Feeding</h3>
+                    <p>Batch feed entire pens (e.g., Growers/Fatteners).</p>
+                </div>
             </a>
         </div>
 
         <div class="nav-tabs">
-            <button class="nav-tab" onclick="window.location.href='feeding_transactions.php'">Feeding Logs</button>
+            <button class="nav-tab" onclick="window.location.href='single_feed_transaction.php'">Feeding Logs</button>
             <button class="nav-tab active">Inventory & Ledgers</button>
         </div>
 

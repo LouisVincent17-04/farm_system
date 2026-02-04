@@ -1,5 +1,5 @@
 <?php
-// process/saveWeights.php
+// process/updateWeights.php
 header('Content-Type: application/json');
 include '../config/Connection.php';
 session_start();
@@ -14,6 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
     exit;
 }
+
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 // 2. Input Retrieval
 $weights = $_POST['weights'] ?? []; // Expected format: [animal_id => weight_value, ...]
@@ -30,8 +35,6 @@ try {
     $conn->beginTransaction();
 
     // Prepare Update Statement
-    // We update the current actual weight.
-    // Note: If you want to track history later, you would add an INSERT into a history table here.
     $updateStmt = $conn->prepare("
         UPDATE animal_records 
         SET CURRENT_ACTUAL_WEIGHT = ?, 
@@ -43,8 +46,6 @@ try {
 
     foreach ($weights as $animalId => $weightVal) {
         // Validation: Ensure weight is a valid number and strictly positive
-        // We allow '0' only if you specifically want to reset it, but usually weight > 0
-        // Skip empty strings to prevent overwriting existing data with nothing
         if ($weightVal === '' || $weightVal === null) {
             continue;
         }
@@ -57,9 +58,20 @@ try {
         }
     }
 
-    // 4. Commit Transaction
+    // 4. Commit Transaction & Audit Log
     if ($updatedCount > 0) {
+        
+        // --- INSERT AUDIT LOG ---
+        $audit_action = "BATCH_WEIGHT_UPDATE";
+        $audit_details = "Updated weights for $updatedCount animals. Date: $weighing_date. Remarks: " . ($remarks ?: 'None');
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'ANIMAL_RECORDS', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
+
         $conn->commit();
+        
         echo json_encode([
             'success' => true, 
             'message' => "Successfully updated weights for $updatedCount animals."
@@ -77,10 +89,10 @@ try {
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }
-    error_log("Weight Update Error: " . $e->getMessage()); // Log error to server file
+    error_log("Weight Update Error: " . $e->getMessage());
     echo json_encode([
         'success' => false, 
-        'message' => "Database error occurred. Please try again."
+        'message' => "Database error occurred: " . $e->getMessage()
     ]);
 }
 ?>

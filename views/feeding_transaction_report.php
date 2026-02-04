@@ -3,11 +3,11 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "reports";
-
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
+include '../security/checkAccess.php';
+checkAccess('feeding_transaction_report');
+
 
 // --- 1. GET FILTER INPUTS ---
 $date_from   = $_GET['date_from'] ?? '';

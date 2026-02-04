@@ -2,12 +2,13 @@
 // views/medication.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('medication');
 $page="transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
 
 try {
     if (!isset($conn)) {

@@ -4,10 +4,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
 $page = "transactions";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); 
+
+include '../security/checkAccess.php';
+checkAccess('vaccination');
+include '../common/navbar.php';
+
 
 $supply_id = $_GET['id'] ?? null;
 
@@ -80,7 +82,7 @@ try {
                 CONCAT('Vet: ', v.VET_NAME, ' | ', COALESCE(v.REMARKS,'')) as T_REMARKS
             FROM VACCINATION_RECORDS v
             LEFT JOIN ANIMAL_RECORDS a ON v.ANIMAL_ID = a.ANIMAL_ID
-            WHERE v.VACCINE_ITEM_ID = ?
+            WHERE v.ITEM_ID = ?
         ) AS History
         WHERE 1=1 
         $dateFilter

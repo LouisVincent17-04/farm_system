@@ -3,11 +3,12 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "analytics";
-
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(2); // Farm Admin
+
+include '../security/checkAccess.php';
+checkAccess('medicine_analytics');
+include '../common/navbar.php';
+
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }

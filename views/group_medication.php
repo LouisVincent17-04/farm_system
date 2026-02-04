@@ -2,18 +2,20 @@
 // views/group_medication.php
 error_reporting(0);
 ini_set('display_errors', 0);
+include '../config/Connection.php';
 
+include '../security/checkAccess.php';
+checkAccess('group_medication');
 $page = "transactions";
 include '../common/navbar.php';
-include '../config/Connection.php';
-include '../security/checkRole.php';
-checkRole(3); // Allow Employee (3) or higher
+
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // 1. Fetch Locations
     $locs = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $vets = $conn->query("SELECT FULL_NAME FROM VETERINARIANS WHERE IS_ACTIVE = 1 ORDER BY FULL_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
 
     // 2. Fetch Medicines (Inventory)
     $meds = $conn->query("
@@ -43,6 +45,14 @@ try {
             min-height: 100vh; color: #e2e8f0;
         }
         .container { max-width: 1600px; margin: 0 auto; padding: 1.5rem; }
+
+        /* --- BACK LINK STYLE --- */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
 
         /* --- MAIN GRID LAYOUT --- */
         .main-grid {
@@ -88,6 +98,16 @@ try {
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         .section-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
         
+        /* Select All Toggle */
+        .select-all-container {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; color: #a78bfa; cursor: pointer;
+            padding: 5px 10px; border-radius: 6px;
+            background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .select-all-container:hover { background: rgba(139, 92, 246, 0.2); }
+        .select-all-container input { cursor: pointer; accent-color: #8b5cf6; width: 16px; height: 16px; }
+
         .animal-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Adjusted for mobile */
             gap: 0.75rem; max-height: 250px; overflow-y: auto; padding-right: 5px;
@@ -154,6 +174,13 @@ try {
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
         .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); }
 
+        /* Stock Info Display */
+        .stock-info {
+            font-size: 0.8rem; color: #4ade80; margin-top: 4px; display: block; text-align: right;
+        }
+        .stock-low { color: #f87171; font-size: 0.85rem; margin-top: 5px; display: block; }
+        .stock-ok { color: #4ade80; font-size: 0.85rem; margin-top: 5px; display: block; }
+
         /* --- MOBILE RESPONSIVENESS --- */
         @media (max-width: 1024px) {
             .container { padding: 1rem; }
@@ -197,6 +224,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="transactions.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Transactions
+    </a>
+
     <div class="main-grid">
         
         <div class="control-panel">
@@ -224,16 +257,19 @@ try {
                 
                 <div class="form-group">
                     <label class="form-label">Default Medication <span style="color:#f87171">*</span></label>
-                    <div style="display:flex; gap:8px;">
-                        <select id="default_item" class="form-control" onchange="updateAllItems()">
-                            <option value="">Select Medicine</option>
-                            <?php foreach($meds as $m): ?>
-                                <option value="<?= $m['SUPPLY_ID'] ?>">
-                                    <?= htmlspecialchars($m['SUPPLY_NAME']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="button" class="btn-mini" onclick="updateAllItems()">Apply</button>
+                    <div style="display:flex; flex-direction: column; gap: 4px;">
+                        <div style="display:flex; gap:8px;">
+                            <select id="default_item" class="form-control" onchange="updateAllItems()">
+                                <option value="">Select Medicine</option>
+                                <?php foreach($meds as $m): ?>
+                                    <option value="<?= $m['SUPPLY_ID'] ?>">
+                                        <?= htmlspecialchars($m['SUPPLY_NAME']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" class="btn-mini" onclick="updateAllItems()">Apply</button>
+                        </div>
+                        <span id="default-stock-display" class="stock-info"></span>
                     </div>
                 </div>
 
@@ -254,8 +290,23 @@ try {
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label">Default Remarks</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="default_remarks" class="form-control" placeholder="e.g. Routine Treatment">
+                        <button type="button" class="btn-mini" onclick="updateAllRemarks()">Apply</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Veterinarian</label>
+                    <select id="vet_name" class="form-control">
+                        <?php foreach($vets as $vet): echo "<option value='{$vet['FULL_NAME']}'>{$vet['FULL_NAME']}</option>"; endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Date Administered</label>
-                    <input type="datetime-local" id="txn_date" class="form-control">
+                    <input type="datetime-local" id="txn_date" class="form-control" step="1">
                 </div>
 
                 <div class="summary-box">
@@ -277,7 +328,10 @@ try {
             <div class="picker-section">
                 <div class="section-header">
                     <div class="section-title">🐖 Step 3: Select Animals</div>
-                    <div style="font-size:0.85rem; color:#94a3b8;">Tap to select</div>
+                    
+                    <label class="select-all-container" style="display:none;" id="select-all-wrapper">
+                        <input type="checkbox" id="select-all-check" onchange="toggleSelectAll(this)"> Select All
+                    </label>
                 </div>
                 <div id="animal-grid" class="animal-grid">
                     <div style="grid-column:1/-1; text-align:center; padding:2rem; color:#64748b; border:1px dashed #475569; border-radius:8px;">
@@ -316,6 +370,7 @@ try {
 <script>
     // --- DATA STORE ---
     let selectedAnimals = new Set(); 
+    let currentPenAnimals = []; // Stores full animal objects for current pen
     const inventory = {};
     <?php foreach($meds as $m): ?>
         inventory[<?= $m['SUPPLY_ID'] ?>] = {
@@ -329,7 +384,7 @@ try {
     document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('txn_date').value = now.toISOString().slice(0, 16);
+        document.getElementById('txn_date').value = now.toISOString().slice(0, 19);
     });
 
     // --- 1. CASCADING DROPDOWNS ---
@@ -365,32 +420,73 @@ try {
     // --- 2. LOAD GRID ---
     function loadAnimals(penId) {
         const grid = document.getElementById('animal-grid');
+        const selectAllWrapper = document.getElementById('select-all-wrapper');
+        
         grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">Loading...</div>';
+        selectAllWrapper.style.display = 'none';
         
         fetch(`../process/getAnimalsByPen.php?pen_id=${penId}`)
             .then(r=>r.json())
             .then(data => {
                 grid.innerHTML = '';
+                currentPenAnimals = []; // Reset list
+
                 const animals = data.animal_record || [];
-                if(animals.length === 0) {
+                
+                // Filter active animals
+                animals.forEach(a => {
+                    if(a.IS_ACTIVE == 1) currentPenAnimals.push(a);
+                });
+
+                if(currentPenAnimals.length === 0) {
                     grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#94a3b8;">No animals found.</div>';
                     return;
                 }
 
-                animals.forEach(a => {
-                    if(a.IS_ACTIVE != 0) {
-                        const card = document.createElement('div');
-                        card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
-                        card.id = `card-${a.ANIMAL_ID}`;
-                        card.onclick = () => addAnimalToTable(a);
-                        card.innerHTML = `
-                            <div style="font-size:1.5rem;">🐖</div>
-                            <div style="font-weight:700; color:#fff;">${a.TAG_NO}</div>
-                        `;
-                        grid.appendChild(card);
-                    }
+                // Show Select All Checkbox
+                selectAllWrapper.style.display = 'flex';
+                updateSelectAllState();
+
+                currentPenAnimals.forEach(a => {
+                    const card = document.createElement('div');
+                    card.className = `animal-card ${selectedAnimals.has(a.ANIMAL_ID) ? 'in-table' : ''}`;
+                    card.id = `card-${a.ANIMAL_ID}`;
+                    card.onclick = () => addAnimalToTable(a);
+                    card.innerHTML = `
+                        <div style="font-size:1.5rem;">🐖</div>
+                        <div style="font-weight:700; color:#fff;">${a.TAG_NO}</div>
+                    `;
+                    grid.appendChild(card);
                 });
             });
+    }
+
+    // --- SELECT ALL LOGIC ---
+    function toggleSelectAll(checkbox) {
+        if(checkbox.checked) {
+            currentPenAnimals.forEach(animal => {
+                if(!selectedAnimals.has(animal.ANIMAL_ID)) {
+                    addAnimalToTable(animal);
+                }
+            });
+        } else {
+            currentPenAnimals.forEach(animal => {
+                if(selectedAnimals.has(animal.ANIMAL_ID)) {
+                    removeAnimal(animal.ANIMAL_ID);
+                }
+            });
+        }
+    }
+
+    function updateSelectAllState() {
+        const checkbox = document.getElementById('select-all-check');
+        if(currentPenAnimals.length === 0) {
+            checkbox.checked = false;
+            return;
+        }
+        // Check if all displayed animals are in selected set
+        const allSelected = currentPenAnimals.every(a => selectedAnimals.has(a.ANIMAL_ID));
+        checkbox.checked = allSelected;
     }
 
     // --- 3. TABLE OPERATIONS ---
@@ -404,6 +500,7 @@ try {
         const defaultQty = document.getElementById('default_qty').value;
         const defaultItem = document.getElementById('default_item').value;
         const defaultDosage = document.getElementById('default_dosage').value;
+        const defaultRem = document.getElementById('default_remarks').value;
 
         let optionsHtml = '<option value="">Select Med</option>';
         for (const [id, item] of Object.entries(inventory)) {
@@ -415,7 +512,6 @@ try {
         tr.id = `row-${animal.ANIMAL_ID}`;
         tr.dataset.id = animal.ANIMAL_ID;
         
-        // Added data-label attributes for mobile view
         tr.innerHTML = `
             <td data-label="Tag No" style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
             <td data-label="Medication">
@@ -430,7 +526,7 @@ try {
                        value="${defaultQty}" step="0.01" min="0.01" oninput="updateCalculations()">
             </td>
             <td data-label="Remarks">
-                <input type="text" name="remarks[${animal.ANIMAL_ID}]" placeholder="Notes...">
+                <input type="text" name="remarks[${animal.ANIMAL_ID}]" value="${defaultRem}" placeholder="Notes...">
             </td>
             <td data-label="Remove" style="text-align:right;">
                 <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})">×</button>
@@ -443,10 +539,14 @@ try {
         if(card) card.classList.add('in-table');
 
         updateCalculations();
+        updateSelectAllState();
     }
 
     function removeAnimal(id) {
         document.getElementById(`row-${id}`).remove();
+        
+        // Ensure type matching for deletion (usually int vs string issues)
+        selectedAnimals.delete(String(id));
         selectedAnimals.delete(id);
         
         const card = document.getElementById(`card-${id}`);
@@ -456,11 +556,12 @@ try {
             document.getElementById('medication-list').innerHTML = '<tr id="empty-row"><td colspan="6" style="text-align:center; padding:2rem; color:#64748b;">No animals added yet.</td></tr>';
         }
         updateCalculations();
+        updateSelectAllState();
     }
 
     function clearTable() {
         if(!confirm("Clear all rows?")) return;
-        selectedAnimals.forEach(id => removeAnimal(id));
+        Array.from(selectedAnimals).forEach(id => removeAnimal(id));
     }
 
     // --- 4. BULK UPDATES ---
@@ -475,8 +576,22 @@ try {
         document.querySelectorAll('.dosage-input').forEach(inp => inp.value = newDosage);
     }
 
+    function updateAllRemarks() {
+        const newRemark = document.getElementById('default_remarks').value;
+        document.querySelectorAll('input[name^="remarks"]').forEach(inp => inp.value = newRemark);
+    }
+
     function updateAllItems() {
         const newItem = document.getElementById('default_item').value;
+        
+        // Update stock display below dropdown
+        const stockDisplay = document.getElementById('default-stock-display');
+        if (newItem && inventory[newItem]) {
+            stockDisplay.innerText = `Available: ${inventory[newItem].stock} ${inventory[newItem].unit}`;
+        } else {
+            stockDisplay.innerText = '';
+        }
+
         document.querySelectorAll('.item-select').forEach(sel => sel.value = newItem);
         updateCalculations();
     }

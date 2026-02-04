@@ -4,12 +4,15 @@ session_start();
 require_once '../config/Connection.php';
 header('Content-Type: application/json');
 
+// --- AUDIT LOG CONTEXT ---
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$username = $_SESSION['user']['FULL_NAME'] ?? 'System';
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request']);
     exit;
 }
-
-$user_id = $_SESSION['user']['USER_ID'] ?? 1; // Default to admin if no session
 
 // 1. Get Inputs
 $dest_loc_id = $_POST['dest_location_id'] ?? '';
@@ -31,20 +34,41 @@ if (empty($animal_ids) || !is_array($animal_ids)) {
 try {
     $conn->beginTransaction();
 
-    // Prepare Update Statement
+    // 0. Fetch Destination Details for Audit Log (Human-readable names)
+    $locStmt = $conn->prepare("
+        SELECT 
+            l.LOCATION_NAME, b.BUILDING_NAME, p.PEN_NAME 
+        FROM pens p
+        JOIN buildings b ON p.BUILDING_ID = b.BUILDING_ID
+        JOIN locations l ON b.LOCATION_ID = l.LOCATION_ID
+        WHERE p.PEN_ID = ? AND b.BUILDING_ID = ? AND l.LOCATION_ID = ?
+    ");
+    $locStmt->execute([$dest_pen_id, $dest_bld_id, $dest_loc_id]);
+    $destInfo = $locStmt->fetch(PDO::FETCH_ASSOC);
+    
+    $destString = $destInfo ? "{$destInfo['LOCATION_NAME']} > {$destInfo['BUILDING_NAME']} > {$destInfo['PEN_NAME']}" : "Unknown Destination";
+
+    // 3. Perform Updates
     $sql = "UPDATE animal_records 
             SET LOCATION_ID = ?, BUILDING_ID = ?, PEN_ID = ? 
             WHERE ANIMAL_ID = ?";
     $stmt = $conn->prepare($sql);
 
     $count = 0;
-
     foreach ($animal_ids as $id) {
         $stmt->execute([$dest_loc_id, $dest_bld_id, $dest_pen_id, $id]);
         $count++;
-        
-        // Optional: Insert into an 'animal_movement_history' table here if you have one.
-        // INSERT INTO animal_movement (ANIMAL_ID, FROM_PEN, TO_PEN, DATE, USER) ...
+    }
+
+    // 4. Insert Audit Log
+    if ($count > 0) {
+        $audit_action = "GROUP_TRANSFER";
+        $audit_details = "Transferred $count animals to: $destString";
+
+        $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
+                      VALUES (?, ?, ?, 'ANIMAL_RECORDS', ?, ?)";
+        $audit_stmt = $conn->prepare($audit_sql);
+        $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
     }
 
     $conn->commit();

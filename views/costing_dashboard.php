@@ -1,8 +1,11 @@
 <?php
 $page = "costing";
+include '../config/Connection.php';
+
+include '../security/checkAccess.php';
+checkAccess('costing');
 include '../common/navbar.php';
-include '../security/checkRole.php';    
-checkRole(3);
+
 ?>
 
 <!DOCTYPE html>

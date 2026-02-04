@@ -1,8 +1,11 @@
 <?php
-session_start();
+  if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
 
 if (isset($_SESSION['user']) && ($_SESSION['user']['USER_TYPE'] > 1)) {
-    header("Location: ../views/admin_dashboard.php");
+    header("Location: admin_dashboard.php");
     exit;
 }
 ?>

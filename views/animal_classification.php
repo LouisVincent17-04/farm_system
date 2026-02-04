@@ -1,10 +1,12 @@
 <?php
 // views/manage_animal_classes.php
 $page = "farm";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
+include '../security/checkAccess.php';
+checkAccess('animal_class');
+include '../common/navbar.php';
+
 
 try {
     $sql = "SELECT * FROM animal_classifications ORDER BY MIN_DAYS ASC";

@@ -5,10 +5,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); 
 
 $page = "farm";
-include '../common/navbar.php';
 include '../config/Connection.php';
-include '../security/checkRole.php';    
-checkRole(2); // Farm Admin or Higher
+
+include '../security/checkAccess.php';
+checkAccess('animal_weights');
+include '../common/navbar.php';
+
 
 // =========================================================
 // AJAX HANDLER (Internal API)

@@ -3,9 +3,25 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "admin_dashboard";
+include '../config/Connection.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+}
+
+include '../security/checkAccess.php';
+if($_SESSION['user']['USER_TYPE'] == 1){
+    header("Location: new_user.php");
+    exit;
+}
+else
+{
+    checkAccess('dashboard');
+}
+
+
 include '../common/navbar.php';
-include '../security/checkRole.php';    
-checkRole(2);
+
 
 include '../process/autoUpdateAnimalClasses.php';
 ?>

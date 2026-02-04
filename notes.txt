@@ -1,56 +1,56 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-1. Feeding will not be individual, it should be by pen and all animals in that pen are being fed 
-2. Cost Monitoring -> All animals must have an individual record of their costs
-3. If an animal gives birth, all of its expenses (NOT INCLUDING THE PURCHASE COST) will be divided to the newly births
+1. Feeding will not be individual, it should be by pen and all animals in that pen are being fed ✅
+2. Cost Monitoring -> All animals must have an individual record of their costs ✅
+3. If an animal gives birth, all of its expenses (NOT INCLUDING THE PURCHASE COST) will be divided to the newly births ✅
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-COSTING: MAKE A FILTER THAT SHOWS THE HISTORY OF ALL, ACTIVE, SOLD, DISEASED
+COSTING: MAKE A FILTER THAT SHOWS THE HISTORY OF ALL, ACTIVE, SOLD, DISEASED ✅
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
 Business Cycle:
-Animal ->  eats, medication, vaccination, vitamins & supplementation, feeding
+Animal ->  eats, medication, vaccination, vitamins & supplementation, feeding ✅
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
 If an Animal will give birth:
--> Entire cost for medication, vaccination, vitamins & supplementation, feeding will be divided to the piglets
--> Piglets will have an acquisition cost depending on how much the divided cost
+-> Entire cost for medication, vaccination, vitamins & supplementation, feeding will be divided to the piglets ✅
+-> Piglets will have an acquisition cost depending on how much the divided cost ✅
 
-Create a page that will make process that will transfer the cost of each category such as: medication, vaccination, vitamins & supplementation, feeding
-Select Animal Tag No (Parent) -> Transfer Cost -> [Total Cost of X category / Number of piglets]
+Create a page that will make process that will transfer the cost of each category such as: medication, vaccination, vitamins & supplementation, feeding ✅
+Select Animal Tag No (Parent) -> Transfer Cost -> [Total Cost of X category / Number of piglets] ✅
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-Add Classification in Animals (Add also in database):
-Piglet : N1 - N2 days
-Starter Hog : N1 - N2 days
-Grower Hog : N1 - N2 days
-Finisher Hog - N1 - N2 days
-Jr. Boar & Gilt - N1 - N2
-Boar & Sow - N1 - N2
+Add Classification in Animals (Add also in database): ✅
+Piglet : N1 - N2 days ✅
+Starter Hog : N1 - N2 days ✅
+Grower Hog : N1 - N2 days ✅
+Finisher Hog - N1 - N2 days ✅
+Jr. Boar & Gilt - N1 - N2 ✅
+Boar & Sow - N1 - N2 ✅
 
-    -> IF A MALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to JR BOAR then -> BOAR
-    -> IF A FEMALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to GILT then -> SOW 
+    -> IF A MALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to JR BOAR then -> BOAR ✅
+    -> IF A FEMALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to GILT then -> SOW  ✅
 
-NOTE: DAYS ARE NOT FIXED, CREATE A TABLE THAT WILL DEFINE THE DAYS, THE SYSTEM WILL AUTOMATICALLY CLASSIFY 
-WHETHER THE ANIMAL IS Piglet, Started Hog, etc... IF THE ANIMAL IS 80 DAYS, IT BELONGS TO GROWER HOG, BUT IF 
-THE USER EXPLICITLY UPDATES THE FOR EXAMPLE STARTED HOG TO MAX 80 DAYS, ALL EXISTING RECORDS THAT ARE 80 DAYS YEARS 
-OLD BELONGS TO STARTED HOG AND NOT GROWER HOG.
+NOTE: DAYS ARE NOT FIXED, CREATE A TABLE THAT WILL DEFINE THE DAYS, THE SYSTEM WILL AUTOMATICALLY CLASSIFY  ✅
+WHETHER THE ANIMAL IS Piglet, Started Hog, etc... IF THE ANIMAL IS 80 DAYS, IT BELONGS TO GROWER HOG, BUT IF  ✅
+THE USER EXPLICITLY UPDATES THE FOR EXAMPLE STARTED HOG TO MAX 80 DAYS, ALL EXISTING RECORDS THAT ARE 80 DAYS YEARS  v
+OLD BELONGS TO STARTED HOG AND NOT GROWER HOG. ✅
 
-Classification Table:
-int class_id
-varchar stages
-start date
-end date
-fcr
+Classification Table: ✅
+int class_id ✅
+varchar stages ✅
+start date ✅
+end date ✅
+fcr ✅
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,24 +90,24 @@ Dashboard is responsible for all push notifications
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-MAKE A SOW CARD FOR BIRTHING: SOW CARD ALSO CONSIST OF THE ANIMAL THAT BELONGS TO SOW ANIMAL CLASSIFICATION AND THEIR TAG ID
-(THESE ARE COLUMNS)
-PARITY - BIRTH INSTANCE
-BORN - N of Birth
-ACTIVE - N of Survived
-DEAD  - N of Dead
-MUMMIFIED - N of Mummified
+MAKE A SOW CARD FOR BIRTHING: SOW CARD ALSO CONSIST OF THE ANIMAL THAT BELONGS TO SOW ANIMAL CLASSIFICATION AND THEIR TAG ID ✅
+(THESE ARE COLUMNS) ✅
+PARITY - BIRTH INSTANCE ✅
+BORN - N of Birth ✅
+ACTIVE - N of Survived ✅
+DEAD  - N of Dead ✅
+MUMMIFIED - N of Mummified ✅
 
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-Alter the database of Animal Records to include the Current Estiamted Weight.... Weight at Birth......... Current Actual Weight 
+Alter the database of Animal Records to include the Current Estiamted Weight.... Weight at Birth......... Current Actual Weight ✅
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-CREATE A PAGE THAT SHOWS THE FCR OF EACH PEN: [OPTION: GET FCR (FEED CONVERSION RATE)] 
+CREATE A PAGE THAT SHOWS THE FCR OF EACH PEN: [OPTION: GET FCR (FEED CONVERSION RATE)] ✅
 PROCESS: 
     WEIGHT AT BIRTH: [SYSTEM INPUT] [Sample Data: 2.5] (THE USER MUST CHOOSE A TAG NUMBER.. INCLUDE THOSE LOCATION FILTERS)
     FEED CONSUMPTION: [SYSTEM INPUT] [ALL ANIMALS IN PEN ARE THE SAME] [Sample Data: 150 kgs] (the SYSTEM must get all the kgs of feed in that pen divided by all animals in that pen)
@@ -181,4 +181,50 @@ AND THE FINAL PRICE WILL AUTO COMPLETE ✅
 - ADD A PAGE THAT SHOWS ALL OPERATIONAL TRANSACTIONS TO ANIMALS ✅
 - ANIMAL SALES REPORT PDF SHOULD BE FIXED
 - ANIMAL RECORD MUST HAVE DAYS OLD ✅
-- ADD EVENTS PAGE WHERE IT SHOWS THE TABLE OF CLASSIFICATIONS AND THEIR EQUIVALENT MED, VITS, ETC  
+- ADD EVENTS PAGE WHERE IT SHOWS THE TABLE OF CLASSIFICATIONS AND THEIR EQUIVALENT MED, VITS, ETC  ✅
+
+
+
+================================================================================================
+
+02 / 01 / 2026
+
+- Successfully Registered Modal ✅
+- Create a process in the registration that the newly registered users has NO ACCESS AT ALL ✅
+- Create a back to each page
+- Select All to Group Vaccination ✅
+- All Group Operations should have a default remarks ✅
+- Update the Animal Report
+ - In animal_report.php, include how many animals in that animal_type (stat-card)
+ - Add a filter (Detailed Summary, Summary (Pen), Summary (Building))
+  - In the Detailed Summary, Keep the existing one
+  - In the Summary (Pen), include how many animals are there (stat-card), how much the cost overall (stat-card),
+    what are all animal classifications are there (stat-card), include also all the animals in that pen
+- Manage Access (When choosing admin, it selects all the applicable boxes - make sure to rename unselect all to all boxes that are selected all)
+- Restore the individual feeding TRANSACTION
+- In the feed, whatever location is chosen in the select pen location, it will retrieve all the feeds ONLY IN THAT LOCATION
+- After a sales transaction, there will be pdf generate receipt. Generate a receipt to animal sales transaction
+- Fix Reports (Save as PDF, EXCEL, CSV)
+- In available_feeds.php, create a view where you can view the quantity of that specific feeds across all farms
+- Animal Mortality Page where it is the same with sales but you have recovered cost (can be sold), you dont
+need to create a database with it because just merge it with the sales database BUT you should add a type column
+where 0 is Mortality and 1 is Sales
+- CREATE UNDO TO ALL TRANSACTIONS
+ - In animal_sales_process.php, only the admin with USER_TYPE of 4 can undo the transaction including the restoration.
+ - All transactions can be undoed by the admin with USER_TYPE of 4
+- Create in the farm_dashboard.php an Inventory Adjustment Page
+    - There is a disposal transaction
+    - Type: Expired, Damaged, Stolen
+- Create also an expiration date to ALL medicines, feeds, vitamins & supplements, vaccines
+ - Fields to Note [All medicines, feeds, vitamins & supplements, vaccines confirmation]
+ - When selecting medicines, feeds, vitamins & supplements, vaccines, even with the same name, it will have 
+ different 
+ - FCR Management
+  - Discard the Current FCR Management
+  - Update FCR in where it replaces FCR Per Class to FCR Per Pen or FCR Per Age (Min - Max)
+  - Create a Table in the FCR which we can choose category (FCR Per Pen, FCR Per Age)
+  - It shows all Animals in that Age or Pen
+  - The Current FCR Management is the individual FCR config
+   - The New FCR Managament is By Pen but there will be days configurations
+
+=================================================================================================
