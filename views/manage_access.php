@@ -191,15 +191,45 @@ function applyRolePreset(roleId) {
             cb.checked = preset.includes(key);
         });
     }
+
+    // NEW: Loop through all cards and update the "Select/Unselect" text
+    document.querySelectorAll('.card').forEach(card => {
+        updateCardHeaderText(card);
+    });
 }
 
 function toggleCard(link) {
     const card = link.closest('.card');
     const checkboxes = card.querySelectorAll('input[type="checkbox"]');
+    
+    // Check if they are currently ALL checked
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    // Toggle to the opposite
     checkboxes.forEach(cb => cb.checked = !allChecked);
-    link.innerText = allChecked ? "Select All" : "Unselect All";
+    
+    // Update the text
+    updateCardHeaderText(card);
 }
+
+// Helper function to update the text based on current checkbox state
+function updateCardHeaderText(card) {
+    const checkboxes = card.querySelectorAll('input[type="checkbox"]');
+    const link = card.querySelector('.select-all-link');
+    
+    // Check if every single box in this card is checked
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    // Update text
+    link.innerText = allChecked ? "Unselect All" : "Select All";
+}
+
+// Run on page load to set initial state correctly
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.card').forEach(card => {
+        updateCardHeaderText(card);
+    });
+});
 </script>
 
 </body>

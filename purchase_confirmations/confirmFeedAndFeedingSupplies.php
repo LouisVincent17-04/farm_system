@@ -25,7 +25,6 @@ function getWeightInKg($conn, $unit_id, $qty, $net_weight) {
     $name = strtolower($u['UNIT_NAME'] ?? '');
     
     // Check if unit is grams, convert to KG
-    // Logic: contains 'gram' but not 'kilo' (to avoid kilogram)
     if (strpos($name, 'gram') !== false && strpos($name, 'kilo') === false) {
         return $base_weight / 1000;
     }
@@ -46,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $conn->beginTransaction();
 
         // 1. Fetch and Lock the Pending Item
-        $item_sql = "SELECT ITEM_NAME, UNIT_ID, QUANTITY, ITEM_NET_WEIGHT, TOTAL_COST, LOCATION_ID, ITEM_TYPE_ID 
+        // UPDATED: Added EXPIRATION_DATE to SELECT
+        $item_sql = "SELECT ITEM_NAME, UNIT_ID, QUANTITY, ITEM_NET_WEIGHT, TOTAL_COST, LOCATION_ID, ITEM_TYPE_ID, EXPIRATION_DATE 
                      FROM ITEMS 
                      WHERE ITEM_ID = :id AND STATUS = 0 FOR UPDATE";
         $item_stmt = $conn->prepare($item_sql);
@@ -70,20 +70,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $total_cost_add = floatval($row['TOTAL_COST']);
         $item_name = $row['ITEM_NAME'];
         $location_id = $row['LOCATION_ID'];
+        
+        // Handle Expiration: Use specific date or default to +3 months if NULL
+        $expiration_date = $row['EXPIRATION_DATE'];
+        if (empty($expiration_date)) {
+            $expiration_date = date('Y-m-d', strtotime('+3 months')); 
+        }
 
         // --- Execute Upsert Logic ---
         
-        // Check if Feed exists in Inventory for this location
-        $check_feed = "SELECT FEED_ID FROM FEEDS WHERE FEED_NAME = :name AND LOCATION_ID = :loc_id FOR UPDATE";
+        // Check if Feed exists in Inventory for this location AND Expiration Date
+        // UPDATED: Added EXPIRATION_DATE to WHERE clause
+        $check_feed = "SELECT FEED_ID FROM FEEDS 
+                       WHERE FEED_NAME = :name 
+                       AND LOCATION_ID = :loc_id 
+                       AND EXPIRATION_DATE = :expiry 
+                       FOR UPDATE";
         $check_stmt = $conn->prepare($check_feed);
         $check_stmt->execute([
             ':name' => $item_name,
-            ':loc_id' => $location_id
+            ':loc_id' => $location_id,
+            ':expiry' => $expiration_date
         ]);
         $existing = $check_stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
-            // UPDATE existing record
+            // UPDATE existing record (Same Batch)
             $feed_id = $existing['FEED_ID'];
             
             $update_feed = "UPDATE FEEDS 
@@ -100,16 +112,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             ]);
 
         } else {
-            // INSERT new record
-            $insert_feed = "INSERT INTO FEEDS (FEED_NAME, TOTAL_WEIGHT_KG, TOTAL_COST, LOCATION_ID, DATE_CREATED, DATE_UPDATED) 
-                            VALUES (:name, :w, :c, :loc, NOW(), NOW())";
+            // INSERT new record (New Batch/Expiry)
+            // UPDATED: Added EXPIRATION_DATE to INSERT
+            $insert_feed = "INSERT INTO FEEDS (FEED_NAME, TOTAL_WEIGHT_KG, TOTAL_COST, LOCATION_ID, EXPIRATION_DATE, DATE_CREATED, DATE_UPDATED) 
+                            VALUES (:name, :w, :c, :loc, :expiry, NOW(), NOW())";
             
             $ins_stmt = $conn->prepare($insert_feed);
             $ins_stmt->execute([
                 ':name' => $item_name,
                 ':w' => $total_weight_kg,
                 ':c' => $total_cost_add,
-                ':loc' => $location_id
+                ':loc' => $location_id,
+                ':expiry' => $expiration_date
             ]);
         }
 
@@ -120,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             
         // --- 4. AUDIT LOGGING ---
         
-        $logDetails = "Confirmed Feed Purchase (ID: $item_id): " . $item_name . " (Added $total_weight_kg kg to Inventory)";
+        $logDetails = "Confirmed Feed Purchase (ID: $item_id): " . $item_name . " (Added $total_weight_kg kg to Inventory, Expiry: $expiration_date)";
         
 
         $log_sql = "INSERT INTO AUDIT_LOGS 

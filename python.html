@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Data Science Compiler</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4834df 0%, #341f97 100%);
+            color: white;
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #95afc0;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.ready {
+            background: #2ecc71;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .editor-panel, .output-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 2px solid #e9ecef;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-panel {
+            border-right: 2px solid #e9ecef;
+        }
+
+        #code-editor {
+            flex: 1;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            border: none;
+            resize: none;
+            outline: none;
+            background: #282c34;
+            color: #abb2bf;
+            line-height: 1.6;
+        }
+
+        #output {
+            flex: 1;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #run-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        #run-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #run-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #clear-btn {
+            background: #95afc0;
+            color: white;
+        }
+
+        #clear-btn:hover {
+            background: #78909c;
+            transform: translateY(-2px);
+        }
+
+        .examples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .example-btn {
+            padding: 8px 16px;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            font-size: 13px;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            color: #f39c12;
+        }
+
+        .error {
+            color: #e74c3c;
+        }
+
+        .success {
+            color: #2ecc71;
+        }
+
+        .plot-container {
+            margin: 15px 0;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .plot-container img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-panel {
+                border-right: none;
+                border-bottom: 2px solid #e9ecef;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐍 Python Data Science Compiler</h1>
+            <div class="status">
+                <div class="status-indicator" id="status-indicator"></div>
+                <span id="status-text">Initializing Python...</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <span>📝 Code Editor</span>
+                </div>
+                <textarea id="code-editor" placeholder="Write your Python code here...
+# Try matplotlib, numpy, pandas, scikit-learn, scipy, and more!
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+
+plt.plot(x, y)
+plt.title('Sine Wave')
+plt.show()"></textarea>
+            </div>
+
+            <div class="output-panel">
+                <div class="panel-header">
+                    <span>📊 Output</span>
+                </div>
+                <div id="output">Waiting for code execution...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="run-btn" disabled>▶ Run Code</button>
+            <button id="clear-btn">🗑️ Clear Output</button>
+            
+            <div class="examples">
+                <span style="color: #666; font-weight: 600;">Examples:</span>
+                <button class="example-btn" data-example="matplotlib">Matplotlib</button>
+                <button class="example-btn" data-example="pandas">Pandas</button>
+                <button class="example-btn" data-example="numpy">NumPy</button>
+                <button class="example-btn" data-example="sklearn">Scikit-learn</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script>
+        let pyodide;
+        let isRunning = false;
+
+        const examples = {
+            matplotlib: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Create multiple subplots
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+# Plot 1: Line plot
+x = np.linspace(0, 10, 100)
+axes[0, 0].plot(x, np.sin(x), 'b-', label='sin(x)')
+axes[0, 0].plot(x, np.cos(x), 'r--', label='cos(x)')
+axes[0, 0].set_title('Trigonometric Functions')
+axes[0, 0].legend()
+axes[0, 0].grid(True)
+
+# Plot 2: Scatter plot
+np.random.seed(42)
+x = np.random.randn(100)
+y = np.random.randn(100)
+colors = np.random.rand(100)
+axes[0, 1].scatter(x, y, c=colors, cmap='viridis', alpha=0.6)
+axes[0, 1].set_title('Random Scatter Plot')
+
+# Plot 3: Histogram
+data = np.random.normal(100, 15, 1000)
+axes[1, 0].hist(data, bins=30, color='skyblue', edgecolor='black')
+axes[1, 0].set_title('Normal Distribution')
+axes[1, 0].set_xlabel('Value')
+axes[1, 0].set_ylabel('Frequency')
+
+# Plot 4: Bar chart
+categories = ['A', 'B', 'C', 'D', 'E']
+values = [23, 45, 56, 78, 32]
+axes[1, 1].bar(categories, values, color='coral')
+axes[1, 1].set_title('Bar Chart')
+
+plt.tight_layout()
+plt.show()
+
+print("Matplotlib plots created successfully!")`,
+
+            pandas: `import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Create a sample dataset
+np.random.seed(42)
+dates = pd.date_range('2024-01-01', periods=100)
+df = pd.DataFrame({
+    'date': dates,
+    'sales': np.random.randint(100, 1000, 100),
+    'profit': np.random.randint(10, 200, 100),
+    'category': np.random.choice(['A', 'B', 'C'], 100)
+})
+
+print("Dataset Info:")
+print(df.head(10))
+print("\\nStatistics:")
+print(df.describe())
+
+# Group by category and calculate mean
+print("\\nMean sales by category:")
+print(df.groupby('category')['sales'].mean())
+
+# Create visualization
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 2, 1)
+df.groupby('category')['sales'].sum().plot(kind='bar', color=['#667eea', '#764ba2', '#f093fb'])
+plt.title('Total Sales by Category')
+plt.ylabel('Sales')
+
+plt.subplot(1, 2, 2)
+df.set_index('date')['sales'].plot(color='#667eea')
+plt.title('Sales Over Time')
+plt.ylabel('Sales')
+
+plt.tight_layout()
+plt.show()`,
+
+            numpy: `import numpy as np
+import matplotlib.pyplot as plt
+
+print("NumPy Array Operations Demo\\n")
+
+# Create arrays
+arr1 = np.array([1, 2, 3, 4, 5])
+arr2 = np.array([5, 4, 3, 2, 1])
+
+print("Array 1:", arr1)
+print("Array 2:", arr2)
+print("Sum:", arr1 + arr2)
+print("Product:", arr1 * arr2)
+print("Dot product:", np.dot(arr1, arr2))
+
+# Matrix operations
+print("\\nMatrix Operations:")
+matrix = np.random.randint(1, 10, (3, 3))
+print("Random Matrix:\\n", matrix)
+print("Determinant:", np.linalg.det(matrix))
+print("Transpose:\\n", matrix.T)
+
+# Statistical operations
+data = np.random.normal(100, 15, 1000)
+print("\\nStatistical Analysis:")
+print(f"Mean: {np.mean(data):.2f}")
+print(f"Std: {np.std(data):.2f}")
+print(f"Min: {np.min(data):.2f}")
+print(f"Max: {np.max(data):.2f}")
+
+# Visualization
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+# Heatmap
+ax1.imshow(matrix, cmap='coolwarm', aspect='auto')
+ax1.set_title('Matrix Heatmap')
+
+# Distribution
+ax2.hist(data, bins=50, color='skyblue', edgecolor='black', alpha=0.7)
+ax2.set_title('Normal Distribution')
+ax2.set_xlabel('Value')
+ax2.set_ylabel('Frequency')
+
+plt.tight_layout()
+plt.show()`,
+
+            sklearn: `import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_classification, make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
+
+# Classification Example
+print("=== Classification Example ===\\n")
+X_class, y_class = make_classification(n_samples=200, n_features=2, 
+                                        n_redundant=0, n_informative=2,
+                                        random_state=42, n_clusters_per_class=1)
+
+X_train, X_test, y_train, y_test = train_test_split(X_class, y_class, 
+                                                      test_size=0.3, random_state=42)
+
+clf = LogisticRegression()
+clf.fit(X_train, y_train)
+y_pred = clf.predict(X_test)
+
+print(f"Classification Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+
+# Regression Example
+print("\\n=== Regression Example ===\\n")
+X_reg, y_reg = make_regression(n_samples=100, n_features=1, noise=10, random_state=42)
+
+X_train_reg, X_test_reg, y_train_reg, y_test_reg = train_test_split(
+    X_reg, y_reg, test_size=0.3, random_state=42)
+
+reg = LinearRegression()
+reg.fit(X_train_reg, y_train_reg)
+y_pred_reg = reg.predict(X_test_reg)
+
+print(f"R² Score: {r2_score(y_test_reg, y_pred_reg):.4f}")
+print(f"MSE: {mean_squared_error(y_test_reg, y_pred_reg):.4f}")
+
+# Visualization
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+# Classification plot
+ax1.scatter(X_class[y_class==0][:, 0], X_class[y_class==0][:, 1], 
+            c='blue', label='Class 0', alpha=0.6)
+ax1.scatter(X_class[y_class==1][:, 0], X_class[y_class==1][:, 1], 
+            c='red', label='Class 1', alpha=0.6)
+ax1.set_title('Classification Dataset')
+ax1.legend()
+ax1.grid(True)
+
+# Regression plot
+ax2.scatter(X_test_reg, y_test_reg, color='blue', alpha=0.6, label='Actual')
+ax2.plot(X_test_reg, y_pred_reg, color='red', linewidth=2, label='Predicted')
+ax2.set_title('Linear Regression')
+ax2.set_xlabel('X')
+ax2.set_ylabel('y')
+ax2.legend()
+ax2.grid(True)
+
+plt.tight_layout()
+plt.show()`
+        };
+
+        async function initPyodide() {
+            try {
+                updateStatus('loading', 'Loading Python environment...');
+                pyodide = await loadPyodide({
+                    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/'
+                });
+
+                updateStatus('loading', 'Installing packages...');
+                
+                // Load essential data science packages
+                await pyodide.loadPackage(['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'scipy']);
+                
+                // Setup matplotlib to work in browser
+                await pyodide.runPythonAsync(`
+                    import matplotlib
+                    import matplotlib.pyplot as plt
+                    import io
+                    import base64
+                    
+                    matplotlib.use('AGG')
+                    
+                    def show_plot():
+                        buf = io.BytesIO()
+                        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+                        buf.seek(0)
+                        img_str = base64.b64encode(buf.read()).decode()
+                        plt.close('all')
+                        return img_str
+                    
+                    # Override plt.show() to capture plots
+                    original_show = plt.show
+                    plt.show = lambda: None
+                `);
+
+                updateStatus('ready', 'Python ready!');
+                document.getElementById('run-btn').disabled = false;
+            } catch (error) {
+                updateStatus('error', 'Failed to initialize Python');
+                appendOutput(`Error initializing Python: ${error.message}`, 'error');
+            }
+        }
+
+        function updateStatus(state, text) {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            
+            indicator.className = 'status-indicator';
+            if (state === 'ready') {
+                indicator.classList.add('ready');
+            }
+            
+            statusText.textContent = text;
+        }
+
+        function appendOutput(text, type = 'normal') {
+            const output = document.getElementById('output');
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = text + '\n';
+            output.appendChild(span);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        async function runCode() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            const runBtn = document.getElementById('run-btn');
+            runBtn.disabled = true;
+            runBtn.textContent = '⏳ Running...';
+            
+            clearOutput();
+            
+            const code = document.getElementById('code-editor').value;
+            
+            try {
+                // Redirect stdout to capture print statements
+                await pyodide.runPythonAsync(`
+                    import sys
+                    from io import StringIO
+                    sys.stdout = StringIO()
+                `);
+
+                // Run the user's code
+                await pyodide.runPythonAsync(code);
+
+                // Get captured output
+                const output = await pyodide.runPythonAsync(`
+                    output = sys.stdout.getvalue()
+                    sys.stdout = sys.__stdout__
+                    output
+                `);
+
+                if (output) {
+                    appendOutput(output, 'success');
+                }
+
+                // Check if there are any plots and display them
+                const hasPlot = await pyodide.runPythonAsync(`
+                    len(plt.get_fignums()) > 0
+                `);
+
+                if (hasPlot) {
+                    const imgData = await pyodide.runPythonAsync('show_plot()');
+                    const outputDiv = document.getElementById('output');
+                    
+                    const plotContainer = document.createElement('div');
+                    plotContainer.className = 'plot-container';
+                    
+                    const img = document.createElement('img');
+                    img.src = `data:image/png;base64,${imgData}`;
+                    
+                    plotContainer.appendChild(img);
+                    outputDiv.appendChild(plotContainer);
+                }
+
+                if (!output && !hasPlot) {
+                    appendOutput('Code executed successfully (no output)', 'success');
+                }
+
+            } catch (error) {
+                appendOutput(`Error: ${error.message}`, 'error');
+            } finally {
+                isRunning = false;
+                runBtn.disabled = false;
+                runBtn.textContent = '▶ Run Code';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('run-btn').addEventListener('click', runCode);
+        document.getElementById('clear-btn').addEventListener('click', clearOutput);
+
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const example = btn.dataset.example;
+                document.getElementById('code-editor').value = examples[example];
+            });
+        });
+
+        // Allow Ctrl+Enter to run code
+        document.getElementById('code-editor').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                runCode();
+            }
+        });
+
+        // Initialize on load
+        initPyodide();
+    </script>
+</body>
+</html>

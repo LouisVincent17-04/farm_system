@@ -19,7 +19,7 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Items (Type 11)
+    // 1. Fetch Items (Added EXPIRATION_DATE)
     $items_sql = "SELECT i.*, 
                   it.ITEM_TYPE_NAME,
                   u.UNIT_NAME
@@ -220,7 +220,7 @@ try {
                         <th>Total</th> 
                         <th>Category</th>
                         <th>Date</th>
-                        <th style="text-align: center; width: 120px;">Status</th>
+                        <th>Expiry Date</th> <th style="text-align: center; width: 120px;">Status</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -244,6 +244,7 @@ try {
                         data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
                         data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
                         data-purchase-date="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
+                        data-expiration-date="<?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? ''); ?>" 
                         data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
                         data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
                         data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
@@ -262,6 +263,9 @@ try {
                             </span>
                         </td>
                         <td><div class="item-unit"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? 'N/A'); ?></div></td>
+                        <td>
+                            <div class="item-unit" style="color: #fca5a5;"><?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? 'N/A'); ?></div>
+                        </td>
 
                         <td style="text-align: center;">
                             <?php if(!$isConfirmed): ?>
@@ -353,6 +357,11 @@ try {
                                 <label for="purchase-date">Date <span>*</span></label>
                                 <input type="date" id="purchase-date" name="date_of_purchase" required>
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expiration-date">Expiration Date <span style="color:#fca5a5;">(Required)</span></label>
+                            <input type="date" id="expiration-date" name="expiration_date" required>
                         </div>
 
                         <div class="form-group">
@@ -475,7 +484,6 @@ try {
             } else { penSel.disabled = true; }
         }
 
-        // --- Autocomplete ---
         let autocompleteTimeout = null;
         function initAutocomplete() {
             const input = document.getElementById('item-name');
@@ -517,7 +525,6 @@ try {
             list.classList.add('show');
         }
 
-        // --- Modals ---
         function openAddModal() {
             document.getElementById('item-form').reset();
             document.getElementById('item-id').value = '';
@@ -547,6 +554,7 @@ try {
             document.getElementById('net-weight').value = d.netWeight;
             document.getElementById('item-quantity').value = d.quantity;
             document.getElementById('purchase-date').value = d.purchaseDate;
+            document.getElementById('expiration-date').value = d.expirationDate || ''; // LOAD EXPIRY
 
             const loc = document.getElementById('location_id');
             loc.value = d.locationId || "";
@@ -571,6 +579,7 @@ try {
             if (!form.checkValidity()) { form.reportValidity(); return; }
             
             const id = document.getElementById('item-id').value;
+            // Note: Ensure addVaccines.php and editVaccines.php are updated to handle 'expiration_date'
             const url = id ? '../process/editVaccines.php' : '../process/addVaccines.php';
             const btn = document.getElementById('btn-save');
             
@@ -600,7 +609,6 @@ try {
             });
         }
 
-        // --- Confirmation ---
         function openConfirmModal(btn) {
             const row = btn.closest('tr');
             document.getElementById('confirm_item_id').value = row.dataset.itemId;
@@ -635,7 +643,6 @@ try {
             });
         }
 
-        // --- Utils ---
         function closeModal() { document.getElementById('modal').classList.remove('show'); }
         function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
         function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
@@ -667,12 +674,12 @@ try {
                     <p><strong>Cost:</strong> ₱${d.unitCost} / unit</p>
                     <p><strong>Total:</strong> ₱${(d.quantity * d.unitCost).toFixed(2)}</p>
                     <p><strong>Date:</strong> ${d.purchaseDate}</p>
+                    <p><strong>Expiration:</strong> <span style="color:#fca5a5;">${d.expirationDate || 'N/A'}</span></p>
                 </div>`;
             document.getElementById('view-modal-body').innerHTML = html;
             document.getElementById('view-modal').classList.add('show');
         }
 
-        // Init
         document.addEventListener('DOMContentLoaded', () => checkEmptyState());
         function checkEmptyState() {
             const count = document.querySelectorAll('#item-table tr').length;

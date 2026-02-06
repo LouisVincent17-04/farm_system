@@ -25,11 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         // 1. Fetch Item Names for the Log (Locking rows being processed)
-        $check_sql = "SELECT ITEM_NAME FROM ITEMS WHERE ITEM_TYPE_ID = :type_id AND STATUS = 0 FOR UPDATE";
+        // UPDATED: Added EXPIRATION_DATE to query
+        $check_sql = "SELECT ITEM_NAME, IFNULL(EXPIRATION_DATE, 'No Expiry') as EXP_LABEL FROM ITEMS WHERE ITEM_TYPE_ID = :type_id AND STATUS = 0 FOR UPDATE";
         $check_stmt = $conn->prepare($check_sql);
         $check_stmt->execute([':type_id' => $ITEM_TYPE_ID]);
         
-        $pending_items = $check_stmt->fetchAll(PDO::FETCH_COLUMN); // Fetch just names
+        $pending_items = $check_stmt->fetchAll(PDO::FETCH_ASSOC); 
         $count = count($pending_items);
 
         if ($count == 0) {
@@ -37,45 +38,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'No pending vaccine purchases to confirm.']);
             exit;
         }
+        
+        $log_item_names = [];
+        foreach ($pending_items as $p) {
+            $log_item_names[] = $p['ITEM_NAME'] . " [" . $p['EXP_LABEL'] . "]";
+        }
 
         // 2. MERGE INTO VACCINES (Upsert Logic)
         // MySQL uses INSERT ... ON DUPLICATE KEY UPDATE logic
         
-        // First, get the aggregated data including COST
+        // First, get the aggregated data including COST and EXPIRY
+        // UPDATED: Added EXPIRATION_DATE to SELECT and GROUP BY to separate batches
         $agg_sql = "SELECT 
                         ITEM_NAME, 
                         UNIT_ID,
+                        -- Use specific date, or default to 12 months from now if NULL
+                        IFNULL(EXPIRATION_DATE, DATE_ADD(NOW(), INTERVAL 12 MONTH)) as EXP_DATE,
                         -- Sum up the Total Cost column from ITEMS table
                         SUM(IFNULL(TOTAL_COST, 0)) AS SUM_COST,
                         -- Logic: If Net Weight exists, multiply by Qty. Else assume Qty is the weight.
                         SUM(IFNULL(QUANTITY, 0) * IFNULL(ITEM_NET_WEIGHT, 1)) AS SUM_STOCK
                     FROM ITEMS 
                     WHERE ITEM_TYPE_ID = :type_id AND STATUS = 0 
-                    GROUP BY ITEM_NAME, UNIT_ID";
+                    GROUP BY ITEM_NAME, UNIT_ID, EXPIRATION_DATE";
         
         $agg_stmt = $conn->prepare($agg_sql);
         $agg_stmt->execute([':type_id' => $ITEM_TYPE_ID]);
         $aggregated_data = $agg_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Perform the Upsert
-        // Assumes there is a UNIQUE constraint on (SUPPLY_NAME, UNIT_ID) in the VACCINES table
-        // UPDATED: Added TOTAL_COST to INSERT and UPDATE clauses
-        $upsert_sql = "INSERT INTO VACCINES (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, DATE_CREATED, DATE_UPDATED)
-                        VALUES (:name, :stock, :cost, :unit_id, NOW(), NOW())
-                        ON DUPLICATE KEY UPDATE
-                        TOTAL_STOCK = TOTAL_STOCK + VALUES(TOTAL_STOCK),
-                        TOTAL_COST = TOTAL_COST + VALUES(TOTAL_COST),
-                        DATE_UPDATED = NOW()";
-                        
-        $upsert_stmt = $conn->prepare($upsert_sql);
+        // UPDATED: Added EXPIRATION_DATE to Check, Insert, and Update logic
+        
+        // Prepare statements outside loop for efficiency
+        $check_inv = $conn->prepare("SELECT SUPPLY_ID FROM VACCINES 
+                                     WHERE SUPPLY_NAME = :name 
+                                     AND UNIT_ID = :unit 
+                                     AND EXPIRATION_DATE = :expiry 
+                                     FOR UPDATE");
+                                     
+        $update_inv = $conn->prepare("UPDATE VACCINES 
+                                      SET TOTAL_STOCK = TOTAL_STOCK + :stock, 
+                                          TOTAL_COST = TOTAL_COST + :cost,
+                                          DATE_UPDATED = NOW() 
+                                      WHERE SUPPLY_ID = :id");
+                                      
+        $insert_inv = $conn->prepare("INSERT INTO VACCINES (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, EXPIRATION_DATE, DATE_CREATED, DATE_UPDATED)
+                                      VALUES (:name, :stock, :cost, :unit, :expiry, NOW(), NOW())");
 
         foreach ($aggregated_data as $row) {
-            $upsert_stmt->execute([
-                ':name' => $row['ITEM_NAME'],
-                ':stock' => $row['SUM_STOCK'],
-                ':cost' => $row['SUM_COST'], // Bind the cost
-                ':unit_id' => $row['UNIT_ID']
-            ]);
+            $name = $row['ITEM_NAME'];
+            $unit = $row['UNIT_ID'];
+            $stock = $row['SUM_STOCK'];
+            $cost = $row['SUM_COST'];
+            $expiry = $row['EXP_DATE'];
+
+            // Check if batch exists
+            $check_inv->execute([':name' => $name, ':unit' => $unit, ':expiry' => $expiry]);
+            $existing = $check_inv->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                // Update
+                $update_inv->execute([
+                    ':stock' => $stock,
+                    ':cost' => $cost,
+                    ':id' => $existing['SUPPLY_ID']
+                ]);
+            } else {
+                // Insert
+                $insert_inv->execute([
+                    ':name' => $name,
+                    ':stock' => $stock,
+                    ':cost' => $cost,
+                    ':unit' => $unit,
+                    ':expiry' => $expiry
+                ]);
+            }
         }
 
         // 3. Update Status in ITEMS table to '1' (Confirmed)
@@ -87,13 +124,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         // --- 4. AUDIT LOGGING ---
         
-        $item_list = implode(", ", $pending_items);
+        $item_list = implode(", ", $log_item_names);
         // Truncate if too long
         if (strlen($item_list) > 3800) {
             $item_list = substr($item_list, 0, 3750) . "... [truncated]";
         }
         
-        $logDetails = "Bulk confirmed $count Vaccine items (Merged into Inventory with Costs): " . $item_list;
+        $logDetails = "Bulk confirmed $count Vaccine items (Merged into Inventory with Expiry): " . $item_list;
         
 
         $log_sql = "INSERT INTO AUDIT_LOGS 

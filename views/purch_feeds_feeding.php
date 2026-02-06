@@ -19,7 +19,7 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Items
+    // 1. Fetch Items (Added EXPIRATION_DATE)
     $items_sql = "SELECT i.*, 
                   it.ITEM_TYPE_NAME,
                   u.UNIT_NAME
@@ -72,7 +72,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Feed Purchase Management</title>
     <style>
-        /* --- CORE STYLES (EXACTLY MATCHING MEDICINES) --- */
+        /* --- CORE STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -283,7 +283,7 @@ try {
                         <th>Total Cost</th> 
                         <th>Category</th>
                         <th>Purchase Date</th>
-                        <th style="text-align: center; width: 150px;">Confirmation</th>
+                        <th>Expiry Date</th> <th style="text-align: center; width: 150px;">Confirmation</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -307,6 +307,7 @@ try {
                         data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
                         data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
                         data-purchase-date="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
+                        data-expiration-date="<?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? ''); ?>" 
                         data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
                         data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
                         data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
@@ -339,6 +340,9 @@ try {
                         </td>
                         <td>
                             <div class="item-unit"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? 'N/A'); ?></div>
+                        </td>
+                        <td>
+                            <div class="item-unit" style="color: #fca5a5;"><?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? 'N/A'); ?></div>
                         </td>
                         <td style="text-align: center;">
                             <?php if(!$isConfirmed): ?>
@@ -437,9 +441,15 @@ try {
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="purchase-date">Date of Purchase <span>*</span></label>
-                            <input type="date" id="purchase-date" name="date_of_purchase" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="purchase-date">Date of Purchase <span>*</span></label>
+                                <input type="date" id="purchase-date" name="date_of_purchase" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="expiration-date">Expiration Date <span style="color:#fca5a5;">(Required)</span></label>
+                                <input type="date" id="expiration-date" name="expiration_date" required>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -697,6 +707,7 @@ try {
             document.getElementById('net-weight').value = data.netWeight || '';
             document.getElementById('item-quantity').value = data.quantity || '0';
             document.getElementById('purchase-date').value = data.purchaseDate || '';
+            document.getElementById('expiration-date').value = data.expirationDate || ''; // Load expiry
 
             const locSelect = document.getElementById('location_id');
             locSelect.value = data.locationId || ""; 
@@ -773,6 +784,7 @@ try {
                     <p><strong>Net Weight:</strong> ${data.netWeight || 'N/A'}</p>
                     <p><strong>Category:</strong> ${categoryLabels[data.itemCategory]}</p>
                     <p><strong>Purchase Date:</strong> ${data.purchaseDate || 'N/A'}</p>
+                    <p><strong>Expiration Date:</strong> <span style="color:#fca5a5;">${data.expirationDate || 'N/A'}</span></p>
                 </div>
             `;
             document.getElementById('view-modal-body').innerHTML = html;

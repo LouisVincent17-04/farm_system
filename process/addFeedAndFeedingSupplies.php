@@ -1,4 +1,5 @@
 <?php
+// process/addFeedAndFeedingSupplies.php
 session_start(); // 1. Start Session
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -28,6 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $item_category = $_POST['item_category'];
         $date_of_purchase = $_POST['date_of_purchase'];
         $item_description = $_POST['item_description'] ?? null;
+        
+        // NEW: Retrieve Expiration Date
+        $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
 
         // 2. Retrieve Location Info
         $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
@@ -51,15 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ---------------------------------------------------------
         $conn->beginTransaction();
 
-        // 5. INSERT ITEM
-        // Note: Removed TO_DATE(). MySQL handles 'YYYY-MM-DD' strings automatically.
+        // 5. INSERT ITEM (Added EXPIRATION_DATE)
         $sql = "INSERT INTO ITEMS (
                     ITEM_NAME, ITEM_TYPE_ID, QUANTITY, ITEM_NET_WEIGHT, UNIT_ID, UNIT_COST, 
-                    ITEM_CATEGORY, DATE_OF_PURCHASE, ITEM_DESCRIPTION, LOCATION_ID, 
+                    ITEM_CATEGORY, DATE_OF_PURCHASE, EXPIRATION_DATE, ITEM_DESCRIPTION, LOCATION_ID, 
                     BUILDING_ID, PEN_ID, TOTAL_COST, STATUS
                 ) VALUES (
                     :item_name, :item_type_id, :item_quantity, :item_net_weight, :unit_id, :unit_cost, 
-                    :item_category, :date_of_purchase, :item_description, :location_id, 
+                    :item_category, :date_of_purchase, :expiration_date, :item_description, :location_id, 
                     :building_id, :pen_id, :total_cost, 0
                 )";
         
@@ -74,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':unit_cost'        => $unit_cost,
             ':item_category'    => $item_category,
             ':date_of_purchase' => $date_of_purchase,
+            ':expiration_date'  => $expiration_date, // Bind Expiration
             ':item_description' => $item_description,
             ':location_id'      => $location_id,
             ':building_id'      => $building_id,
@@ -92,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // 7. INSERT AUDIT LOG
-            $logDetails = "Added new Feed: $item_name (Qty: $item_quantity, Cost: $total_cost). New ID: $new_item_id";
+            $logDetails = "Added new Feed Purchase: $item_name (Qty: $item_quantity, Cost: $total_cost). Expiry: " . ($expiration_date ?? 'N/A');
             
             $log_sql = "INSERT INTO AUDIT_LOGS 
                         (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 

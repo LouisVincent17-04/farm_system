@@ -19,7 +19,7 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Items (Type 10)
+    // 1. Fetch Items (Added EXPIRATION_DATE)
     $items_sql = "SELECT i.*, 
                   it.ITEM_TYPE_NAME,
                   u.UNIT_NAME
@@ -220,7 +220,7 @@ try {
                         <th>Total</th> 
                         <th>Category</th>
                         <th>Date</th>
-                        <th style="text-align: center; width: 120px;">Status</th>
+                        <th>Expiry Date</th> <th style="text-align: center; width: 120px;">Status</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -244,6 +244,7 @@ try {
                         data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
                         data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
                         data-purchase-date="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
+                        data-expiration-date="<?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? ''); ?>" 
                         data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
                         data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
                         data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
@@ -262,6 +263,9 @@ try {
                             </span>
                         </td>
                         <td><div class="item-unit"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? 'N/A'); ?></div></td>
+                        <td>
+                            <div class="item-unit" style="color: #fca5a5;"><?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? 'N/A'); ?></div>
+                        </td>
 
                         <td style="text-align: center;">
                             <?php if(!$isConfirmed): ?>
@@ -353,6 +357,11 @@ try {
                                 <label for="purchase-date">Date <span>*</span></label>
                                 <input type="date" id="purchase-date" name="date_of_purchase" required>
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expiration-date">Expiration Date <span style="color:#fca5a5;">(Required)</span></label>
+                            <input type="date" id="expiration-date" name="expiration_date" required>
                         </div>
 
                         <div class="form-group">
@@ -547,6 +556,7 @@ try {
             document.getElementById('net-weight').value = d.netWeight;
             document.getElementById('item-quantity').value = d.quantity;
             document.getElementById('purchase-date').value = d.purchaseDate;
+            document.getElementById('expiration-date').value = d.expirationDate || ''; // LOAD EXPIRY
 
             const loc = document.getElementById('location_id');
             loc.value = d.locationId || "";
@@ -571,6 +581,9 @@ try {
             if (!form.checkValidity()) { form.reportValidity(); return; }
             
             const id = document.getElementById('item-id').value;
+            // IMPORTANT: Make sure you create/update the 'addVitamins' and 'editVitamins' processes to handle expiration_date too.
+            // Since you haven't provided those files in this turn, I assume they point to generic handlers or I need to create them later.
+            // Using the logic similar to feeds:
             const url = id ? '../process/editVitaminsAndSupplements.php' : '../process/addVitaminsAndSupplements.php';
             const btn = document.getElementById('btn-save');
             
@@ -667,6 +680,7 @@ try {
                     <p><strong>Cost:</strong> ₱${d.unitCost} / unit</p>
                     <p><strong>Total:</strong> ₱${(d.quantity * d.unitCost).toFixed(2)}</p>
                     <p><strong>Date:</strong> ${d.purchaseDate}</p>
+                    <p><strong>Expiration:</strong> <span style="color:#fca5a5;">${d.expirationDate || 'N/A'}</span></p>
                 </div>`;
             document.getElementById('view-modal-body').innerHTML = html;
             document.getElementById('view-modal').classList.add('show');

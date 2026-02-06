@@ -25,9 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         // 1. GET ALL PENDING VITAMIN PURCHASES
-        // UPDATED: Added i.TOTAL_COST to the select list
+        // UPDATED: Added i.TOTAL_COST and i.EXPIRATION_DATE to the select list
         $get_sql = "SELECT 
-                        i.ITEM_ID, i.ITEM_NAME, i.QUANTITY, i.ITEM_NET_WEIGHT, i.UNIT_ID, i.TOTAL_COST,
+                        i.ITEM_ID, i.ITEM_NAME, i.QUANTITY, i.ITEM_NET_WEIGHT, i.UNIT_ID, i.TOTAL_COST, i.EXPIRATION_DATE,
                         u.UNIT_ABBR
                     FROM ITEMS i
                     LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
@@ -52,8 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $qty = (float)$item['QUANTITY'];
             $unit = $item['UNIT_ID'];
             $net_weight = (float)$item['ITEM_NET_WEIGHT'];
-            $cost = (float)$item['TOTAL_COST']; // Fetch the cost
+            $cost = (float)$item['TOTAL_COST'];
             $unit_abbr = strtoupper($item['UNIT_ABBR']);
+            
+            // Handle Expiration: Use specific date or default to +3 months if NULL
+            $expiry = $item['EXPIRATION_DATE'];
+            if (empty($expiry)) {
+                $expiry = date('Y-m-d', strtotime('+3 months'));
+            }
             
             // --- STOCK CALCULATION LOGIC ---
             $stock_to_add = $qty; 
@@ -62,16 +68,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } 
             // ------------------------------------
 
-            $log_item_names[] = "$name (Qty: $stock_to_add, Cost: $cost)";
+            $log_item_names[] = "$name (Qty: $stock_to_add, Exp: $expiry)";
 
             // Check if exists in Inventory
-            $check_inv = $conn->prepare("SELECT SUPPLY_ID FROM VITAMINS_SUPPLEMENTS WHERE SUPPLY_NAME = :name AND UNIT_ID = :unit FOR UPDATE");
-            $check_inv->execute([':name' => $name, ':unit' => $unit]);
+            // UPDATED: Check for Name + Unit + Expiration Date
+            $check_inv = $conn->prepare("SELECT SUPPLY_ID FROM VITAMINS_SUPPLEMENTS 
+                                         WHERE SUPPLY_NAME = :name 
+                                         AND UNIT_ID = :unit 
+                                         AND EXPIRATION_DATE = :expiry 
+                                         FOR UPDATE");
+            $check_inv->execute([
+                ':name' => $name, 
+                ':unit' => $unit,
+                ':expiry' => $expiry
+            ]);
             $inv_row = $check_inv->fetch(PDO::FETCH_ASSOC);
 
             if ($inv_row) {
-                // Update Existing Stock & Add Cost
-                // UPDATED: Added TOTAL_COST = TOTAL_COST + :cost
+                // Update Existing Stock & Add Cost (Same Batch)
                 $update_inv = $conn->prepare("UPDATE VITAMINS_SUPPLEMENTS 
                                                  SET TOTAL_STOCK = TOTAL_STOCK + :qty, 
                                                      TOTAL_COST = TOTAL_COST + :cost,
@@ -83,16 +97,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':id' => $inv_row['SUPPLY_ID']
                 ]);
             } else {
-                // Insert New Inventory Record with Cost
-                // UPDATED: Added TOTAL_COST column and value
+                // Insert New Inventory Record (New Batch/Expiry)
+                // UPDATED: Added EXPIRATION_DATE to INSERT
                 $insert_inv = $conn->prepare("INSERT INTO VITAMINS_SUPPLEMENTS 
-                                                 (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, DATE_CREATED, DATE_UPDATED) 
-                                                 VALUES (:name, :qty, :cost, :unit, NOW(), NOW())");
+                                                 (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, EXPIRATION_DATE, DATE_CREATED, DATE_UPDATED) 
+                                                 VALUES (:name, :qty, :cost, :unit, :expiry, NOW(), NOW())");
                 $insert_inv->execute([
                     ':name' => $name,
                     ':qty' => $stock_to_add,
                     ':cost' => $cost,
-                    ':unit' => $unit
+                    ':unit' => $unit,
+                    ':expiry' => $expiry
                 ]);
             }
             $total_processed_items++;
@@ -110,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $item_list = substr($item_list, 0, 3750) . "... [truncated]";
         }
         
-        $logDetails = "Bulk confirmed $count Vitamin items (Synced to Inventory with Cost): " . $item_list;
+        $logDetails = "Bulk confirmed $count Vitamin items (Synced to Inventory with Cost & Expiry): " . $item_list;
         
         $log_sql = "INSERT INTO AUDIT_LOGS 
                     (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 

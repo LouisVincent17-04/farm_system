@@ -9,6 +9,7 @@ include '../security/checkAccess.php';
 checkAccess('animal_report');
 include '../common/navbar.php';
 
+
 // --- 1. GET FILTER INPUTS ---
 $view        = $_GET['view'] ?? 'detailed'; 
 $date_from   = $_GET['date_from'] ?? '';
@@ -19,19 +20,24 @@ $breed       = $_GET['breed'] ?? '';
 $stage       = $_GET['stage'] ?? ''; 
 $sex         = $_GET['sex'] ?? '';
 
-// --- PAGINATION SETTINGS ---
-$limit = 50; // Rows per page
+// Mapped filters for drill-down (Location/Building/Pen)
+$filter_loc  = $_GET['f_loc'] ?? '';
+$filter_bld  = $_GET['f_bld'] ?? ''; // Used when drilling down from Building -> Pen
+$filter_pen  = $_GET['f_pen'] ?? '';
+
+// --- PAGINATION SETTINGS (Only for Detailed View) ---
+$limit = 50; 
 $page_no = isset($_GET['page_no']) ? (int)$_GET['page_no'] : 1;
 $offset = ($page_no - 1) * $limit;
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // --- 2. BUILD BASE WHERE CLAUSE (Reused for Stats and Data) ---
-    $where_sql = " WHERE ar.IS_ACTIVE IN (0, 1) "; // Default base
+    // --- 2. BUILD BASE WHERE CLAUSE ---
+    $where_sql = " WHERE ar.IS_ACTIVE IN (0, 1) ";
     $params = [];
 
-    // Apply Filters
+    // Apply Standard Filters
     if ($date_from && $date_to) {
         $where_sql .= " AND ar.BIRTH_DATE BETWEEN :date_from AND :date_to";
         $params[':date_from'] = $date_from;
@@ -54,7 +60,12 @@ try {
     if ($stage)       { $where_sql .= " AND ar.CLASS_ID = :stage"; $params[':stage'] = $stage; }
     if ($sex)         { $where_sql .= " AND ar.SEX = :sex"; $params[':sex'] = $sex; }
 
-    // --- 3. FETCH GLOBAL STATS (Totals across ALL pages) ---
+    // Apply Location/Building Filters (Important for Drill-down)
+    if ($filter_loc) { $where_sql .= " AND ar.LOCATION_ID = :floc"; $params[':floc'] = $filter_loc; }
+    if ($filter_bld) { $where_sql .= " AND ar.BUILDING_ID = :fbld"; $params[':fbld'] = $filter_bld; }
+    if ($filter_pen) { $where_sql .= " AND ar.PEN_ID = :fpen"; $params[':fpen'] = $filter_pen; }
+
+    // --- 3. FETCH GLOBAL STATS ---
     $stats_sql = "SELECT 
                     COUNT(*) as total_heads,
                     SUM(ar.ACQUISITION_COST) as total_value,
@@ -68,7 +79,7 @@ try {
     $stmt_stats->execute($params);
     $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
 
-    // Fetch Type Breakdown (Separate query for aggregation)
+    // Type Breakdown
     $type_sql = "SELECT at.ANIMAL_TYPE_NAME, COUNT(*) as count
                  FROM ANIMAL_RECORDS ar
                  LEFT JOIN ANIMAL_TYPE at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
@@ -76,12 +87,12 @@ try {
                  GROUP BY at.ANIMAL_TYPE_NAME";
     $stmt_type = $conn->prepare($type_sql);
     $stmt_type->execute($params);
-    $type_breakdown = $stmt_type->fetchAll(PDO::FETCH_KEY_PAIR); // [Name => Count]
+    $type_breakdown = $stmt_type->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // --- 4. FETCH DATA ROWS (Paginated or Grouped) ---
+    // --- 4. FETCH DATA ROWS ---
     
     if ($view === 'detailed') {
-        // DETAILED VIEW: Order by Location > Building > Pen for grouping, then Limit
+        // DETAILED VIEW (Paginated)
         $sql = "SELECT 
                 ar.*,
                 at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
@@ -100,8 +111,6 @@ try {
             ORDER BY l.LOCATION_NAME ASC, bld.BUILDING_NAME ASC, p.PEN_NAME ASC, ar.TAG_NO ASC
             LIMIT :limit OFFSET :offset";
         
-        // Bind Pagination
-        // Note: PDO sometimes needs strict types for LIMIT/OFFSET
         $stmt = $conn->prepare($sql);
         foreach($params as $key => $val) { $stmt->bindValue($key, $val); }
         $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
@@ -110,11 +119,7 @@ try {
         $animals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     } else {
-        // SUMMARY VIEWS (Pen/Building) - Fetch ALL rows (no pagination on groups for now to keep logic simple, or paginate groups if needed)
-        // For grouped view, we usually want all data to aggregate correctly in PHP.
-        // If dataset is huge, we'd need to paginate the GROUPS, which is complex.
-        // For now, we will remove LIMIT for summary views to ensure accurate aggregation.
-        
+        // SUMMARY VIEWS (Building or Pen) - Fetch All for Aggregation
         $sql = "SELECT 
                 ar.*, at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
                 l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME
@@ -133,14 +138,29 @@ try {
         $animals = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 5. PROCESS SUMMARY DATA (If not detailed) ---
+    // --- 5. PROCESS SUMMARY DATA ---
     $grouped_data = [];
     if ($view !== 'detailed') {
         foreach ($animals as $row) {
-            $group_key = ($view === 'pen') ? ($row['PEN_NAME'] ?: 'No Pen') : ($row['BUILDING_NAME'] ?: 'No Building');
+            // Determine grouping key and ID for linking
+            if ($view === 'building') {
+                $group_key = $row['BUILDING_NAME'] ?: 'Unassigned Building';
+                $group_id = $row['BUILDING_ID']; // Needed for drill-down link
+            } else {
+                // View is 'pen'
+                $group_key = $row['PEN_NAME'] ?: 'Unassigned Pen';
+                $group_id = $row['PEN_ID'];
+            }
             
             if (!isset($grouped_data[$group_key])) {
-                $grouped_data[$group_key] = [ 'name' => $group_key, 'count' => 0, 'cost' => 0, 'classifications' => [], 'items' => [] ];
+                $grouped_data[$group_key] = [ 
+                    'name' => $group_key, 
+                    'id' => $group_id,
+                    'count' => 0, 
+                    'cost' => 0, 
+                    'classifications' => [], 
+                    'items' => [] 
+                ];
             }
             $grouped_data[$group_key]['count']++;
             $grouped_data[$group_key]['cost'] += $row['ACQUISITION_COST'];
@@ -158,7 +178,7 @@ try {
     $breeds_list = $conn->query("SELECT * FROM BREEDS ORDER BY BREED_NAME")->fetchAll();
     $stages_list = $conn->query("SELECT * FROM ANIMAL_CLASSIFICATIONS ORDER BY CLASS_ID")->fetchAll();
 
-    // Calculate Total Pages for Pagination
+    // Calculate Total Pages
     $total_pages = ceil($stats['total_heads'] / $limit);
 
 } catch (Exception $e) {
@@ -265,19 +285,15 @@ try {
         td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: #e2e8f0; }
         tr:last-child td { border-bottom: none; }
         
-        /* Group Headers in Detailed View */
         .group-header-row { background: rgba(34, 197, 94, 0.15); font-weight: bold; color: #4ade80; border-top: 1px solid #334155; }
         .group-header-row td { padding: 0.75rem 1rem; }
-        
         .sub-group-header-row { background: rgba(30, 41, 59, 0.9); font-weight: 600; color: #94a3b8; border-top: 1px solid #334155; }
         .sub-group-header-row td { padding: 0.5rem 1rem 0.5rem 2rem; font-size: 0.85rem; font-style: italic; }
 
-        /* Badges */
         .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block;}
         .b-active { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
         .b-sold { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
         .b-dec { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-        
         .val-money { font-family: monospace; color: #fbbf24; font-weight: bold; }
         .val-weight { font-family: monospace; color: #60a5fa; font-weight: bold; }
 
@@ -291,6 +307,13 @@ try {
         .mini-lbl { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; }
         .class-breakdown { font-size: 0.85rem; color: #cbd5e1; text-align: left; }
         .class-item { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding: 2px 0; }
+        
+        .btn-view-pens { 
+            background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; color: #22c55e;
+            padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-view-pens:hover { background: #22c55e; color: #fff; }
 
         /* --- PAGINATION --- */
         .pagination { display: flex; justify-content: center; gap: 5px; margin-top: 20px; }
@@ -343,14 +366,18 @@ try {
 
     <div class="filter-box">
         <form method="GET">
+            <?php if($filter_loc): ?><input type="hidden" name="f_loc" value="<?= htmlspecialchars($filter_loc) ?>"><?php endif; ?>
+            <?php if($filter_bld): ?><input type="hidden" name="f_bld" value="<?= htmlspecialchars($filter_bld) ?>"><?php endif; ?>
+
             <div class="filter-grid">
-                
                 <div class="form-group">
                     <label style="color: #22c55e;">Report View</label>
                     <select name="view" class="form-input" onchange="this.form.submit()" style="border-color: #22c55e;">
-                        <option value="detailed" <?= $view == 'detailed' ? 'selected' : '' ?>>Detailed List (Default)</option>
-                        <option value="pen" <?= $view == 'pen' ? 'selected' : '' ?>>Summary by Pen</option>
+                        <option value="detailed" <?= $view == 'detailed' ? 'selected' : '' ?>>Detailed List</option>
                         <option value="building" <?= $view == 'building' ? 'selected' : '' ?>>Summary by Building</option>
+                        <?php if($view == 'pen'): // Only show if active ?>
+                            <option value="pen" selected>Summary by Pen</option>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -420,13 +447,19 @@ try {
         </form>
     </div>
 
-    <?php if ($view === 'pen' || $view === 'building'): ?>
+    <?php if ($view === 'building'): ?>
         
+        <h3 style="color:#94a3b8; margin-bottom:1rem;">Building Overview</h3>
         <?php foreach ($grouped_data as $group_name => $gdata): ?>
             <div class="group-card">
                 <div class="group-header">
                     <div class="group-title"><?= htmlspecialchars($group_name) ?></div>
-                    <div style="color: #94a3b8; font-size: 0.9rem;">Group Summary</div>
+                    
+                    <?php if($gdata['id']): ?>
+                        <a href="?view=pen&f_bld=<?= $gdata['id'] ?>&status=<?= $status ?>" class="btn-view-pens">
+                            View Pens ➔
+                        </a>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="group-stats-row">
@@ -450,47 +483,73 @@ try {
                         </div>
                     </div>
                 </div>
+                </div>
+        <?php endforeach; ?>
 
-                <?php if ($view !== 'building'): ?>
-                    <div style="padding: 1rem; background: rgba(15,23,42,0.4);">
-                        <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase;">Animals List</h4>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Tag No</th><th>Stage</th><th>Breed</th><th>Sex</th><th>Status</th><th>Birth Wt</th><th>Cur. Wt</th><th>Cost</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($gdata['items'] as $row): ?>
-                                        <tr>
-                                            <td style="font-weight:bold; color:#fff;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
-                                            <td><?= htmlspecialchars($row['STAGE_NAME']) ?></td>
-                                            <td><?= htmlspecialchars($row['BREED_NAME']) ?></td>
-                                            <td><?= $row['SEX'] ?></td>
-                                            <td><?= htmlspecialchars($row['CURRENT_STATUS']) ?></td>
-                                            <td style="text-align:right;"><?= $row['WEIGHT_AT_BIRTH'] ?></td>
-                                            <td style="text-align:right;"><?= $row['CURRENT_ESTIMATED_WEIGHT'] ?></td>
-                                            <td style="text-align:right;" class="text-gold">₱<?= number_format($row['ACQUISITION_COST'], 2) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+    <?php elseif ($view === 'pen'): ?>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+             <h3 style="color:#94a3b8; margin:0;">Pen Breakdown</h3>
+             <a href="?view=building&status=<?= $status ?>" class="btn-outline" style="padding:6px 12px; border-radius:6px; text-decoration:none;">← Back to Buildings</a>
+        </div>
+
+        <?php foreach ($grouped_data as $group_name => $gdata): ?>
+            <div class="group-card">
+                <div class="group-header">
+                    <div class="group-title"><?= htmlspecialchars($group_name) ?></div>
+                    <div style="color: #94a3b8; font-size: 0.9rem;">Pen Summary</div>
+                </div>
+                
+                <div class="group-stats-row">
+                    <div class="group-mini-stat">
+                        <div class="mini-val text-green"><?= number_format($gdata['count']) ?></div>
+                        <div class="mini-lbl">Animals in Pen</div>
+                    </div>
+                    <div class="group-mini-stat">
+                        <div class="mini-val text-gold">₱<?= number_format($gdata['cost'], 2) ?></div>
+                        <div class="mini-lbl">Total Cost</div>
+                    </div>
+                    <div class="group-mini-stat" style="text-align: left; padding: 1rem 1.5rem;">
+                        <div class="mini-lbl" style="margin-bottom: 5px;">Classifications</div>
+                        <div class="class-breakdown">
+                            <?php foreach ($gdata['classifications'] as $cname => $ccount): ?>
+                                <div class="class-item">
+                                    <span><?= htmlspecialchars($cname) ?></span>
+                                    <span style="color:#fff; font-weight:bold;"><?= $ccount ?></span>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
-                <?php else: ?>
-                    <div style="padding: 0.5rem; text-align:center; background: rgba(15,23,42,0.4);">
-                        <small style="color: #64748b;">Detailed list hidden for Building View. Export to see details.</small>
+                </div>
+
+                <div style="padding: 1rem; background: rgba(15,23,42,0.4);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase;">Animals List</h4>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tag No</th><th>Stage</th><th>Breed</th><th>Sex</th><th>Status</th><th>Birth Wt</th><th>Cur. Wt</th><th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($gdata['items'] as $row): ?>
+                                    <tr>
+                                        <td style="font-weight:bold; color:#fff;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
+                                        <td><?= htmlspecialchars($row['STAGE_NAME']) ?></td>
+                                        <td><?= htmlspecialchars($row['BREED_NAME']) ?></td>
+                                        <td><?= $row['SEX'] ?></td>
+                                        <td><?= htmlspecialchars($row['CURRENT_STATUS']) ?></td>
+                                        <td style="text-align:right;"><?= $row['WEIGHT_AT_BIRTH'] ?></td>
+                                        <td style="text-align:right;"><?= $row['CURRENT_ESTIMATED_WEIGHT'] ?></td>
+                                        <td style="text-align:right;" class="text-gold">₱<?= number_format($row['ACQUISITION_COST'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
-                <?php endif; ?>
+                </div>
             </div>
         <?php endforeach; ?>
-        
-        <?php if (empty($grouped_data)): ?>
-            <div style="text-align:center; padding:3rem; color:#64748b; background: rgba(30,41,59,0.5); border-radius: 16px;">
-                No grouped records found matching filters.
-            </div>
-        <?php endif; ?>
 
     <?php else: ?>
         
@@ -524,7 +583,7 @@ try {
                             if ($curr_building !== $last_building) {
                                 echo "<tr class='group-header-row'><td colspan='10'>🏢 Building: " . htmlspecialchars($curr_building) . "</td></tr>";
                                 $last_building = $curr_building;
-                                $last_pen = ''; // Reset pen when building changes
+                                $last_pen = ''; 
                             }
 
                             // Pen Header
@@ -562,7 +621,6 @@ try {
         <?php if($total_pages > 1): ?>
         <div class="pagination">
             <?php 
-                // Helper to preserve filters in links
                 $params = $_GET;
                 unset($params['page_no']);
                 $query_str = http_build_query($params);
@@ -591,13 +649,8 @@ try {
 <script>
     const jsPDF = window.jspdf.jsPDF;
     const viewMode = "<?= $view ?>";
-    
-    // NOTE: In paginated view, JS array 'records' only contains current page data.
-    // For full export, we ideally need an AJAX endpoint to fetch all. 
-    // For simplicity here, we export current view.
     const records = <?php echo json_encode($animals); ?>;
 
-    // --- PDF Export ---
     function exportPDF() {
         const doc = new jsPDF('landscape');
         doc.setFontSize(18);
@@ -606,10 +659,8 @@ try {
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const dateStr = new Date().toLocaleString();
-        doc.text(`Generated: ${dateStr}`, 14, 22);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
-        // Simple table export for now (works best for Detailed view)
         const rows = records.map(r => [
             r.TAG_NO, r.STAGE_NAME || '-', r.BREED_NAME, r.SEX, r.CURRENT_STATUS, 
             r.LOCATION_NAME, r.MOTHER_TAG || '-', r.CURRENT_ESTIMATED_WEIGHT, r.ACQUISITION_COST
@@ -626,7 +677,6 @@ try {
         doc.save('Animal_Report.pdf');
     }
 
-    // --- Excel Export ---
     function exportExcel() {
         const excelData = records.map(r => ({
             'Tag No': r.TAG_NO,
@@ -642,14 +692,12 @@ try {
             'Current Wt': r.CURRENT_ESTIMATED_WEIGHT,
             'Cost (PHP)': parseFloat(r.ACQUISITION_COST)
         }));
-
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Inventory");
         XLSX.writeFile(wb, "Animal_Report.xlsx");
     }
 
-    // --- CSV Export ---
     function exportCSV() {
         let csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "Tag No,Type,Breed,Stage,Sex,Status,Location,Mother Tag,Birth Date,Current Wt,Cost\n";

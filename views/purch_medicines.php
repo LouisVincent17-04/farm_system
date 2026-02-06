@@ -19,7 +19,7 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Items
+    // 1. Fetch Items (Added i.* includes EXPIRATION_DATE)
     $items_sql = "SELECT i.*, 
                   it.ITEM_TYPE_NAME,
                   u.UNIT_NAME
@@ -72,12 +72,8 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medicine Purchase Management</title>
     <style>
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* --- CORE STYLES --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -86,440 +82,105 @@ try {
             color: white;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .header-info h1 {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .header-info p {
-            color: #cbd5e1;
-        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .header-info p { color: #cbd5e1; }
 
         .add-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            display: flex; align-items: center; gap: 0.5rem;
             background: linear-gradient(135deg, #2563eb, #9333ea);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            color: white; border: none; padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
+        .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
 
-        .add-btn:hover {
-            background: linear-gradient(135deg, #1d4ed8, #7c3aed);
-            transform: scale(1.05);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-        }
-
-        .search-container {
-            position: relative;
-            margin-bottom: 2rem;
-        }
-
+        .search-container { position: relative; margin-bottom: 2rem; }
         .search-input {
-            width: 100%;
-            padding: 1rem 1rem 1rem 3rem;
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid #475569;
-            border-radius: 0.5rem;
-            color: white;
-            font-size: 1rem;
+            width: 100%; padding: 1rem 1rem 1rem 3rem;
+            background: rgba(30, 41, 59, 0.5); border: 1px solid #475569;
+            border-radius: 0.5rem; color: white; font-size: 1rem;
             backdrop-filter: blur(10px);
         }
-
-        .search-input::placeholder {
-            color: #94a3b8;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #94a3b8;
-            width: 20px;
-            height: 20px;
-        }
+        .search-input::placeholder { color: #94a3b8; }
+        .search-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
 
         .table-container {
-            background: rgba(30, 41, 59, 0.5);
-            backdrop-filter: blur(10px);
-            border-radius: 0.75rem;
-            border: 1px solid #475569;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px);
+            border-radius: 0.75rem; border: 1px solid #475569;
+            overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow-x: auto;
         }
+        .table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        .table thead { background: linear-gradient(135deg, #475569, #334155); }
+        .table th { padding: 1rem 1.5rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; }
+        .table tbody tr { border-bottom: 1px solid #475569; transition: background-color 0.2s; }
+        .table tbody tr:hover { background: rgba(55, 65, 81, 0.5); }
+        .table td { padding: 1rem 1.5rem; vertical-align: middle; }
 
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .item-id { font-weight: 600; color: #93c5fd; }
+        .item-name { font-weight: 500; }
+        .item-unit { color: #cbd5e1; font-size: 0.875rem; }
+        .amount { color: #86efac; font-weight: 600; }
 
-        .table thead {
-            background: linear-gradient(135deg, #475569, #334155);
-        }
+        .category-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .category-consumable { background: rgba(147, 51, 234, 0.2); color: #c084fc; }
+        .category-nonconsumable { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
 
-        .table th {
-            padding: 1rem 1.5rem;
-            text-align: left;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #e2e8f0;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+        .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
+        .action-btn.view { color: #60a5fa; } .action-btn.view:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); }
+        .action-btn.edit { color: #a78bfa; } .action-btn.edit:hover { color: #c4b5fd; background: rgba(139, 92, 246, 0.2); }
+        .action-btn.delete { color: #f87171; } .action-btn.delete:hover { color: #fca5a5; background: rgba(239, 68, 68, 0.2); }
 
-        .table tbody tr {
-            border-bottom: 1px solid #475569;
-            transition: background-color 0.2s;
-        }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; overflow-y: auto; }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 40rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); margin: 2rem 0; }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; }
+        .modal-header h2 { font-size: 1.5rem; font-weight: bold; }
+        .modal-body { padding: 1.5rem; max-height: 60vh; overflow-y: auto; }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+        .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
+        .form-group label span { color: #f87171; }
+        .form-group input, .form-group textarea, .form-group select { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 1rem; }
+        .form-group select option { background: #374151; color: white; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 
-        .table tbody tr:hover {
-            background: rgba(55, 65, 81, 0.5);
-        }
+        .modal-footer { padding: 1.5rem; border-top: 1px solid #475569; display: flex; justify-content: flex-end; gap: 0.75rem; }
+        .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; border: none; color: #cbd5e1; cursor: pointer; transition: color 0.2s; }
+        .btn-cancel:hover { color: white; }
+        .btn-save { padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-save:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .table td {
-            padding: 1rem 1.5rem;
-            vertical-align: middle;
-        }
+        .empty-state { text-align: center; padding: 3rem 1rem; display: none; }
+        .empty-state h3 { font-size: 1.125rem; color: #94a3b8; margin-bottom: 0.5rem; }
+        .empty-state p { color: #64748b; font-size: 0.875rem; }
 
-        .item-id {
-            font-weight: 600;
-            color: #93c5fd;
-        }
+        .icon { width: 18px; height: 18px; }
+        .info-group { margin-bottom: 1.5rem; }
+        .info-group h3 { font-size: 1rem; color: #93c5fd; margin-bottom: 1rem; font-weight: 600; }
+        .info-group p { margin-bottom: 0.5rem; color: #cbd5e1; }
+        .info-group p strong { color: #e2e8f0; margin-right: 0.5rem; }
 
-        .item-name {
-            font-weight: 500;
-        }
+        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: none; }
+        .alert.success { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #86efac; }
+        .alert.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
 
-        .item-unit {
-            color: #cbd5e1;
-            font-size: 0.875rem;
-        }
-
-        .amount {
-            color: #86efac;
-            font-weight: 600;
-        }
-
-        .category-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .category-consumable {
-            background: rgba(147, 51, 234, 0.2);
-            color: #c084fc;
-        }
-
-        .category-nonconsumable {
-            background: rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-        }
-
-        .actions {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .action-btn {
-            padding: 0.5rem;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: transparent;
-        }
-
-        .action-btn.view {
-            color: #60a5fa;
-        }
-
-        .action-btn.view:hover {
-            color: #93c5fd;
-            background: rgba(59, 130, 246, 0.2);
-        }
-
-        .action-btn.edit {
-            color: #a78bfa;
-        }
-
-        .action-btn.edit:hover {
-            color: #c4b5fd;
-            background: rgba(139, 92, 246, 0.2);
-        }
-
-        .action-btn.delete {
-            color: #f87171;
-        }
-
-        .action-btn.delete:hover {
-            color: #fca5a5;
-            background: rgba(239, 68, 68, 0.2);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            padding: 1rem;
-            overflow-y: auto;
-        }
-
-        .modal.show {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: #1e293b;
-            border-radius: 0.75rem;
-            width: 100%;
-            max-width: 40rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            margin: 2rem 0;
-        }
-
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid #475569;
-        }
-
-        .modal-header h2 {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            color: #cbd5e1;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .form-group label span {
-            color: #f87171;
-        }
-
-        .form-group input, 
-        .form-group textarea,
-        .form-group select {
-            padding: 0.75rem;
-            background: #374151;
-            border: 1px solid #4b5563;
-            border-radius: 0.5rem;
-            color: white;
-            font-size: 1rem;
-        }
-
-        .form-group select option {
-            background: #374151;
-            color: white;
-        }
-
-        .form-group input:focus, 
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .modal-footer {
-            padding: 1.5rem;
-            border-top: 1px solid #475569;
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-        }
-
-        .btn-cancel {
-            padding: 0.5rem 1.5rem;
-            background: transparent;
-            border: none;
-            color: #cbd5e1;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .btn-cancel:hover {
-            color: white;
-        }
-
-        .btn-save {
-            padding: 0.5rem 1.5rem;
-            background: linear-gradient(135deg, #2563eb, #9333ea);
-            border: none;
-            border-radius: 0.5rem;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-save:hover {
-            background: linear-gradient(135deg, #1d4ed8, #7c3aed);
-        }
-
-        .btn-save:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
-            display: none;
-        }
-
-        .empty-state h3 {
-            font-size: 1.125rem;
-            color: #94a3b8;
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-state p {
-            color: #64748b;
-            font-size: 0.875rem;
-        }
-
-        .icon {
-            width: 18px;
-            height: 18px;
-        }
-
-        .info-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .info-group h3 {
-            font-size: 1rem;
-            color: #93c5fd;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-
-        .info-group p {
-            margin-bottom: 0.5rem;
-            color: #cbd5e1;
-        }
-
-        .info-group p strong {
-            color: #e2e8f0;
-            margin-right: 0.5rem;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .alert.success {
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid #22c55e;
-            color: #86efac;
-        }
-
-        .alert.error {
-            background: rgba(239, 68, 68, 0.2);
-            border: 1px solid #ef4444;
-            color: #fca5a5;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ffffff;
-            border-radius: 50%;
-            border-top-color: transparent;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #ffffff; border-radius: 50%; border-top-color: transparent; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
-            .header-info h1 {
-                font-size: 2rem;
-            }
-
-            .table-container {
-                overflow-x: auto;
-            }
-
-            .table {
-                min-width: 900px;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
+            .header { flex-direction: column; gap: 1rem; text-align: center; }
+            .header-info h1 { font-size: 2rem; }
+            .table-container { overflow-x: auto; }
+            .table { min-width: 900px; }
+            .form-row { grid-template-columns: 1fr; }
         }
 
         /* --- Reusing existing styles --- */
@@ -532,108 +193,26 @@ try {
         .autocomplete-item strong { color: #2563eb; }
         .autocomplete-loading, .autocomplete-no-results { padding: 12px 15px; text-align: center; color: #666; font-size: 14px; }
         
-        input[readonly], select[disabled] {
-            background-color: #f1f5f9;
-            cursor: not-allowed;
-            color: #475569;
-        }
+        input[readonly], select[disabled] { background-color: #f1f5f9; cursor: not-allowed; color: #475569; }
 
         /* --- CONFIRMATION STYLES --- */
-        .confirm-btn {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-            width: 100%;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .confirm-btn:hover {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
-        }
+        .confirm-btn { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3); width: 100%; text-transform: uppercase; letter-spacing: 0.5px; }
+        .confirm-btn:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4); }
 
-        /* Header Actions */
         .header-actions { display: flex; gap: 10px; align-items: center; }
 
-        .confirm-all-btn {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .confirm-all-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); display: flex; align-items: center; gap: 8px; }
+        .confirm-all-btn:hover { background: linear-gradient(135deg, #d97706, #b45309); transform: translateY(-1px); box-shadow: 0 6px 8px rgba(245, 158, 11, 0.4); }
 
-        .confirm-all-btn:hover {
-            background: linear-gradient(135deg, #d97706, #b45309);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 8px rgba(245, 158, 11, 0.4);
-        }
+        .confirmed-badge { display: inline-block; width: 100%; text-align: center; padding: 8px 0; background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
 
-        .confirmed-badge {
-            display: inline-block;
-            width: 100%;
-            text-align: center;
-            padding: 8px 0;
-            background: rgba(16, 185, 129, 0.1);
-            color: #059669;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-        }
-
-        /* Badges for Category */
         .category-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
         .category-nonconsumable { background: rgba(59, 130, 246, 0.1); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.2); }
         .category-consumable { background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); }
 
-        /* Modal Specifics */
         .confirm-content { text-align: center; padding: 20px; }
         .confirm-icon { font-size: 4rem; margin-bottom: 15px; display: block; }
-        .warning-text {
-            color: #64748b; font-size: 0.9rem; margin: 15px 0 25px 0;
-            background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;
-        }
-
-        /* --- TABLE SCROLL FIX --- */
-        .table-container {
-            width: 100%;
-            overflow-x: auto; 
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-            border: 1px solid #e2e8f0;
-        }
-
-        table.table {
-            width: 100%;
-            min-width: 1600px; 
-            border-collapse: collapse;
-        }
-
-        table.table th, table.table td {
-            white-space: nowrap;
-            padding: 1rem;
-            vertical-align: middle;
-        }
+        .warning-text { color: #64748b; font-size: 0.9rem; margin: 15px 0 25px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
     </style>
 </head>
 <body>
@@ -668,8 +247,6 @@ try {
             <input type="text" class="search-input" id="searchInput" placeholder="Search by item name, unit, or category..." onkeyup="filterTable()">
         </div>
 
-        
-
         <div class="table-container">
             <table class="table">
                 <thead>
@@ -680,9 +257,10 @@ try {
                         <th>Unit</th>
                         <th>Net Weight</th>
                         <th>Unit Cost</th>
-                        <th>Total Cost</th> <th>Category</th>
+                        <th>Total Cost</th> 
+                        <th>Category</th>
                         <th>Purchase Date</th>
-                        <th style="text-align: center; width: 150px;">Confirmation</th>
+                        <th>Expiry Date</th> <th style="text-align: center; width: 150px;">Confirmation</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -694,8 +272,6 @@ try {
                     foreach($items_data as $item): 
                         $status = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
                         $isConfirmed = ($status === 1);
-                        
-                        // Calculate Total Cost
                         $totalCost = $item['TOTAL_COST'] ?? ($item['QUANTITY'] * $item['UNIT_COST']);
                     ?>
                     <tr data-item-id="<?php echo $item['ITEM_ID']; ?>"
@@ -708,6 +284,7 @@ try {
                         data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
                         data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
                         data-purchase-date="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
+                        data-expiration-date="<?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? ''); ?>" 
                         data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
                         data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
                         data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
@@ -730,11 +307,9 @@ try {
                         <td>
                             <div class="amount">₱<?php echo number_format($item['UNIT_COST'], 2); ?></div>
                         </td>
-                        
                         <td>
                             <div class="amount" style="font-weight:bold; color:#2563eb;">₱<?php echo number_format($totalCost, 2); ?></div>
                         </td>
-
                         <td>
                             <span class="category-badge <?php echo $categoryClasses[$item['ITEM_CATEGORY']]; ?>">
                                 <?php echo $categoryLabels[$item['ITEM_CATEGORY']]; ?>
@@ -743,19 +318,16 @@ try {
                         <td>
                             <div class="item-unit"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? 'N/A'); ?></div>
                         </td>
-
+                        <td>
+                            <div class="item-unit" style="color: #fca5a5;"><?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? 'N/A'); ?></div>
+                        </td>
                         <td style="text-align: center;">
                             <?php if(!$isConfirmed): ?>
-                                <button class="confirm-btn" onclick="openConfirmModal(this)">
-                                    Confirm
-                                </button>
+                                <button class="confirm-btn" onclick="openConfirmModal(this)">Confirm</button>
                             <?php else: ?>
-                                <div class="confirmed-badge">
-                                    Confirmed
-                                </div>
+                                <div class="confirmed-badge">Confirmed</div>
                             <?php endif; ?>
                         </td>
-
                         <td>
                             <div class="actions">
                                 <button class="action-btn view" onclick="viewItem(this)" title="View Details">
@@ -764,7 +336,6 @@ try {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                 </button>
-
                                 <?php if(!$isConfirmed): ?>
                                     <button class="action-btn edit" onclick="editItem(this)" title="Edit">
                                         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -805,7 +376,6 @@ try {
                     
                     <div class="info-group">
                         <h3>Item Information</h3>
-                        
                         <div class="form-group autocomplete-wrapper">
                             <label for="item-name">Item Name <span>*</span></label>
                             <input type="text" id="item-name" name="item_name" placeholder="e.g., Paracetamol" required maxlength="300" autocomplete="off">
@@ -817,15 +387,12 @@ try {
                                 <label for="net-weight">Net Weight</label>
                                 <input type="number" id="net-weight" name="item_net_weight" placeholder="e.g., 500" step="0.01" min="0">
                             </div>
-
                             <div class="form-group">
                                 <label for="unit">Unit of Measurement <span>*</span></label>
                                 <select id="unit" name="unit_id" required>
                                     <option value="">Select Unit</option>
                                     <?php foreach($units as $unit): ?>
-                                        <option value="<?php echo $unit['UNIT_ID']; ?>">
-                                            <?php echo htmlspecialchars($unit['UNIT_NAME']); ?>
-                                        </option>
+                                        <option value="<?php echo $unit['UNIT_ID']; ?>"><?php echo htmlspecialchars($unit['UNIT_NAME']); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -841,7 +408,6 @@ try {
                                 <label for="unit-cost">Unit Cost (₱) <span>*</span></label>
                                 <input type="number" id="unit-cost" name="unit_cost" placeholder="0.00" step="0.01" min="0" required>
                             </div>
-
                             <div class="form-group">
                                 <label for="item-category">Item Category <span>*</span></label>
                                 <select id="item-category" name="item_category" required>
@@ -852,9 +418,15 @@ try {
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="purchase-date">Date of Purchase <span>*</span></label>
-                            <input type="date" id="purchase-date" name="date_of_purchase" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="purchase-date">Date of Purchase <span>*</span></label>
+                                <input type="date" id="purchase-date" name="date_of_purchase" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="expiration-date">Expiration Date <span style="color:#fca5a5;">(Required)</span></label>
+                                <input type="date" id="expiration-date" name="expiration_date" required>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -871,20 +443,16 @@ try {
                                 <select id="location_id" name="location_id" onchange="filterBuildings()">
                                     <option value="">Select Location</option>
                                     <?php foreach($locations as $loc): ?>
-                                        <option value="<?php echo $loc['LOCATION_ID']; ?>">
-                                            <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                        </option>
+                                        <option value="<?php echo $loc['LOCATION_ID']; ?>"><?php echo htmlspecialchars($loc['LOCATION_NAME']); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-
                             <div class="form-group">
                                 <label for="building_id">Building</label>
                                 <select id="building_id" name="building_id" onchange="filterPens()" disabled>
                                     <option value="">Select Location First</option>
                                 </select>
                             </div>
-
                             <div class="form-group">
                                 <label for="pen_id">Pen</label>
                                 <select id="pen_id" name="pen_id" disabled>
@@ -907,8 +475,7 @@ try {
             <div class="modal-header">
                 <h2>Purchase Details</h2>
             </div>
-            <div class="modal-body" id="view-modal-body">
-            </div>
+            <div class="modal-body" id="view-modal-body"></div>
             <div class="modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeViewModal()">Close</button>
             </div>
@@ -921,9 +488,7 @@ try {
                 <span class="confirm-icon">💊</span>
                 <h2 style="color: #1e293b; margin-bottom: 10px;">Confirm Purchase?</h2>
                 <p style="color: #64748b; margin-bottom: 5px;">You are about to confirm <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name"></span></strong>.</p>
-                <div class="warning-text">
-                    ⚠️ <strong>Warning:</strong> Once confirmed, this record will be locked and can no longer be edited or deleted.
-                </div>
+                <div class="warning-text">⚠️ Warning: Once confirmed, this record will be locked and can no longer be edited or deleted.</div>
                 <form id="confirmForm" method="POST">
                     <input type="hidden" id="confirm_item_id" name="item_id">
                 </form>
@@ -941,9 +506,7 @@ try {
                 <span class="confirm-icon" style="font-size: 3rem;">📋</span>
                 <h2 style="color: #1e293b; margin-bottom: 10px;">Confirm All Pending?</h2>
                 <p style="color: #64748b;">This will confirm and lock <strong>ALL</strong> currently pending medicine purchases.</p>
-                <div class="warning-text">
-                    ⚠️ <strong>Warning:</strong> This action cannot be undone.
-                </div>
+                <div class="warning-text">⚠️ Warning: This action cannot be undone.</div>
             </div>
             <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
                 <button type="button" class="btn-cancel" onclick="closeConfirmAllModal()">Cancel</button>
@@ -963,131 +526,88 @@ try {
         // --- Confirmation Logic ---
         function openConfirmModal(button) {
             const row = button.closest('tr');
-            const itemId = row.dataset.itemId;
-            const itemName = row.dataset.itemName;
-            const itemQty = row.dataset.quantity;
-
-            document.getElementById('confirm_item_id').value = itemId;
-            document.getElementById('confirm-item-name').textContent = itemName;
-            document.getElementById('confirm-item-qty').textContent = itemQty;
-
+            document.getElementById('confirm_item_id').value = row.dataset.itemId;
+            document.getElementById('confirm-item-name').textContent = row.dataset.itemName;
+            document.getElementById('confirm-item-qty').textContent = row.dataset.quantity;
             document.getElementById('confirm-modal').classList.add('show');
         }
 
-        function closeConfirmModal() {
-            document.getElementById('confirm-modal').classList.remove('show');
-        }
+        function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
 
         function submitConfirmation() {
             const form = document.getElementById('confirmForm');
             const formData = new FormData(form);
             const confirmBtn = document.querySelector('#confirm-modal .btn-save');
             
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = 'Confirming...';
+            confirmBtn.disabled = true; confirmBtn.innerHTML = 'Confirming...';
 
-            fetch('../purchase_confirmations/confirmMedicines.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    window.location.reload();
-                } else {
-                    alert(data.message);
-                    confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = 'Yes, Confirm it!';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while confirming.');
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = 'Yes, Confirm it!';
-            });
+            fetch('../purchase_confirmations/confirmMedicines.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) { alert(data.message); window.location.reload(); } 
+                    else { alert(data.message); confirmBtn.disabled = false; confirmBtn.innerHTML = 'Yes, Confirm it!'; }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while confirming.');
+                    confirmBtn.disabled = false; confirmBtn.innerHTML = 'Yes, Confirm it!';
+                });
         }
 
-        function openConfirmAllModal() {
-            document.getElementById('confirm-all-modal').classList.add('show');
-        }
-
-        function closeConfirmAllModal() {
-            document.getElementById('confirm-all-modal').classList.remove('show');
-        }
+        function openConfirmAllModal() { document.getElementById('confirm-all-modal').classList.add('show'); }
+        function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
 
         function submitConfirmAll() {
             const confirmBtn = document.querySelector('#confirm-all-modal .btn-save');
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = 'Processing...';
+            confirmBtn.disabled = true; confirmBtn.innerHTML = 'Processing...';
 
-            fetch('../purchase_confirmations/confirmAllMedicines.php', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    window.location.reload();
-                } else {
-                    alert(data.message);
-                    confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = 'Confirm All';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while confirming all items.');
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = 'Confirm All';
-            });
+            fetch('../purchase_confirmations/confirmAllMedicines.php', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) { alert(data.message); window.location.reload(); } 
+                    else { alert(data.message); confirmBtn.disabled = false; confirmBtn.innerHTML = 'Confirm All'; }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while confirming all items.');
+                    confirmBtn.disabled = false; confirmBtn.innerHTML = 'Confirm All';
+                });
         }
-        // --------------------------
 
         function filterBuildings() {
-            const locationSelect = document.getElementById('location_id');
-            const buildingSelect = document.getElementById('building_id');
-            const penSelect = document.getElementById('pen_id');
-            const selectedLocId = locationSelect.value;
+            const locId = document.getElementById('location_id').value;
+            const bldgSel = document.getElementById('building_id');
+            const penSel = document.getElementById('pen_id');
+            
+            bldgSel.innerHTML = '<option value="">Select Building</option>';
+            penSel.innerHTML = '<option value="">Select Building First</option>';
+            penSel.disabled = true;
 
-            buildingSelect.innerHTML = '<option value="">Select Building</option>';
-            penSelect.innerHTML = '<option value="">Select Building First</option>';
-            penSelect.disabled = true;
-
-            if (selectedLocId) {
-                buildingSelect.disabled = false;
-                const filteredBuildings = allBuildings.filter(b => b.LOCATION_ID == selectedLocId);
-                filteredBuildings.forEach(b => {
-                    const option = document.createElement('option');
-                    option.value = b.BUILDING_ID;
-                    option.textContent = b.BUILDING_NAME;
-                    buildingSelect.appendChild(option);
+            if (locId) {
+                bldgSel.disabled = false;
+                const filtered = allBuildings.filter(b => b.LOCATION_ID == locId);
+                filtered.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.BUILDING_ID; opt.textContent = b.BUILDING_NAME;
+                    bldgSel.appendChild(opt);
                 });
-            } else {
-                buildingSelect.disabled = true;
-            }
+            } else { bldgSel.disabled = true; }
         }
 
         function filterPens() {
-            const buildingSelect = document.getElementById('building_id');
-            const penSelect = document.getElementById('pen_id');
-            const selectedBldgId = buildingSelect.value;
+            const bldgId = document.getElementById('building_id').value;
+            const penSel = document.getElementById('pen_id');
+            penSel.innerHTML = '<option value="">Select Pen</option>';
 
-            penSelect.innerHTML = '<option value="">Select Pen</option>';
-
-            if (selectedBldgId) {
-                penSelect.disabled = false;
-                const filteredPens = allPens.filter(p => p.BUILDING_ID == selectedBldgId);
-                filteredPens.forEach(p => {
-                    const option = document.createElement('option');
-                    option.value = p.PEN_ID;
-                    option.textContent = p.PEN_NAME;
-                    penSelect.appendChild(option);
+            if (bldgId) {
+                penSel.disabled = false;
+                const filtered = allPens.filter(p => p.BUILDING_ID == bldgId);
+                filtered.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.PEN_ID; opt.textContent = p.PEN_NAME;
+                    penSel.appendChild(opt);
                 });
-            } else {
-                penSelect.disabled = true;
-            }
+            } else { penSel.disabled = true; }
         }
 
         let autocompleteTimeout = null;
@@ -1102,7 +622,6 @@ try {
         function initAutocomplete() {
             const itemNameInput = document.getElementById('item-name');
             const autocompleteList = document.getElementById('autocomplete-list');
-            
             const newInput = itemNameInput.cloneNode(true);
             itemNameInput.parentNode.replaceChild(newInput, itemNameInput);
             const input = document.getElementById('item-name');
@@ -1115,7 +634,6 @@ try {
                 autocompleteList.classList.add('show');
                 autocompleteTimeout = setTimeout(() => { fetchAutocomplete(value); }, 300);
             });
-            
             input.addEventListener('keydown', function(e) {
                 const items = autocompleteList.getElementsByClassName('autocomplete-item');
                 if (e.keyCode === 40) { e.preventDefault(); currentFocus++; addActive(items); } 
@@ -1123,7 +641,6 @@ try {
                 else if (e.keyCode === 13) { if (currentFocus > -1 && items[currentFocus]) { e.preventDefault(); items[currentFocus].click(); } } 
                 else if (e.keyCode === 27) { closeAutocomplete(); }
             });
-            
             document.addEventListener('click', function(e) {
                 if (!e.target.closest('.autocomplete-wrapper')) { closeAutocomplete(); }
             });
@@ -1146,9 +663,7 @@ try {
             results.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'autocomplete-item';
-                const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
-                const highlighted = item.replace(regex, '<strong>$1</strong>');
-                div.innerHTML = highlighted;
+                div.innerHTML = item.replace(new RegExp(`(${escapeRegex(searchTerm)})`, 'gi'), '<strong>$1</strong>');
                 div.addEventListener('click', function() {
                     document.getElementById('item-name').value = item;
                     closeAutocomplete();
@@ -1166,17 +681,12 @@ try {
             items[currentFocus].classList.add('active');
             items[currentFocus].scrollIntoView({ block: 'nearest' });
         }
-
-        function removeActive(items) {
-            for (let i = 0; i < items.length; i++) { items[i].classList.remove('active'); }
-        }
-
+        function removeActive(items) { for (let i = 0; i < items.length; i++) { items[i].classList.remove('active'); } }
         function closeAutocomplete() {
             const list = document.getElementById('autocomplete-list');
             if (list) { list.classList.remove('show'); list.innerHTML = ''; }
             currentFocus = -1;
         }
-
         function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
         function openAddModal() {
@@ -1186,6 +696,7 @@ try {
             document.getElementById('item-id').value = '';
             document.getElementById('item-category').value = '';
             document.getElementById('unit').value = '';
+            
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('purchase-date').value = today;
             
@@ -1212,6 +723,7 @@ try {
                 net_weight: row.dataset.netWeight,
                 quantity: row.dataset.quantity,
                 purchase_date: row.dataset.purchaseDate,
+                expiration_date: row.dataset.expirationDate, // Load expiry
                 created_at: row.dataset.createdAt
             };
             displayItemDetails(data);
@@ -1222,7 +734,7 @@ try {
             const html = `
                 <div class="info-group">
                     <h3>Basic Information</h3>
-                    <p><strong>Item ID:</strong> ITEM-${String(data.item_id).padStart(4, '0')}</p>
+                    <p><strong>Item ID:</strong> MED-${String(data.item_id).padStart(4, '0')}</p>
                     <p><strong>Item Name:</strong> ${data.item_name}</p>
                     <p><strong>Description:</strong> ${data.item_description || 'N/A'}</p>
                     <p><strong>Created:</strong> ${data.created_at}</p>
@@ -1235,6 +747,7 @@ try {
                     <p><strong>Net Weight:</strong> ${data.net_weight || 'N/A'}</p>
                     <p><strong>Category:</strong> ${categoryLabels[data.item_category]}</p>
                     <p><strong>Purchase Date:</strong> ${data.purchase_date || 'N/A'}</p>
+                    <p><strong>Expiration Date:</strong> <span style="color:#fca5a5;">${data.expiration_date || 'N/A'}</span></p>
                 </div>
             `;
             document.getElementById('view-modal-body').innerHTML = html;
@@ -1253,6 +766,7 @@ try {
                 net_weight: row.dataset.netWeight,
                 quantity: row.dataset.quantity,
                 purchase_date: row.dataset.purchaseDate,
+                expiration_date: row.dataset.expirationDate, // Load expiry
                 location_id: row.dataset.locationId,
                 building_id: row.dataset.buildingId,
                 pen_id: row.dataset.penId
@@ -1272,19 +786,16 @@ try {
             document.getElementById('net-weight').value = data.net_weight || '';
             document.getElementById('item-quantity').value = data.quantity || '0';
             document.getElementById('purchase-date').value = data.purchase_date || '';
+            document.getElementById('expiration-date').value = data.expiration_date || ''; // Populate Expiry
 
             const locSelect = document.getElementById('location_id');
             locSelect.value = data.location_id || ""; 
             filterBuildings(); 
 
-            const bldgSelect = document.getElementById('building_id');
             if(data.building_id) {
-                bldgSelect.value = data.building_id;
+                document.getElementById('building_id').value = data.building_id;
                 filterPens();
-                const penSelect = document.getElementById('pen_id');
-                if(data.pen_id) {
-                    penSelect.value = data.pen_id;
-                }
+                if(data.pen_id) document.getElementById('pen_id').value = data.pen_id;
             }
             hideAlert();
             document.getElementById('modal').classList.add('show');
@@ -1313,10 +824,7 @@ try {
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<span class="loading"></span> ' + (isEdit ? 'Updating...' : 'Saving...');
 
-            fetch(url, {
-                method: 'POST',
-                body: formData
-            })
+            fetch(url, { method: 'POST', body: formData })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -1357,21 +865,10 @@ try {
             document.getElementById('view-modal').classList.remove('show');
         }
 
-        // document.getElementById('modal').addEventListener('click', function(e) {
-        //     if (e.target === this) closeModal();
-        // });
-
-        document.getElementById('view-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeViewModal();
-        });
-
-        document.getElementById('confirm-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeConfirmModal();
-        });
-
-        document.getElementById('confirm-all-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeConfirmAllModal();
-        });
+        // document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+        document.getElementById('view-modal').addEventListener('click', function(e) { if (e.target === this) closeViewModal(); });
+        document.getElementById('confirm-modal').addEventListener('click', function(e) { if (e.target === this) closeConfirmModal(); });
+        document.getElementById('confirm-all-modal').addEventListener('click', function(e) { if (e.target === this) closeConfirmAllModal(); });
 
         function filterTable() {
             const searchValue = document.getElementById('searchInput').value.toLowerCase();
