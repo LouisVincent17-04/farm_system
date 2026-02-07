@@ -89,12 +89,13 @@ include '../common/navbar.php';
         .category-icon.yellow { background: linear-gradient(135deg, #eab308, #ca8a04); }
         .category-icon.indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
         .category-icon.cyan   { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
-        /* NEW COLOR FOR EVENT SCHEDULER */
         .category-icon.rose   { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+        
+        /* ADJUSTMENT COLOR (Teal/Emerald Mix) */
+        .category-icon.adjustment { background: linear-gradient(135deg, #0d9488, #115e59); }
 
         .category-info { flex: 1; }
         
-        /* Exact Green Title Color requested */
         .category-title { font-size: 1.3rem; font-weight: 600; color: #22c55e; margin-bottom: 0.5rem; }
         .category-subtitle { color: #64748b; font-size: 0.9rem; }
 
@@ -114,7 +115,6 @@ include '../common/navbar.php';
         .metrics-list li {
             color: #cbd5e1; font-size: 0.9rem; padding: 0.4rem 0; padding-left: 1.5rem; position: relative;
         }
-        /* Changed icon to generic bullet for general management */
         .metrics-list li:before { content: "•"; color: #22c55e; position: absolute; left: 0; font-size: 1.2rem; line-height: 1rem; }
 
         .card-action {
@@ -143,6 +143,29 @@ include '../common/navbar.php';
         </header>
 
         <div class="categories-grid">
+
+            <a href="inventory_adjustment.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon adjustment">⚖️</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Inventory Adjustment</h3>
+                        <p class="category-subtitle">Stock Correction</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Manage Discrepancies</div>
+                    <ul class="metrics-list">
+                        <li>Record Spoilage/Damage</li>
+                        <li>Correct Audit Errors</li>
+                        <li>Track Internal Usage</li>
+                        <li>Deduct/Add Stock Manually</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Adjust Stock</span>
+                    <span>→</span>
+                </div>
+            </a>
 
             <a href="animal_classification.php" class="category-card">
                 <div class="category-header">

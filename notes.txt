@@ -212,8 +212,8 @@ where 0 is Mortality and 1 is Sales ✅
 - CREATE UNDO TO ALL TRANSACTIONS
  - In animal_sales_process.php, only the admin with USER_TYPE of 4 can undo the transaction including the restoration.
  - All transactions can be undoed by the admin with USER_TYPE of 4
-- Create in the farm_dashboard.php an Inventory Adjustment Page
-    - There is a disposal transaction
+- Create in the farm_dashboard.php an Inventory Adjustment Page ✅
+    - There is a disposal transaction 
     - Type: Expired, Damaged, Stolen
 - Create also an expiration date to ALL medicines, feeds, vitamins & supplements, vaccines ✅
  - Fields to Note [All medicines, feeds, vitamins & supplements, vaccines confirmation] ✅
