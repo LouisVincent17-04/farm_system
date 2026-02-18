@@ -282,7 +282,7 @@ include '../common/navbar.php';
                 </div>
             </a>
 
-            <a href="animal_fcr.php" class="category-card">
+            <a href="fcr_management.php" class="category-card">
                 <div class="category-header">
                     <div class="category-icon green">📈</div>
                     <div class="category-info">

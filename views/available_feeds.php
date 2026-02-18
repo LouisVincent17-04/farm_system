@@ -48,10 +48,20 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        /* Navigation Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
         .header h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; color: #fff; }
         .header p { color: #94a3b8; }
         
+        .header-actions { display: flex; gap: 12px; }
+
         .add-btn {
             display: flex; align-items: center; gap: 0.5rem;
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -62,6 +72,16 @@ try {
         }
         .add-btn:hover { transform: translateY(-2px); }
 
+        .secondary-btn {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            text-decoration: none;
+        }
+        .secondary-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
         /* --- QUICK ACTIONS GRID --- */
         .action-grid {
             display: grid;
@@ -71,46 +91,31 @@ try {
         }
 
         .action-card {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 25px;
-            border-radius: 16px;
-            color: white;
-            text-decoration: none;
-            transition: all 0.3s ease;
+            display: flex; align-items: center; gap: 20px;
+            padding: 25px; border-radius: 16px; color: white;
+            text-decoration: none; transition: all 0.3s ease;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .action-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-        }
+        .action-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
 
         .action-icon {
-            font-size: 2.5rem;
-            background: rgba(255, 255, 255, 0.2);
-            width: 60px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
+            font-size: 2.5rem; background: rgba(255, 255, 255, 0.2);
+            width: 60px; height: 60px; display: flex;
+            align-items: center; justify-content: center; border-radius: 12px;
         }
 
         .action-content h3 { font-size: 1.2rem; margin-bottom: 5px; font-weight: 700; }
         .action-content p { font-size: 0.9rem; margin: 0; opacity: 0.9; }
 
-        /* Gradients for Actions */
-        .bg-single { background: linear-gradient(135deg, #059669 0%, #10b981 100%); } /* Emerald */
-        .bg-group { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); } /* Amber */
+        .bg-single { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
+        .bg-group { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); }
 
-        /* --- EXISTING STYLES --- */
+        /* --- TABS & TABLES --- */
         .nav-tabs { display: flex; gap: 0; margin-bottom: 30px; background: rgba(15, 23, 42, 0.5); border-radius: 12px; padding: 6px; backdrop-filter: blur(10px); }
         .nav-tab { flex: 1; padding: 14px 28px; background: transparent; border: none; color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .nav-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.05); }
-        .nav-tab.active { color: white; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+        .nav-tab.active { color: white; background: linear-gradient(135deg, #2563eb, #1d4ed8); }
 
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 28px; border-radius: 16px; color: white; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3); }
@@ -125,48 +130,43 @@ try {
         .table { width: 100%; border-collapse: collapse; }
         .table th { padding: 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; background: linear-gradient(135deg, #475569, #334155); }
         .table td { padding: 1rem; border-bottom: 1px solid #334155; color: #cbd5e1; }
-        .table tbody tr:hover { background: rgba(255,255,255,0.02); }
 
         .quantity-badge { display: inline-block; padding: 6px 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; border-radius: 8px; font-size: 13px; font-weight: 700; }
         .quantity-badge.low-stock { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
         .btn-view-ledger {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 16px;
-            background: rgba(59, 130, 246, 0.15);
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            color: #60a5fa;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
+            padding: 8px 16px; background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa;
+            border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            text-decoration: none; transition: all 0.2s;
         }
-        .btn-view-ledger:hover {
-            background: rgba(59, 130, 246, 0.3);
-            color: #fff;
-            border-color: #3b82f6;
-            transform: translateY(-1px);
-        }
+        .btn-view-ledger:hover { background: rgba(59, 130, 246, 0.3); color: #fff; transform: translateY(-1px); }
 
         @media (max-width: 768px) {
-            .nav-tabs, .filter-section { flex-direction: column; align-items: stretch; }
-            .table-container { overflow-x: auto; }
+            .nav-tabs, .filter-section, .header { flex-direction: column; align-items: stretch; gap: 15px; }
             .action-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="transactions.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Transactions
+        </a>
+
         <div class="header">
             <div>
                 <h1>Available Feeds</h1>
                 <p>Manage feed inventory and view consumption history.</p>
             </div>
-            <a href="purch_feeds_feeding.php" class="add-btn">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Add New Feed (Stock)
-            </a>
+            <div class="header-actions">
+                <a href="purch_feeds_feeding.php" class="add-btn">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Add New Feed (Stock)
+                </a>
+            </div>
         </div>
 
         <div class="action-grid">

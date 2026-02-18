@@ -14,7 +14,6 @@ try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 1. KPI: TOP LEVEL COUNTS ---
-    // Uses 'CURRENT_STATUS' from your animal_records table
     $kpi_sql = "SELECT 
         COUNT(*) as total_records,
         SUM(CASE WHEN CURRENT_STATUS = 'Active' THEN 1 ELSE 0 END) as active_count,
@@ -24,19 +23,18 @@ try {
     FROM animal_records";
     $kpi = $conn->query($kpi_sql)->fetch(PDO::FETCH_ASSOC);
 
-    // Calculate Mortality Rate (Deceased / Total Records)
+    // Calculate Mortality Rate
     $mortality_rate = ($kpi['total_records'] > 0) 
         ? ($kpi['deceased_count'] / $kpi['total_records']) * 100 
         : 0;
 
-    // --- 2. CHART: STATUS DISTRIBUTION (Pie) ---
+    // --- 2. CHART: STATUS DISTRIBUTION ---
     $status_sql = "SELECT CURRENT_STATUS as status_name, COUNT(*) as count 
                    FROM animal_records 
                    GROUP BY CURRENT_STATUS";
     $status_data = $conn->query($status_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 3. CHART: ACTIVE POPULATION BY STAGE (Bar) ---
-    // Joins with animal_classifications to get names like 'Piglet', 'Sow', etc.
+    // --- 3. CHART: ACTIVE POPULATION BY STAGE ---
     $stage_sql = "SELECT 
                     ac.STAGE_NAME, 
                     COUNT(ar.ANIMAL_ID) as count 
@@ -47,15 +45,14 @@ try {
                   ORDER BY count DESC";
     $stage_data = $conn->query($stage_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 4. CHART: GENDER RATIO (Doughnut) ---
+    // --- 4. CHART: GENDER RATIO ---
     $gender_sql = "SELECT SEX, COUNT(*) as count 
                    FROM animal_records 
                    WHERE CURRENT_STATUS = 'Active' 
                    GROUP BY SEX";
     $gender_data = $conn->query($gender_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 5. CHART: INTAKE TREND (Line) ---
-    // Animals added per month (Last 6 months)
+    // --- 5. CHART: INTAKE TREND ---
     $intake_sql = "SELECT 
                     DATE_FORMAT(CREATED_AT, '%Y-%m') as month_year, 
                     COUNT(*) as count 
@@ -77,6 +74,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Animal Analytics - FarmPro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     
     <style>
         /* --- THEME STYLES --- */
@@ -88,10 +86,18 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #38bdf8, #2563eb); /* Blue Gradient */
+            background: linear-gradient(135deg, #38bdf8, #2563eb); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -112,8 +118,8 @@ try {
         .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
 
-        .text-blue { color: #60a5fa; }
         .text-green { color: #4ade80; }
+        .text-blue { color: #60a5fa; }
         .text-red { color: #f87171; }
         .text-orange { color: #fbbf24; }
 
@@ -125,8 +131,7 @@ try {
             background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
             border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
         }
-        .full-width { grid-column: 1 / -1; }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
 
         /* Buttons */
         .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
@@ -144,6 +149,11 @@ try {
 <body>
 
 <div class="container">
+    <a href="analytics_dashboard.php" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Analytics Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Livestock Analytics</h1>
         <p class="subtitle">Population overview, health metrics, and herd demographics.</p>
@@ -177,7 +187,6 @@ try {
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
             <div class="chart-title">📊 Overall Status Breakdown</div>
             <div style="flex-grow: 1; position: relative;">
@@ -205,48 +214,36 @@ try {
                 <canvas id="intakeChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
-    // --- PREPARE DATA FROM PHP ---
-    
-    // 1. Status Data
     const statusRaw = <?= json_encode($status_data) ?>;
     const statusLabels = statusRaw.map(i => i.status_name);
     const statusCounts = statusRaw.map(i => i.count);
-    // Dynamic Colors
     const statusColors = statusLabels.map(s => {
-        if(s === 'Active') return '#4ade80'; // Green
-        if(s === 'Sold') return '#38bdf8';   // Blue
-        if(s === 'Deceased') return '#f87171'; // Red
-        return '#fbbf24'; // Orange
+        if(s === 'Active') return '#4ade80';
+        if(s === 'Sold') return '#38bdf8';
+        if(s === 'Deceased') return '#f87171';
+        return '#fbbf24';
     });
 
-    // 2. Stage Data (Classification)
     const stageRaw = <?= json_encode($stage_data) ?>;
     const stageLabels = stageRaw.map(i => i.STAGE_NAME || 'Unknown');
     const stageCounts = stageRaw.map(i => i.count);
 
-    // 3. Gender Data
     const genderRaw = <?= json_encode($gender_data) ?>;
     const genderLabels = genderRaw.map(i => i.SEX || 'Unknown');
     const genderCounts = genderRaw.map(i => i.count);
 
-    // 4. Intake Data
     const intakeRaw = <?= json_encode($intake_data) ?>;
     const intakeLabels = intakeRaw.map(i => i.month_year);
     const intakeCounts = intakeRaw.map(i => i.count);
 
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
 
-    // --- RENDER CHARTS ---
-
-    // 1. Status Pie Chart
     new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
         data: {
@@ -265,7 +262,6 @@ try {
         }
     });
 
-    // 2. Stage Bar Chart (Piglet, Sow, etc.)
     new Chart(document.getElementById('stageChart'), {
         type: 'bar',
         data: {
@@ -273,7 +269,7 @@ try {
             datasets: [{
                 label: 'Head Count',
                 data: stageCounts,
-                backgroundColor: 'rgba(96, 165, 250, 0.6)', // Light Blue
+                backgroundColor: 'rgba(96, 165, 250, 0.6)',
                 borderColor: '#60a5fa',
                 borderWidth: 1,
                 borderRadius: 4
@@ -287,14 +283,13 @@ try {
         }
     });
 
-    // 3. Gender Pie Chart
     new Chart(document.getElementById('genderChart'), {
         type: 'pie',
         data: {
             labels: genderLabels,
             datasets: [{
                 data: genderCounts,
-                backgroundColor: ['#f472b6', '#60a5fa', '#9ca3af'], // Pink, Blue, Gray
+                backgroundColor: ['#f472b6', '#60a5fa', '#9ca3af'],
                 borderWidth: 0
             }]
         },
@@ -304,7 +299,6 @@ try {
         }
     });
 
-    // 4. Intake Line Chart
     new Chart(document.getElementById('intakeChart'), {
         type: 'line',
         data: {
@@ -312,7 +306,7 @@ try {
             datasets: [{
                 label: 'New Animals',
                 data: intakeCounts,
-                borderColor: '#a78bfa', // Purple
+                borderColor: '#a78bfa',
                 backgroundColor: 'rgba(167, 139, 250, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -325,7 +319,6 @@ try {
             scales: { y: { beginAtZero: true, suggestedMax: 5 } }
         }
     });
-
 </script>
 
 </body>

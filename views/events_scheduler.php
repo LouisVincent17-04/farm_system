@@ -162,7 +162,19 @@ function getUrl($newPage) {
 
         /* Header & Filters */
         .page-header { margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; }
-        .page-title h1 { font-size: 1.75rem; font-weight: 800; margin: 0; color: white; }
+        
+        .page-title-group { display: flex; flex-direction: column; }
+        .page-title-group h1 { font-size: 1.75rem; font-weight: 800; margin: 0; color: white; }
+        .page-title-group p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.85rem; margin-top: 5px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.75rem 1.25rem; border-radius: var(--radius); font-weight: 600; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; text-decoration: none; }
         .btn:active { transform: scale(0.98); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; filter: grayscale(0.5); }
@@ -283,9 +295,13 @@ function getUrl($newPage) {
 
 <div class="container">
     <header class="page-header">
-        <div class="page-title">
+        <div class="page-title-group">
             <h1>📅 Event Scheduler</h1>
             <p>Manage health schedules, vaccinations, and medication.</p>
+            <a href="farm_dashboard.php" class="back-link">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Farm Dashboard
+            </a>
         </div>
         <div class="btn-group">
             <button class="btn btn-outline" onclick="openArchiveModal()"><span>📦</span> Archive (Bulk)</button>

@@ -505,7 +505,7 @@ try {
                 fd.append('animal_id', animalId);
             }
 
-            fetch('../process/addFeedTransaction.php', { method: 'POST', body: fd })
+            fetch('../process/addSingleFeedTransaction.php', { method: 'POST', body: fd })
             .then(r => r.json())
             .then(d => {
                 if(d.success) { alert(d.message); window.location.reload(); }

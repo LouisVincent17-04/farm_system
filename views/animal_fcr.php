@@ -1,5 +1,6 @@
 <?php
-// views/manage_animal_fcr.php
+// This is the current fcr page to be labelled as individual fcr option
+// views/animal_fcr.php
 $page = "farm"; 
 include '../config/Connection.php';
 

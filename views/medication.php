@@ -40,15 +40,17 @@ try {
     $stmt->execute();
     $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Fetch Items
+    // 3. Fetch Items (Added Expiration Date)
     $items_sql = "SELECT 
                     m.SUPPLY_ID AS ITEM_ID, 
                     m.SUPPLY_NAME AS ITEM_NAME, 
                     m.TOTAL_STOCK AS TOTAL_QTY,
+                    m.EXPIRATION_DATE,
                     u.UNIT_ABBR
                 FROM MEDICINES m
                 JOIN UNITS u ON m.UNIT_ID = u.UNIT_ID
-                ORDER BY m.SUPPLY_NAME ASC";
+                WHERE m.TOTAL_STOCK > 0  -- Optional: Show only items with stock
+                ORDER BY m.SUPPLY_NAME ASC, m.EXPIRATION_DATE ASC";
     $stmt = $conn->prepare($items_sql);
     $stmt->execute();
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -70,6 +72,15 @@ try {
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
     <style>
         /* [Previous Core Styles - Kept for consistency] */
+        
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .nav-tabs { display: flex; gap: 0; margin-bottom: 30px; background: rgba(15, 23, 42, 0.5); border-radius: 12px; padding: 6px; backdrop-filter: blur(10px); }
         .nav-tab { flex: 1; padding: 14px 28px; background: transparent; border: none; color: #94a3b8; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-size: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; position: relative; }
         .nav-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.05); }
@@ -104,6 +115,12 @@ try {
 </head>
 <body>
     <div class="container">
+        
+        <a href="transactions.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Transactions
+        </a>
+
         <div class="header">
             <div class="header-info">
                 <h1>Treatment Transactions</h1>
@@ -238,14 +255,17 @@ try {
 
                         <h3>2. Treatment Details</h3>
                         <div class="form-group">
-                            <label for="item">Medication <span>*</span></label>
+                            <label for="item">Medication (Name - Stock - Expiry) <span>*</span></label>
                             <select id="item" name="item_id" required onchange="updateStockInfo()">
                                 <option value="">Select Medication</option>
-                                <?php foreach($items as $item): ?>
+                                <?php foreach($items as $item): 
+                                    $expDate = $item['EXPIRATION_DATE'] ? date('M Y', strtotime($item['EXPIRATION_DATE'])) : 'No Exp';
+                                ?>
                                     <option value="<?= $item['ITEM_ID'] ?>" 
                                             data-quantity="<?= $item['TOTAL_QTY'] ?? 0 ?>"
-                                            data-units="<?= $item['UNIT_ABBR'] ?? 'pcs' ?>">
-                                            <?= htmlspecialchars($item['ITEM_NAME']) ?>
+                                            data-units="<?= $item['UNIT_ABBR'] ?? 'pcs' ?>"
+                                            data-expiry="<?= $expDate ?>">
+                                            <?= htmlspecialchars($item['ITEM_NAME']) ?> (<?= $item['TOTAL_QTY'] ?> <?= $item['UNIT_ABBR'] ?>) - Exp: <?= $expDate ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -498,7 +518,9 @@ try {
             }
             document.getElementById("units_used_span").textContent = '(' + (selectedOption.dataset.units || 'units') + ') *';
             const quantity = parseFloat(selectedOption.dataset.quantity) || 0;
-            stockInfo.textContent = '📦 Available Stock: ' + quantity.toFixed(2) + ' ' + selectedOption.dataset.units;
+            const expiry = selectedOption.dataset.expiry || 'N/A';
+            
+            stockInfo.innerHTML = `📦 Available: ${quantity.toFixed(2)} ${selectedOption.dataset.units} | 📅 Exp: ${expiry}`;
             stockInfo.className = quantity < 10 ? 'stock-info low-stock' : 'stock-info';
             stockInfo.style.display = 'block';
         }

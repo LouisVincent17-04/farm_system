@@ -9,12 +9,10 @@ include '../security/checkAccess.php';
 checkAccess('farm_equipment_tools_analytics');
 include '../common/navbar.php';
 
-
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 1. KPI: ASSET METRICS ---
-    // Counts items under 'Farm Equipment & Tools' (ITEM_TYPE_ID = 4)
     $kpi_sql = "SELECT 
                     COUNT(*) as distinct_tools,
                     COALESCE(SUM(TOTAL_COST), 0) as total_tool_value,
@@ -23,13 +21,11 @@ try {
                 WHERE ITEM_TYPE_ID = 4 AND STATUS = 1";
     $kpi = $conn->query($kpi_sql)->fetch(PDO::FETCH_ASSOC);
 
-    // Calculate Average Cost per Tool
     $avg_cost = ($kpi['total_units'] > 0) 
         ? ($kpi['total_tool_value'] / $kpi['total_units']) 
         : 0;
 
-    // --- 2. CHART: COST DISTRIBUTION (Pie) ---
-    // Which tools represent the highest investment
+    // --- 2. CHART: COST DISTRIBUTION ---
     $dist_sql = "SELECT ITEM_NAME, TOTAL_COST 
                  FROM items 
                  WHERE ITEM_TYPE_ID = 4 AND STATUS = 1
@@ -37,8 +33,7 @@ try {
                  LIMIT 5";
     $dist_data = $conn->query($dist_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 3. CHART: ACQUISITION TREND (Line) ---
-    // Spending on tools over the last 12 months
+    // --- 3. CHART: ACQUISITION TREND ---
     $trend_sql = "SELECT 
                     DATE_FORMAT(CREATED_AT, '%Y-%m') as month_year,
                     SUM(TOTAL_COST) as cost
@@ -49,8 +44,7 @@ try {
                   ORDER BY month_year ASC";
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 4. CHART: INVENTORY COUNT (Bar) ---
-    // Which tools do we have the most of
+    // --- 4. CHART: INVENTORY COUNT ---
     $qty_sql = "SELECT ITEM_NAME, QUANTITY 
                 FROM items 
                 WHERE ITEM_TYPE_ID = 4 AND STATUS = 1
@@ -70,6 +64,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Equipment & Tools Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* --- THEME: BLUE / INDIGO --- */
@@ -81,10 +76,19 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Navigation Style */
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: #60a5fa; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #60a5fa, #3b82f6); /* Blue Gradient */
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -101,13 +105,9 @@ try {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
             background: linear-gradient(90deg, #60a5fa, #1d4ed8); 
         }
-        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
-
-        .text-blue { color: #60a5fa; }
-        .text-indigo { color: #818cf8; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -117,17 +117,7 @@ try {
             background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
             border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
         }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
-
-        /* Buttons */
-        .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
-        .btn { 
-            padding: 10px 20px; background: rgba(59, 130, 246, 0.1); 
-            color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); 
-            border-radius: 8px; text-decoration: none; font-weight: 600; 
-            transition: all 0.2s; 
-        }
-        .btn:hover { background: rgba(59, 130, 246, 0.2); transform: translateY(-2px); }
+        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
         @media (max-width: 1024px) { .charts-container { grid-template-columns: 1fr; } }
     </style>
@@ -135,6 +125,12 @@ try {
 <body>
 
 <div class="container">
+    <div class="nav-header">
+        <a href="analytics_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
+        </a>
+    </div>
+
     <div class="header">
         <h1 class="title">Farm Equipment & Tools Analytics</h1>
         <p class="subtitle">Inventory valuation, tool count, and acquisition history.</p>
@@ -142,50 +138,48 @@ try {
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-label">Total Equipment Value</div>
-            <div class="kpi-value text-white">₱<?= number_format($kpi['total_tool_value'] / 1000, 1) ?>k</div>
-            <div class="kpi-sub">Total Investment</div>
+            <div class="kpi-label"><i class="fa-solid fa-hand-holding-dollar"></i> Total Value</div>
+            <div class="kpi-value">₱<?= number_format($kpi['total_tool_value'] / 1000, 1) ?>k</div>
+            <div class="kpi-sub">Total Capital Investment</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Distinct Tools</div>
-            <div class="kpi-value text-blue"><?= number_format($kpi['distinct_tools']) ?></div>
-            <div class="kpi-sub">Unique Item Types</div>
+            <div class="kpi-label"><i class="fa-solid fa-screwdriver-wrench"></i> Distinct Tools</div>
+            <div class="kpi-value" style="color: #60a5fa;"><?= number_format($kpi['distinct_tools']) ?></div>
+            <div class="kpi-sub">Unique Categories</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Total Inventory Count</div>
+            <div class="kpi-label"><i class="fa-solid fa-boxes-stacked"></i> Units</div>
             <div class="kpi-value"><?= number_format($kpi['total_units']) ?></div>
-            <div class="kpi-sub">Physical Units</div>
+            <div class="kpi-sub">Total Physical Count</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Avg. Cost / Tool</div>
-            <div class="kpi-value text-indigo">₱<?= number_format($avg_cost, 2) ?></div>
-            <div class="kpi-sub">Per Unit Value</div>
+            <div class="kpi-label"><i class="fa-solid fa-tag"></i> Avg. Cost</div>
+            <div class="kpi-value" style="color: #818cf8;">₱<?= number_format($avg_cost, 0) ?></div>
+            <div class="kpi-sub">Per Unit Average</div>
         </div>
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
-            <div class="chart-title">🔧 Tool Acquisition Cost (Last 12 Months)</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Acquisition Cost (Last 12 Months)</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">💰 Value Distribution by Tool</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Value Distribution by Tool</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="distChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box" style="grid-column: 1 / -1;">
-            <div class="chart-title">📊 Top 5 Tools by Quantity</div>
+            <div class="chart-title"><i class="fa-solid fa-list-ol"></i> Top 5 Tools by Quantity</div>
             <div style="flex-grow: 1; position: relative; max-height: 300px;">
                 <canvas id="qtyChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
@@ -204,7 +198,7 @@ try {
             datasets: [{
                 label: 'Cost (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#60a5fa', // Blue
+                borderColor: '#60a5fa',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -227,7 +221,7 @@ try {
             labels: distData.map(d => d.ITEM_NAME),
             datasets: [{
                 data: distData.map(d => d.TOTAL_COST),
-                backgroundColor: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#60a5fa'], // Blue shades
+                backgroundColor: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#60a5fa'],
                 borderWidth: 0
             }]
         },
@@ -247,7 +241,7 @@ try {
             datasets: [{
                 label: 'Units Available',
                 data: qtyData.map(d => d.QUANTITY),
-                backgroundColor: 'rgba(96, 165, 250, 0.7)', // Light Blue
+                backgroundColor: 'rgba(96, 165, 250, 0.7)',
                 borderColor: '#3b82f6',
                 borderWidth: 1,
                 borderRadius: 4

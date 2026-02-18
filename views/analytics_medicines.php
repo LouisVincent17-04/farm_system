@@ -31,7 +31,6 @@ try {
     $inv = $conn->query($inv_sql)->fetch(PDO::FETCH_ASSOC);
 
     // --- 2. CHART: SPENDING TREND (Line) ---
-    // Treatment costs over the last 12 months
     $trend_sql = "SELECT 
                     DATE_FORMAT(TRANSACTION_DATE, '%Y-%m') as month_year,
                     SUM(TOTAL_COST) as cost
@@ -42,7 +41,6 @@ try {
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 3. CHART: TOP MEDICINES BY USAGE (Bar) ---
-    // Joins with ITEMS to get the name
     $top_meds_sql = "SELECT 
                         i.ITEM_NAME, 
                         COUNT(tt.TT_ID) as usage_count,
@@ -55,7 +53,6 @@ try {
     $top_meds = $conn->query($top_meds_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. CHART: INVENTORY VALUE DISTRIBUTION (Pie) ---
-    // Which medicines hold the most value in stock right now
     $stock_val_sql = "SELECT SUPPLY_NAME, TOTAL_COST 
                       FROM medicines 
                       WHERE TOTAL_COST > 0
@@ -64,7 +61,6 @@ try {
     $stock_val = $conn->query($stock_val_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 5. CHART: MOST TREATED ANIMALS (Horizontal Bar) ---
-    // Identify animals that require the most medical attention
     $sick_animal_sql = "SELECT 
                             ar.TAG_NO, 
                             COUNT(tt.TT_ID) as treatment_count
@@ -87,6 +83,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medication Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* --- THEME: ROSE / RED --- */
@@ -98,10 +95,19 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Navigation Style */
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: #f43f5e; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #f43f5e, #e11d48); /* Rose Gradient */
+            background: linear-gradient(135deg, #f43f5e, #e11d48); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -118,13 +124,12 @@ try {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
             background: linear-gradient(90deg, #f43f5e, #be123c); 
         }
-        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
 
         .text-rose { color: #fb7185; }
         .text-red { color: #f87171; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -134,7 +139,7 @@ try {
             background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
             border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
         }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
+        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
         /* Buttons */
         .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
@@ -152,6 +157,12 @@ try {
 <body>
 
 <div class="container">
+    <div class="nav-header">
+        <a href="analytics_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
+        </a>
+    </div>
+
     <div class="header">
         <h1 class="title">Medication Analytics</h1>
         <p class="subtitle">Treatment costs, inventory valuation, and health trends.</p>
@@ -159,22 +170,22 @@ try {
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-label">Total Treatment Cost</div>
+            <div class="kpi-label"><i class="fa-solid fa-hand-holding-medical"></i> Total Cost</div>
             <div class="kpi-value text-rose">₱<?= number_format($usage['total_spent'] / 1000, 1) ?>k</div>
             <div class="kpi-sub">Lifetime Expenses</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Treatments Given</div>
+            <div class="kpi-label"><i class="fa-solid fa-syringe"></i> Treatments</div>
             <div class="kpi-value"><?= number_format($usage['total_treatments']) ?></div>
             <div class="kpi-sub">Individual Applications</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Inventory Value</div>
-            <div class="kpi-value text-white">₱<?= number_format($inv['inventory_value'] / 1000, 1) ?>k</div>
-            <div class="kpi-sub"><?= number_format($inv['active_medicines']) ?> Medicines in Stock</div>
+            <div class="kpi-label"><i class="fa-solid fa-pills"></i> Inventory Value</div>
+            <div class="kpi-value">₱<?= number_format($inv['inventory_value'] / 1000, 1) ?>k</div>
+            <div class="kpi-sub"><?= number_format($inv['active_medicines']) ?> Items in Stock</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Low Stock Alerts</div>
+            <div class="kpi-label"><i class="fa-solid fa-triangle-exclamation"></i> Low Stock</div>
             <div class="kpi-value text-red"><?= number_format($inv['low_stock_count']) ?></div>
             <div class="kpi-sub">Items below 20 units</div>
         </div>
@@ -185,45 +196,41 @@ try {
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
-            <div class="chart-title">📉 Treatment Costs (Last 12 Months)</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Treatment Costs (Last 12 Months)</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">💊 Stock Value by Medicine</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Stock Value by Medicine</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="stockChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">📊 Top 5 Medicines Used (Frequency)</div>
+            <div class="chart-title"><i class="fa-solid fa-flask"></i> Top 5 Medicines Used (Frequency)</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="topMedsChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">🐷 Animals Requiring Most Care</div>
+            <div class="chart-title"><i class="fa-solid fa-piggy-bank"></i> Animals Requiring Most Care</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="animalChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
 
-    // 1. Trend Line Chart
     const trendData = <?= json_encode($trend_data) ?>;
     new Chart(document.getElementById('trendChart'), {
         type: 'line',
@@ -232,7 +239,7 @@ try {
             datasets: [{
                 label: 'Treatment Cost (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#f43f5e', // Rose
+                borderColor: '#f43f5e',
                 backgroundColor: 'rgba(244, 63, 94, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -247,7 +254,6 @@ try {
         }
     });
 
-    // 2. Stock Value Pie Chart
     const stockData = <?= json_encode($stock_val) ?>;
     new Chart(document.getElementById('stockChart'), {
         type: 'doughnut',
@@ -266,7 +272,6 @@ try {
         }
     });
 
-    // 3. Top Medicines Bar Chart
     const topMeds = <?= json_encode($top_meds) ?>;
     new Chart(document.getElementById('topMedsChart'), {
         type: 'bar',
@@ -275,7 +280,7 @@ try {
             datasets: [{
                 label: 'Times Administered',
                 data: topMeds.map(d => d.usage_count),
-                backgroundColor: 'rgba(251, 113, 133, 0.7)', // Light Rose
+                backgroundColor: 'rgba(251, 113, 133, 0.7)',
                 borderColor: '#fb7185',
                 borderWidth: 1,
                 borderRadius: 4
@@ -289,7 +294,6 @@ try {
         }
     });
 
-    // 4. Sick Animals Horizontal Bar
     const animalData = <?= json_encode($sick_animals) ?>;
     new Chart(document.getElementById('animalChart'), {
         type: 'bar',
@@ -298,7 +302,7 @@ try {
             datasets: [{
                 label: 'Treatments Received',
                 data: animalData.map(d => d.treatment_count),
-                backgroundColor: 'rgba(225, 29, 72, 0.7)', // Darker Rose
+                backgroundColor: 'rgba(225, 29, 72, 0.7)',
                 borderColor: '#e11d48',
                 borderWidth: 1,
                 borderRadius: 4

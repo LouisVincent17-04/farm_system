@@ -181,6 +181,14 @@ foreach ($data as $row) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
 
         /* DASHBOARD */
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 2rem; }
@@ -230,6 +238,12 @@ foreach ($data as $row) {
 <body>
 
 <div class="container">
+    
+    <a href="costing_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Costing Dashboard
+    </a>
+
     <div style="text-align: center; margin-bottom: 2rem;">
         <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #34d399, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Animal Net Worth</h1>
         <p style="color: #94a3b8;">Financial breakdown of livestock value and operating expenses</p>

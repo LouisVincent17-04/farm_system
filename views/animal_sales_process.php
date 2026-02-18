@@ -10,9 +10,8 @@ checkAccess('sell_animals');
 $page = "transactions";
 include '../common/navbar.php';
 
-
 // =========================================================
-// 1. AJAX HANDLER
+// 1. AJAX HANDLER (Unchanged)
 // =========================================================
 if (isset($_GET['action'])) {
     ob_end_clean(); 
@@ -48,7 +47,6 @@ if (isset($_GET['action'])) {
             $stmt->execute([$id]);
             $animal = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Fetch cumulative costs
             $feed = $conn->prepare("SELECT COALESCE(SUM(TRANSACTION_COST), 0) FROM feed_transactions WHERE ANIMAL_ID = ?"); $feed->execute([$id]);
             $med  = $conn->prepare("SELECT COALESCE(SUM(TOTAL_COST), 0) FROM treatment_transactions WHERE ANIMAL_ID = ?"); $med->execute([$id]);
             $vac  = $conn->prepare("SELECT COALESCE(SUM(VACCINATION_COST + VACCINE_COST), 0) FROM vaccination_records WHERE ANIMAL_ID = ?"); $vac->execute([$id]);
@@ -80,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
         $conn->beginTransaction();
 
         $animal_id = $_POST['animal_id'];
-        $buyer_name = $_POST['customer_name']; // Now this comes from dropdown but holds the NAME (or ID if you prefer)
+        $buyer_name = $_POST['customer_name']; 
         
         // Costs
         $net_worth = $_POST['cost_acquisition'] + $_POST['cost_feed'] + $_POST['cost_medication'] + 
@@ -108,29 +106,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
             $_POST['cost_overhead'], $net_worth, $profit, $_POST['notes'], 
             $current_user
         ]);
+        
+        $sale_id = $conn->lastInsertId(); 
 
         // Archive Animal
         $updateStmt = $conn->prepare("UPDATE animal_records SET CURRENT_STATUS = 'Sold', IS_ACTIVE = 0, CURRENT_ACTUAL_WEIGHT = ? WHERE ANIMAL_ID = ?");
         $updateStmt->execute([$weight, $animal_id]);
 
         $conn->commit();
-        $_SESSION['flash_message'] = "<div class='alert alert-success'>✅ Sale Confirmed! Profit: ₱" . number_format($profit, 2) . "</div>";
+        
+        // --- FIX: Store ID in session and redirect to avoid browser blocking ---
+        $_SESSION['flash_message'] = "Sale Confirmed! Profit: ₱" . number_format($profit, 2);
+        $_SESSION['last_sale_id'] = $sale_id; 
+        
         header("Location: " . $_SERVER['PHP_SELF']); 
         exit();
 
     } catch (Exception $e) {
         if ($conn->inTransaction()) $conn->rollBack();
-        $_SESSION['flash_message'] = "<div class='alert alert-danger'>Error: " . $e->getMessage() . "</div>";
+        $_SESSION['flash_error'] = "Error: " . $e->getMessage();
         header("Location: " . $_SERVER['PHP_SELF']); 
         exit();
     }
 }
 
-// 3. FETCH DATA
+// 3. FETCH DATA & HANDLE MESSAGES
 $message = "";
+$popup_sale_id = null;
+
 if (isset($_SESSION['flash_message'])) {
-    $message = $_SESSION['flash_message'];
+    $msg_text = $_SESSION['flash_message'];
+    $btn_html = "";
+    
+    // Check if we have a sale ID to print
+    if(isset($_SESSION['last_sale_id'])) {
+        $popup_sale_id = $_SESSION['last_sale_id'];
+        $btn_html = " <a href='print_sales_receipt.php?sale_id=$popup_sale_id' target='_blank' class='btn-print-alert'>🖨️ Print Receipt</a>";
+        unset($_SESSION['last_sale_id']);
+    }
+
+    $message = "<div class='alert alert-success'>✅ $msg_text $btn_html</div>";
     unset($_SESSION['flash_message']);
+}
+
+if (isset($_SESSION['flash_error'])) {
+    $message = "<div class='alert alert-danger'>" . $_SESSION['flash_error'] . "</div>";
+    unset($_SESSION['flash_error']);
 }
 
 // Fetch Buyers for Dropdown
@@ -156,6 +177,16 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
         .container { max-width: 1600px; margin: 0 auto; padding: 1.5rem; }
+        
+        /* Back Link */
+        .back-link { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 1.5rem; transition: color 0.2s;
+            border: none; background: transparent; padding: 0;
+        }
+        .back-link:hover { color: white; }
+
         .page-header { text-align: center; margin-bottom: 2rem; }
         .page-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fbbf24, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 2rem; align-items: start; }
@@ -196,6 +227,11 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
         .alert { padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center; font-weight: bold; }
         .alert-success { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
         .alert-danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        
+        /* New Button for Alert */
+        .btn-print-alert { display: inline-block; margin-left: 10px; padding: 5px 15px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; font-size: 0.9rem; }
+        .btn-print-alert:hover { background: #2563eb; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
@@ -204,6 +240,12 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
 <body>
 
 <div class="container">
+    
+    <a href="transactions.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Transactions
+    </a>
+
     <header class="page-header">
         <h1 class="page-title">💰 Animal Sales Processing</h1>
         <p style="color: #64748b;">Point of Sale Terminal</p>
@@ -233,7 +275,7 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
                 <div class="glass-card">
                     <h3 style="color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 1rem;">Recent Transactions</h3>
                     <?php if(empty($recent_sales)): ?> <p style="color: #64748b; text-align: center; padding: 2rem;">No recent sales found.</p> <?php else: ?>
-                        <table class="recent-table"><thead><tr><th>Tag</th><th>Buyer</th><th>Date</th><th style="text-align: right;">Amount</th></tr></thead><tbody><?php foreach($recent_sales as $sale): ?><tr><td style="color: #fbbf24; font-weight: bold;"><?= $sale['TAG_NO'] ?></td><td><?= htmlspecialchars($sale['customer_name']) ?></td><td><?= date('M d, H:i', strtotime($sale['sale_date'])) ?></td><td style="text-align: right; font-family: monospace;">₱<?= number_format($sale['final_sale_price'], 2) ?></td></tr><?php endforeach; ?></tbody></table>
+                        <table class="recent-table"><thead><tr><th>Tag</th><th>Buyer</th><th>Date</th><th style="text-align: right;">Amount</th><th>PDF</th></tr></thead><tbody><?php foreach($recent_sales as $sale): ?><tr><td style="color: #fbbf24; font-weight: bold;"><?= $sale['TAG_NO'] ?></td><td><?= htmlspecialchars($sale['customer_name']) ?></td><td><?= date('M d, H:i', strtotime($sale['sale_date'])) ?></td><td style="text-align: right; font-family: monospace;">₱<?= number_format($sale['final_sale_price'], 2) ?></td><td style="text-align:right;"><a href="print_sales_receipt.php?sale_id=<?= $sale['sale_id'] ?>" target="_blank" style="color:#60a5fa; text-decoration:none;">🖨️</a></td></tr><?php endforeach; ?></tbody></table>
                     <?php endif; ?>
                 </div>
             </div>
@@ -413,6 +455,11 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
     document.getElementById('search_tag_input').addEventListener("keypress", function(e) {
         if (e.key === "Enter") { e.preventDefault(); searchByTag(); }
     });
+
+    // Check if we need to auto-open the receipt (from session)
+    <?php if ($popup_sale_id): ?>
+        window.open('print_sales_receipt.php?sale_id=<?= $popup_sale_id ?>', '_blank');
+    <?php endif; ?>
 </script>
 
 </body>

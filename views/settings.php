@@ -31,6 +31,7 @@ include '../common/navbar.php';
         .settings-container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 2rem;
         }
 
         .settings-header {
@@ -65,6 +66,7 @@ include '../common/navbar.php';
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
             margin-bottom: 2rem;
+            justify-content: center;
         }
 
         .settings-card {
@@ -77,6 +79,8 @@ include '../common/navbar.php';
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .settings-card::before {
@@ -113,7 +117,6 @@ include '../common/navbar.php';
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
         }
 
-        .card-icon.units { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
         .card-icon.accounts { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 
         .card-title {
@@ -169,11 +172,6 @@ include '../common/navbar.php';
             transition: all 0.3s ease;
         }
 
-        .stat-item:hover {
-            background: rgba(15, 23, 42, 0.7);
-            transform: translateY(-2px);
-        }
-
         .stat-number {
             font-size: 1.5rem;
             font-weight: bold;
@@ -209,263 +207,28 @@ include '../common/navbar.php';
             background: linear-gradient(135deg, #16a34a, #15803d);
         }
 
-        /* Quick Settings Section */
-        .quick-settings {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            margin-bottom: 2rem;
-        }
-
-        .quick-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #22c55e;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .quick-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .quick-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .quick-item:hover {
-            background: rgba(15, 23, 42, 0.7);
-            transform: translateY(-2px);
-        }
-
-        .quick-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-        }
-
-        .quick-icon.profile { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .quick-icon.security { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .quick-icon.notifications { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-        .quick-icon.backup { background: linear-gradient(135deg, #84cc16, #65a30d); }
-        .quick-icon.theme { background: linear-gradient(135deg, #ec4899, #db2777); }
-        .quick-icon.system { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-
-        .quick-text {
-            flex: 1;
-        }
-
-        .quick-label {
-            color: #e2e8f0;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-
-        .quick-desc {
-            color: #64748b;
-            font-size: 0.85rem;
-        }
-
-        /* System Info Section */
-        .system-info {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            margin-top: 2rem;
-        }
-
-        .system-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #22c55e;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-        }
-
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 12px;
-        }
-
-        .info-label {
-            color: #94a3b8;
-            font-weight: 500;
-        }
-
-        .info-value {
-            color: #22c55e;
-            font-weight: 600;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            body {
-                padding: 1rem;
-            }
-
-            .settings-title {
-                font-size: 2rem;
-            }
-
-            .settings-subtitle {
-                font-size: 1rem;
-            }
-
-            .settings-grid {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-
-            .settings-card {
-                padding: 2rem;
-            }
-
-            .card-icon {
-                width: 70px;
-                height: 70px;
-                font-size: 2rem;
-            }
-
-            .card-title {
-                font-size: 1.5rem;
-            }
-
-            .quick-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .settings-title {
-                font-size: 1.5rem;
-            }
-
-            .settings-card {
-                padding: 1.5rem;
-            }
-
-            .card-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 1.5rem;
-            }
-
-            .card-stats {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Animation Effects */
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .settings-card {
-            animation: fadeInUp 0.6s ease-out;
-        }
+        .settings-card { animation: fadeInUp 0.6s ease-out forwards; }
 
-        .settings-card:nth-child(1) { animation-delay: 0.1s; }
-        .settings-card:nth-child(2) { animation-delay: 0.3s; }
-
-        .quick-settings {
-            animation: fadeInUp 0.8s ease-out;
-            animation-delay: 0.5s;
-        }
-
-        .system-info {
-            animation: fadeInUp 0.8s ease-out;
-            animation-delay: 0.7s;
-        }
-
-        /* Active state for clicked cards */
-        .settings-card.active {
-            border-color: #22c55e;
-            box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+        @media (max-width: 768px) {
+            .settings-title { font-size: 2rem; }
+            .settings-card { padding: 2rem; }
         }
     </style>
 </head>
 <body>
     <div class="settings-container">
-        <!-- Header Section -->
         <header class="settings-header">
             <h1 class="settings-title">System Settings</h1>
             <p class="settings-subtitle">Configure and customize your FarmPro experience</p>
-            <p class="settings-description">Manage system preferences, user accounts, and operational settings</p>
+            <p class="settings-description">Manage user accounts, roles, and security privileges</p>
         </header>
 
-        <!-- Main Settings Grid -->
         <div class="settings-grid">
-            <!-- Manage Units -->
-            <div class="settings-card" data-setting="manage-units">
-                <div class="card-icon units">📏</div>
-                <h3 class="card-title">Manage Units</h3>
-                <p class="card-description">Configure measurement units, conversion rates, and standardize units across all farm operations and reporting systems.</p>
-                
-                <ul class="card-features">
-                    <li>Weight & Volume Units</li>
-                    <li>Distance & Area Measurements</li>
-                    <li>Temperature & Time Units</li>
-                    <li>Custom Unit Definitions</li>
-                    <li>Conversion Rate Settings</li>
-                    <li>Regional Unit Standards</li>
-                </ul>
-
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">24</div>
-                        <div class="stat-label">Active Units</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">6</div>
-                        <div class="stat-label">Categories</div>
-                    </div>
-                </div>
-
-                <button class="card-action" onclick="window.location.href='units.php'">
-                    ⚙️ Configure Units
-                </button>
-            </div>
-
-            <!-- Manage Accounts -->
             <div class="settings-card" data-setting="manage-accounts">
                 <div class="card-icon accounts">👥</div>
                 <h3 class="card-title">Manage Accounts</h3>
@@ -499,128 +262,26 @@ include '../common/navbar.php';
     </div>
 
     <script>
-        // Settings Page Functionality
         class SettingsPage {
             constructor() {
                 this.settingsCards = document.querySelectorAll('.settings-card');
-                this.quickItems = document.querySelectorAll('.quick-item');
                 this.init();
             }
 
             init() {
                 this.bindEvents();
-                this.animateElements();
             }
 
             bindEvents() {
-                // Main settings cards
                 this.settingsCards.forEach(card => {
-                    card.addEventListener('mouseenter', (e) => {
-                        this.handleCardHover(card, true);
-                    });
-
-                    card.addEventListener('mouseleave', (e) => {
-                        this.handleCardHover(card, false);
-                    });
+                    card.addEventListener('mouseenter', () => card.style.zIndex = '10');
+                    card.addEventListener('mouseleave', () => card.style.zIndex = '1');
                 });
-
-                // Quick settings items
-                this.quickItems.forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        this.handleQuickSettingClick(item);
-                    });
-                });
-
-                // Keyboard navigation
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                        this.clearActiveStates();
-                    }
-                });
-            }
-
-            handleQuickSettingClick(item) {
-                const quickSetting = item.dataset.quick;
-                
-                // Visual feedback
-                item.style.transform = 'scale(0.95)';
-                item.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
-                
-                setTimeout(() => {
-                    item.style.transform = '';
-                    item.style.backgroundColor = '';
-                }, 200);
-
-                console.log(`Accessing ${quickSetting} quick settings...`);
-            }
-
-            handleCardHover(card, isHovering) {
-                if (isHovering) {
-                    card.style.zIndex = '10';
-                } else {
-                    card.style.zIndex = '1';
-                }
-            }
-
-            clearActiveStates() {
-                this.settingsCards.forEach(card => {
-                    card.classList.remove('active');
-                });
-            }
-
-            animateElements() {
-                // Stagger animation for settings cards
-                this.settingsCards.forEach((card, index) => {
-                    card.style.animationDelay = `${index * 0.2}s`;
-                });
-
-                // Animate quick items
-                this.quickItems.forEach((item, index) => {
-                    item.style.opacity = '0';
-                    item.style.transform = 'translateY(20px)';
-                    item.style.transition = 'all 0.6s ease-out';
-                    
-                    setTimeout(() => {
-                        item.style.opacity = '1';
-                        item.style.transform = 'translateY(0)';
-                    }, 800 + (index * 100));
-                });
-            }
-
-            // Public method to update statistics
-            updateStats(setting, stats) {
-                const card = document.querySelector(`[data-setting="${setting}"]`);
-                if (card) {
-                    const statNumbers = card.querySelectorAll('.stat-number');
-                    stats.forEach((stat, index) => {
-                        if (statNumbers[index]) {
-                            statNumbers[index].textContent = stat;
-                            statNumbers[index].style.transform = 'scale(1.1)';
-                            setTimeout(() => {
-                                statNumbers[index].style.transform = 'scale(1)';
-                            }, 300);
-                        }
-                    });
-                }
-            }
-
-            // Public method to highlight specific setting
-            highlightSetting(setting) {
-                const card = document.querySelector(`[data-setting="${setting}"]`);
-                if (card) {
-                    card.classList.add('active');
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    setTimeout(() => {
-                        card.classList.remove('active');
-                    }, 3000);
-                }
             }
         }
 
-        // Initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
-            window.settingsPage = new SettingsPage();
+            new SettingsPage();
         });
     </script>
 </body>

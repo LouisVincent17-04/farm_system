@@ -46,6 +46,14 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
         .header-info p { color: #cbd5e1; }
@@ -61,7 +69,7 @@ try {
         .add-btn:hover { transform: translateY(-2px); }
         .add-btn svg { width: 20px; height: 20px; }
 
-        /* --- NAV TABS - Matching vaccination.php --- */
+        /* --- NAV TABS --- */
         .nav-tabs {
             display: flex; gap: 0; margin-bottom: 30px; 
             background: rgba(15, 23, 42, 0.5);
@@ -81,7 +89,7 @@ try {
         .nav-tab:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.05); }
         .nav-tab.active { 
             color: white; 
-            background: linear-gradient(135deg, #2563eb, #1d4ed8); /* Blue for Vaccination */
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); 
         }
         .nav-tab svg { width: 20px; height: 20px; }
@@ -131,7 +139,6 @@ try {
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
         }
 
-        /* Ledger Button - Blue Theme to match vaccination */
         .btn-view-ledger {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 16px;
@@ -164,11 +171,18 @@ try {
 
         @media (max-width: 768px) {
             .nav-tabs { flex-direction: column; }
+            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .add-btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="transactions.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Transactions
+        </a>
+
         <div class="header">
             <div class="header-info">
                 <h1>Vaccination Records</h1>
@@ -222,12 +236,7 @@ try {
                         $isLow = $stock < 10;
                         $unitAbbr = $supply['UNIT_ABBR'] ?? 'doses';
                     ?>
-                    <tr data-supply-id="<?php echo $supply['SUPPLY_ID']; ?>"
-                        data-supply-name="<?php echo htmlspecialchars($supply['SUPPLY_NAME']); ?>"
-                        data-total-stock="<?php echo $stock; ?>"
-                        data-unit-abbr="<?php echo htmlspecialchars($unitAbbr); ?>"
-                        data-date-updated="<?php echo htmlspecialchars($supply['DATE_UPDATED'] ?? ''); ?>">
-                        
+                    <tr>
                         <td style="color:#94a3b8; font-family:monospace;">VAC-<?php echo str_pad($supply['SUPPLY_ID'], 3, '0', STR_PAD_LEFT); ?></td>
                         <td style="font-weight:600; color:#fff;"><?php echo htmlspecialchars($supply['SUPPLY_NAME']); ?></td>
                         <td>

@@ -29,7 +29,6 @@ try {
         : 0;
 
     // --- 2. CHART: COST DISTRIBUTION (Pie) ---
-    // High-value maintenance parts
     $dist_sql = "SELECT ITEM_NAME, TOTAL_COST 
                  FROM items 
                  WHERE ITEM_TYPE_ID = 8 AND STATUS = 1
@@ -38,7 +37,6 @@ try {
     $dist_data = $conn->query($dist_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 3. CHART: SPENDING TREND (Line) ---
-    // Acquisition of parts over the last 12 months
     $trend_sql = "SELECT 
                     DATE_FORMAT(CREATED_AT, '%Y-%m') as month_year,
                     SUM(TOTAL_COST) as cost
@@ -50,7 +48,6 @@ try {
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. CHART: INVENTORY COUNT (Bar) ---
-    // Parts with highest stock quantity
     $qty_sql = "SELECT ITEM_NAME, QUANTITY 
                 FROM items 
                 WHERE ITEM_TYPE_ID = 8 AND STATUS = 1
@@ -70,6 +67,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Maintenance & Parts Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* --- THEME: STONE / GOLD --- */
@@ -81,10 +79,19 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Navigation Style */
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #a8a29e; font-weight: 600; 
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: #eab308; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #eab308, #ca8a04); /* Gold Gradient */
+            background: linear-gradient(135deg, #eab308, #ca8a04); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -101,13 +108,9 @@ try {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
             background: linear-gradient(90deg, #eab308, #854d0e); 
         }
-        .kpi-label { color: #a8a29e; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-label { color: #a8a29e; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
         .kpi-sub { font-size: 0.85rem; color: #78716c; }
-
-        .text-gold { color: #facc15; }
-        .text-stone { color: #d6d3d1; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -117,17 +120,7 @@ try {
             background: rgba(41, 37, 36, 0.6); border: 1px solid rgba(255,255,255,0.05); 
             border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
         }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e7e5e4; margin-bottom: 1rem; }
-
-        /* Buttons */
-        .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
-        .btn { 
-            padding: 10px 20px; background: rgba(234, 179, 8, 0.1); 
-            color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); 
-            border-radius: 8px; text-decoration: none; font-weight: 600; 
-            transition: all 0.2s; 
-        }
-        .btn:hover { background: rgba(234, 179, 8, 0.2); transform: translateY(-2px); }
+        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e7e5e4; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
         @media (max-width: 1024px) { .charts-container { grid-template-columns: 1fr; } }
     </style>
@@ -135,6 +128,12 @@ try {
 <body>
 
 <div class="container">
+    <div class="nav-header">
+        <a href="analytics_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
+        </a>
+    </div>
+
     <div class="header">
         <h1 class="title">Maintenance & Parts Analytics</h1>
         <p class="subtitle">Spare parts inventory, repair costs, and stock levels.</p>
@@ -142,55 +141,52 @@ try {
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-label">Inventory Value</div>
-            <div class="kpi-value text-gold">₱<?= number_format($kpi['total_inventory_value'] / 1000, 1) ?>k</div>
-            <div class="kpi-sub">Total Parts Valuation</div>
+            <div class="kpi-label"><i class="fa-solid fa-coins"></i> Inventory Value</div>
+            <div class="kpi-value" style="color: #facc15;">₱<?= number_format($kpi['total_inventory_value'] / 1000, 1) ?>k</div>
+            <div class="kpi-sub">Total Assets Valuation</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Distinct Parts</div>
-            <div class="kpi-value text-stone"><?= number_format($kpi['distinct_parts']) ?></div>
-            <div class="kpi-sub">Unique Item Types</div>
+            <div class="kpi-label"><i class="fa-solid fa-gears"></i> Distinct Parts</div>
+            <div class="kpi-value" style="color: #d6d3d1;"><?= number_format($kpi['distinct_parts']) ?></div>
+            <div class="kpi-sub">Unique SKU Count</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Total Units</div>
+            <div class="kpi-label"><i class="fa-solid fa-boxes-stacked"></i> Total Units</div>
             <div class="kpi-value"><?= number_format($kpi['total_units']) ?></div>
-            <div class="kpi-sub">Stock on Hand</div>
+            <div class="kpi-sub">Physical Stock on Hand</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Avg. Cost / Part</div>
-            <div class="kpi-value text-white">₱<?= number_format($avg_cost, 2) ?></div>
+            <div class="kpi-label"><i class="fa-solid fa-calculator"></i> Avg. Cost / Part</div>
+            <div class="kpi-value">₱<?= number_format($avg_cost, 0) ?></div>
             <div class="kpi-sub">Per Unit Average</div>
         </div>
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
-            <div class="chart-title">🏗️ Maintenance Cost Trend (Last 12 Months)</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Cost Trend (Last 12 Months)</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">💰 Value Distribution by Part</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Value Distribution</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="distChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box" style="grid-column: 1 / -1;">
-            <div class="chart-title">📊 Top 5 Parts by Quantity</div>
+            <div class="chart-title"><i class="fa-solid fa-list-ol"></i> Top 5 Parts by Quantity</div>
             <div style="flex-grow: 1; position: relative; max-height: 300px;">
                 <canvas id="qtyChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#a8a29e';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
@@ -204,7 +200,7 @@ try {
             datasets: [{
                 label: 'Cost (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#eab308', // Gold
+                borderColor: '#eab308',
                 backgroundColor: 'rgba(234, 179, 8, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -227,7 +223,7 @@ try {
             labels: distData.map(d => d.ITEM_NAME),
             datasets: [{
                 data: distData.map(d => d.TOTAL_COST),
-                backgroundColor: ['#ca8a04', '#eab308', '#facc15', '#fde047', '#78350f'], // Gold/Brown shades
+                backgroundColor: ['#ca8a04', '#eab308', '#facc15', '#fde047', '#78350f'],
                 borderWidth: 0
             }]
         },
@@ -247,7 +243,7 @@ try {
             datasets: [{
                 label: 'Units Available',
                 data: qtyData.map(d => d.QUANTITY),
-                backgroundColor: 'rgba(250, 204, 21, 0.7)', // Yellow
+                backgroundColor: 'rgba(250, 204, 21, 0.7)',
                 borderColor: '#eab308',
                 borderWidth: 1,
                 borderRadius: 4

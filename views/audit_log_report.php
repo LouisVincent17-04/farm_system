@@ -109,11 +109,21 @@ function getQueryUrl($newPage, $currentParams) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
         /* SAME STYLES AS BEFORE + PAGINATION CSS */
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; margin: 0; padding-bottom: 40px; }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #f8fafc, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
         .subtitle { color: #64748b; font-size: 1rem; margin: 0; }
@@ -137,9 +147,11 @@ function getQueryUrl($newPage, $currentParams) {
         .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.9rem; white-space: nowrap; }
         .btn-primary { background: #475569; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
-        .btn-export { background: #3b82f6; color: white; }
-        .btn-excel { background: #10b981; color: white; }
-        .btn-csv { background: #f59e0b; color: #1e293b; }
+        
+        /* Export Buttons (Updated Colors & Icons) */
+        .btn-pdf { background: #3b82f6; color: white; } /* Blue */
+        .btn-excel { background: #10b981; color: white; } /* Green */
+        .btn-csv { background: #f59e0b; color: white; } /* Orange */
 
         /* Table */
         .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; margin-bottom: 1.5rem;}
@@ -177,6 +189,12 @@ function getQueryUrl($newPage, $currentParams) {
 <body>
 
 <div class="container">
+    
+    <a href="reports.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Reports Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">System Audit Logs</h1>
         <p class="subtitle">Security trail of user actions, logins, and data modifications.</p>
@@ -236,14 +254,14 @@ function getQueryUrl($newPage, $currentParams) {
             </div>
             
             <div class="action-bar">
-                <button type="button" class="btn btn-export" onclick="exportPDF()">
-                    <span>📄</span> PDF
+                <button type="button" class="btn btn-pdf" onclick="exportPDF()">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
                 </button>
                 <button type="button" class="btn btn-excel" onclick="exportExcel()">
-                    <span>📊</span> Excel
+                    <i class="fa-solid fa-file-excel"></i> Excel
                 </button>
                 <button type="button" class="btn btn-csv" onclick="exportCSV()">
-                    <span>📝</span> CSV
+                    <i class="fa-solid fa-file-csv"></i> CSV
                 </button>
             </div>
         </form>

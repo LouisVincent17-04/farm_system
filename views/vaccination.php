@@ -24,11 +24,12 @@ try {
     $stmt->execute();
     $locations_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Retrieve Vaccines from Inventory
-    $vac_sql = "SELECT SUPPLY_ID, SUPPLY_NAME, TOTAL_STOCK, u.UNIT_ABBR, v.UNIT_ID 
+    // 3. Retrieve Vaccines from Inventory (With Expiration)
+    $vac_sql = "SELECT SUPPLY_ID, SUPPLY_NAME, TOTAL_STOCK, EXPIRATION_DATE, u.UNIT_ABBR, v.UNIT_ID 
                 FROM VACCINES v 
                 LEFT JOIN UNITS u ON v.UNIT_ID = u.UNIT_ID 
-                ORDER BY SUPPLY_NAME ASC";
+                WHERE TOTAL_STOCK > 0 -- Optional: Only show available
+                ORDER BY SUPPLY_NAME ASC, EXPIRATION_DATE ASC";
     $stmt = $conn->prepare($vac_sql);
     $stmt->execute();
     $vaccines_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -58,6 +59,14 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
@@ -234,6 +243,12 @@ try {
 </head>
 <body>
     <div class="container">
+        
+        <a href="transactions.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Transactions
+        </a>
+
         <div class="header">
             <div class="header-info">
                 <h1>Vaccination Records</h1>
@@ -430,15 +445,17 @@ try {
                         
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Vaccine Used <span style="color:#f87171">*</span></label>
+                                <label>Vaccine (Name - Stock - Exp) <span style="color:#f87171">*</span></label>
                                 <select id="vaccine_item_id" name="vaccine_item_id" required onchange="updateStockInfo()">
                                     <option value="">Select Vaccine from Inventory</option>
-                                    <?php foreach($vaccines_data as $vac): ?>
+                                    <?php foreach($vaccines_data as $vac): 
+                                        $expiry = $vac['EXPIRATION_DATE'] ? date('M Y', strtotime($vac['EXPIRATION_DATE'])) : 'No Exp';
+                                    ?>
                                         <option value="<?php echo $vac['SUPPLY_ID']; ?>" 
                                             data-quantity="<?php echo $vac['TOTAL_STOCK'] ?? 0; ?>"
                                             data-units="<?php echo $vac['UNIT_ABBR'] ?? 'units'; ?>"
                                             data-unit-id="<?php echo $vac['UNIT_ID']; ?>">
-                                            <?php echo htmlspecialchars($vac['SUPPLY_NAME']); ?>
+                                            <?php echo htmlspecialchars($vac['SUPPLY_NAME']); ?> (<?php echo $vac['TOTAL_STOCK']; ?> <?php echo $vac['UNIT_ABBR']; ?>) - Exp: <?php echo $expiry; ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>

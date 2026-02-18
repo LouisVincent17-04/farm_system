@@ -54,6 +54,14 @@ try {
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
         .header-info p { color: #cbd5e1; }
@@ -169,6 +177,12 @@ try {
 </head>
 <body>
     <div class="container">
+        
+        <a href="admin_dashboard.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Admin Dashboard
+        </a>
+
         <?php if (!empty($msg)): ?>
         <div class="alert-box alert-<?php echo htmlspecialchars($status); ?>">
             <?php echo htmlspecialchars(urldecode($msg)); ?>

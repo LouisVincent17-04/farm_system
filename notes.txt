@@ -191,7 +191,7 @@ AND THE FINAL PRICE WILL AUTO COMPLETE ✅
 
 - Successfully Registered Modal ✅
 - Create a process in the registration that the newly registered users has NO ACCESS AT ALL ✅
-- Create a back to each page
+- Create a back to each page ✅
 - Select All to Group Vaccination ✅
 - All Group Operations should have a default remarks ✅
 - Update the Animal Report ✅
@@ -203,27 +203,27 @@ AND THE FINAL PRICE WILL AUTO COMPLETE ✅
 - Manage Access (When choosing admin, it selects all the applicable boxes - make sure to rename unselect all to all boxes that are selected all) ✅
 - Restore the individual feeding TRANSACTION ✅
 - In the feed, whatever location is chosen in the select pen location, it will retrieve all the feeds ONLY IN THAT LOCATION ✅
-- After a sales transaction, there will be pdf generate receipt. Generate a receipt to animal sales transaction 
+- After a sales transaction, there will be pdf generate receipt. Generate a receipt to animal sales transaction ✅ 
 - Fix Reports (Save as PDF, EXCEL, CSV)
-- In available_feeds.php, create a view where you can view the quantity of that specific feeds across all farms
+- In available_feeds.php, create a view where you can view the quantity of that specific feeds across all farms ✅
 - Animal Mortality Page where it is the same with sales but you have recovered cost (can be sold), you dont✅
 need to create a database with it because just merge it with the sales database BUT you should add a type column✅
 where 0 is Mortality and 1 is Sales ✅ 
-- CREATE UNDO TO ALL TRANSACTIONS
- - In animal_sales_process.php, only the admin with USER_TYPE of 4 can undo the transaction including the restoration.
- - All transactions can be undoed by the admin with USER_TYPE of 4
+- CREATE UNDO TO ALL TRANSACTIONS ✅
+ - In animal_sales_process.php, only the admin with USER_TYPE of 4 can undo the transaction including the restoration. ✅
+ - All transactions can be undoed by the admin with USER_TYPE of 4 ✅
 - Create in the farm_dashboard.php an Inventory Adjustment Page ✅
-    - There is a disposal transaction 
-    - Type: Expired, Damaged, Stolen
+    - There is a disposal transaction ✅ 
+    - Type: Expired, Damaged, Stolen ✅ 
 - Create also an expiration date to ALL medicines, feeds, vitamins & supplements, vaccines ✅
  - Fields to Note [All medicines, feeds, vitamins & supplements, vaccines confirmation] ✅
- - When selecting medicines, feeds, vitamins & supplements, vaccines, even with the same name, it will have 
- different 
- - FCR Management
-  - Update FCR in where it replaces FCR Per Class to FCR Per Pen or FCR Per Age (Min - Max)
-  - Create a Table in the FCR which we can choose category (FCR Per Pen, FCR Per Age)
-  - It shows all Animals in that Age or Pen
-  - The Current FCR Management is the individual FCR config
-   - The New FCR Managament is By Pen but there will be days configurations
+ - When selecting medicines, feeds, vitamins & supplements, vaccines, even with the same name, it will not be ✅
+ combined if it has different expiration date ✅
+ - FCR Management ✅
+  - Update FCR in where it replaces FCR Per Class to FCR Per Pen or FCR Per Age (Min - Max) ✅
+  - Create a Table in the FCR which we can choose category (FCR Per Pen, FCR Per Age)       ✅
+  - It shows all Animals in that Age or Pen ✅
+  - The Current FCR Management is the individual FCR config ✅
+   - The New FCR Managament is By Pen but there will be days configurations ✅
 
 =================================================================================================

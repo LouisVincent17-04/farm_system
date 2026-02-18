@@ -31,7 +31,8 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Available Medicines Inventory</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Available Medicines Inventory</title>
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
     <style>
         /* Base Styles */
@@ -39,6 +40,14 @@ try {
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
@@ -89,7 +98,6 @@ try {
             background: rgba(30, 41, 59, 0.5); 
             border-radius: 12px; 
             border: 1px solid #475569; 
-            /* ENABLE HORIZONTAL SCROLLING */
             overflow-x: auto; 
             -webkit-overflow-scrolling: touch;
         }
@@ -98,30 +106,25 @@ try {
         .table td { padding: 1rem; border-bottom: 1px solid #334155; color: #cbd5e1; vertical-align: middle; white-space: nowrap; }
         .table tr:hover { background: rgba(255,255,255,0.02); }
 
-        /* --- MOBILE RESPONSIVE CSS --- */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
-            
-            /* Stack Header */
             .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
             .header-info h1 { font-size: 1.75rem; }
             .add-btn { width: 100%; justify-content: center; }
-
-            /* Stack Tabs */
             .nav-tabs { flex-direction: column; gap: 5px; }
             .nav-tab { width: 100%; }
-
-            /* SCROLLABLE TABLE ADJUSTMENTS */
-            /* Force the table to be wide enough to require scrolling */
             .table { min-width: 800px; }
-            
-            /* Ensure text doesn't wrap awkwardly */
             .table th, .table td { padding: 12px 15px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="transactions.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Transactions
+        </a>
+
         <div class="header">
             <div class="header-info">
                 <h1>Available Medicines</h1>

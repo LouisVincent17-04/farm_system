@@ -38,7 +38,6 @@ try {
 
 
     // --- 2. CHART: ACTIVITY TREND (Line) ---
-    // User actions over the last 14 days
     $trend_sql = "SELECT 
                     DATE_FORMAT(LOG_DATE, '%Y-%m-%d') as log_day,
                     COUNT(*) as action_count
@@ -49,7 +48,6 @@ try {
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 3. CHART: ACTION TYPES DISTRIBUTION (Pie) ---
-    // What are users doing most? (Add, Edit, Delete, Login)
     $action_sql = "SELECT 
                     CASE 
                         WHEN ACTION_TYPE LIKE '%ADD%' THEN 'Creation'
@@ -65,7 +63,6 @@ try {
     $action_data = $conn->query($action_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. CHART: TOP ACTIVE USERS (Bar) ---
-    // Who is using the system the most?
     $top_user_sql = "SELECT USERNAME, COUNT(*) as activity_count 
                      FROM audit_logs 
                      WHERE USERNAME IS NOT NULL
@@ -75,7 +72,6 @@ try {
     $top_users = $conn->query($top_user_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 5. CHART: ACTIVITY BY HOUR (Heatmap style logic / Bar) ---
-    // Peak system usage times
     $hour_sql = "SELECT HOUR(LOG_DATE) as hour_of_day, COUNT(*) as count 
                  FROM audit_logs 
                  WHERE LOG_DATE >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -95,6 +91,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administration Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     
     <style>
         /* --- THEME: SLATE BLUE / DARK --- */
@@ -106,6 +103,14 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
@@ -133,7 +138,6 @@ try {
         .text-indigo { color: #818cf8; }
         .text-blue { color: #60a5fa; }
         .text-red { color: #f87171; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -161,6 +165,11 @@ try {
 <body>
 
 <div class="container">
+    <a href="analytics_dashboard.php" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Analytics Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Administration & Records Analytics</h1>
         <p class="subtitle">System health, user activity logs, and operational oversight.</p>
@@ -194,7 +203,6 @@ try {
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
             <div class="chart-title">📉 System Activity (Last 14 Days)</div>
             <div style="flex-grow: 1; position: relative;">
@@ -222,17 +230,14 @@ try {
                 <canvas id="hourChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
 
-    // 1. Trend Line Chart
     const trendData = <?= json_encode($trend_data) ?>;
     new Chart(document.getElementById('trendChart'), {
         type: 'line',
@@ -241,7 +246,7 @@ try {
             datasets: [{
                 label: 'Actions Logged',
                 data: trendData.map(d => d.action_count),
-                borderColor: '#818cf8', // Indigo
+                borderColor: '#818cf8',
                 backgroundColor: 'rgba(99, 102, 241, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -256,7 +261,6 @@ try {
         }
     });
 
-    // 2. Action Pie Chart
     const actionData = <?= json_encode($action_data) ?>;
     new Chart(document.getElementById('actionChart'), {
         type: 'doughnut',
@@ -264,7 +268,7 @@ try {
             labels: actionData.map(d => d.category),
             datasets: [{
                 data: actionData.map(d => d.count),
-                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#64748b'], // Green, Amber, Red, Blue, Slate
+                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#64748b'],
                 borderWidth: 0
             }]
         },
@@ -275,7 +279,6 @@ try {
         }
     });
 
-    // 3. Top Users Bar Chart
     const topUsers = <?= json_encode($top_users) ?>;
     new Chart(document.getElementById('userChart'), {
         type: 'bar',
@@ -284,7 +287,7 @@ try {
             datasets: [{
                 label: 'Total Actions',
                 data: topUsers.map(d => d.activity_count),
-                backgroundColor: 'rgba(129, 140, 248, 0.7)', // Light Indigo
+                backgroundColor: 'rgba(129, 140, 248, 0.7)',
                 borderColor: '#6366f1',
                 borderWidth: 1,
                 borderRadius: 4
@@ -298,9 +301,7 @@ try {
         }
     });
 
-    // 4. Hourly Activity Bar Chart
     const hourData = <?= json_encode($hour_data) ?>;
-    // Map 0-23 hours ensuring all are present or handled
     const hours = Array.from({length: 24}, (_, i) => i);
     const hourCounts = hours.map(h => {
         const found = hourData.find(d => d.hour_of_day == h);
@@ -314,7 +315,7 @@ try {
             datasets: [{
                 label: 'Activity Volume',
                 data: hourCounts,
-                backgroundColor: 'rgba(56, 189, 248, 0.6)', // Sky Blue
+                backgroundColor: 'rgba(56, 189, 248, 0.6)',
                 borderColor: '#38bdf8',
                 borderWidth: 1,
                 borderRadius: 2

@@ -2,7 +2,7 @@
 // views/buyers.php
 ob_start(); // Start output buffering
 
-$page = "farm"; 
+$page = "admin_dashboard"; 
 include '../config/Connection.php';
 
 include '../security/checkAccess.php';
@@ -87,6 +87,14 @@ if (isset($_SESSION['flash_error'])) {
         
         .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
         .header h1 { margin: 0; font-size: 1.8rem; }
         
@@ -172,8 +180,14 @@ if (isset($_SESSION['flash_error'])) {
 <body>
 
 <div class="container">
+    
+    <a href="admin_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Admin Dashboard
+    </a>
+
     <div class="header">
-        <h1>Buyer Database</h1>
+        <h1>Buyer List</h1>
         <button class="btn btn-primary" onclick="openModal()">+ Add New Buyer</button>
     </div>
 

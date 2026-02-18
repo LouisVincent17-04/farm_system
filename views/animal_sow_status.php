@@ -116,6 +116,15 @@ try {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.9rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .filter-card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; align-items: flex-end; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-group label { font-size: 0.9rem; color: #94a3b8; font-weight: 600; }
@@ -167,7 +176,13 @@ try {
 <body>
 
 <div class="container">
-    <h1 style="margin-bottom: 2rem;">Sow Breeding Management</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+        <h1 style="margin:0;">Sow Breeding Management</h1>
+        <a href="farm_dashboard.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Dashboard
+        </a>
+    </div>
 
     <form class="filter-card" method="GET">
         <div class="form-group">

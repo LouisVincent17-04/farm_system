@@ -101,8 +101,8 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
         .card-icon.mortality { background: linear-gradient(135deg, #64748b, #334155); }
         .card-icon.group-mortality { background: linear-gradient(135deg, #475569, #1e293b); }
 
-        /* REVERSAL COLORS (Deep Red/Danger) */
-        .card-icon.revert { background: linear-gradient(135deg, #b91c1c, #7f1d1d); border: 1px solid #f87171; }
+        /* REVERSAL COLORS (Standard Warning Amber) */
+        .card-icon.revert { background: linear-gradient(135deg, #d97706, #b45309); border: 1px solid #f59e0b; }
 
         /* GROUP COLORS */
         .card-icon.group-med { background: linear-gradient(135deg, #65a30d, #3f6212); }
@@ -131,14 +131,31 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
             padding-top: 1rem;
         }
 
-        /* ADMIN ZONE STYLES */
-        .admin-zone { border: 2px dashed #b91c1c; border-radius: 20px; padding: 2rem; background: rgba(127, 29, 29, 0.1); margin-top: 4rem; position: relative; }
-        .admin-badge { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: #b91c1c; color: white; padding: 5px 20px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        /* ADMIN ZONE STYLES (Refined) */
+        .admin-zone { 
+            border: 1px solid #f59e0b; 
+            border-radius: 20px; 
+            padding: 2rem; 
+            background: rgba(245, 158, 11, 0.05); 
+            margin-top: 4rem; 
+            position: relative; 
+        }
+        .admin-badge { 
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
+            background: #f59e0b; color: #0f172a; 
+            padding: 5px 20px; border-radius: 20px; 
+            font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+        }
         
-        .management-card.reversal-card { border-color: #7f1d1d; }
-        .management-card.reversal-card .card-title { color: #f87171; }
-        .management-card.reversal-card:hover { border-color: #ef4444; box-shadow: 0 20px 40px rgba(239, 68, 68, 0.15); }
-        .management-card.reversal-card .card-action { color: #f87171; }
+        .management-card.reversal-card { border-color: rgba(245, 158, 11, 0.3); }
+        .management-card.reversal-card .card-title { color: #fbbf24; } /* Amber title */
+        .management-card.reversal-card:hover { 
+            border-color: #f59e0b; 
+            box-shadow: 0 20px 40px rgba(245, 158, 11, 0.15); 
+            transform: translateY(-5px);
+        }
+        .management-card.reversal-card .card-action { color: #fbbf24; }
 
         @media (max-width: 768px) {
             body { padding: 1rem; }
@@ -363,49 +380,44 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
             <div class="admin-badge">⚠️ SUPER ADMIN ZONE: REVERSALS</div>
             
             <div class="management-grid">
-                <a href="history_feeding.php" class="management-card reversal-card">
+                <a href="reverse_feeding_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Undo Feeding</h3>
                     <p class="card-description">Review logs and reverse feeding transactions. Restores inventory.</p>
                     <div class="card-action">View Logs →</div>
                 </a>
-                <a href="history_medication.php" class="management-card reversal-card">
+                <a href="reverse_medication_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Undo Medication</h3>
                     <p class="card-description">Reverse administered medicines. Restores inventory stock.</p>
                     <div class="card-action">View Logs →</div>
                 </a>
-                <a href="history_vitamins.php" class="management-card reversal-card">
+                <a href="reverse_vitamin_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Undo Vitamins</h3>
                     <p class="card-description">Reverse vitamin/supplement usage logs.</p>
                     <div class="card-action">View Logs →</div>
                 </a>
-                <a href="history_checkup.php" class="management-card reversal-card">
+                <a href="reverse_checkup_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Undo Checkup</h3>
                     <p class="card-description">Delete incorrect veterinary checkup records.</p>
                     <div class="card-action">View Logs →</div>
                 </a>
-                <a href="history_vaccination.php" class="management-card reversal-card">
+                <a href="reverse_vaccination_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Undo Vaccination</h3>
                     <p class="card-description">Reverse vaccination records and inventory deductions.</p>
                     <div class="card-action">View Logs →</div>
                 </a>
-                <a href="history_purchases.php" class="management-card reversal-card">
-                    <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
-                    <h3 class="card-title">Undo Purchases</h3>
-                    <p class="card-description">Reverse supply purchases. Adjusts current inventory levels.</p>
-                    <div class="card-action">View Logs →</div>
-                </a>
-                <a href="history_sales.php" class="management-card reversal-card">
+
+                <a href="reverse_sale_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Reverse Sales</h3>
                     <p class="card-description">Cancel sales invoices. Marks animals back to 'Active'.</p>
                     <div class="card-action">View Logs →</div>
                 </a>
-                <a href="history_mortality.php" class="management-card reversal-card">
+                <a href="reverse_mortality_transaction.php" class="management-card reversal-card">
                     <div class="card-icon revert"><span class="main-emoji">↩️</span></div>
                     <h3 class="card-title">Reverse Mortality</h3>
                     <p class="card-description">Revive animals marked as deceased by mistake.</p>

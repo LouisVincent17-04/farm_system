@@ -19,7 +19,6 @@ $limit_opt     = $_GET['limit'] ?? '10';
 // --- 2. BUILD DYNAMIC QUERY ---
 $params = [];
 
-// Added DATEDIFF(NOW(), ar.BIRTH_DATE) AS DAYS_OLD to the selection
 $sql = "SELECT 
             ar.*, 
             DATEDIFF(NOW(), ar.BIRTH_DATE) AS DAYS_OLD,
@@ -70,15 +69,12 @@ if (!empty($search_tag)) {
     $params[] = "%$search_tag%";
 }
 
-// Order by newest first
 $sql .= " ORDER BY ar.ANIMAL_ID DESC";
 
-// Apply Limit
 if ($limit_opt !== 'ALL') {
     $sql .= " LIMIT " . (int)$limit_opt;
 }
 
-// Execute Query
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $animals = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -91,13 +87,6 @@ if ($filter_loc) {
     $b_stmt = $conn->prepare("SELECT * FROM buildings WHERE LOCATION_ID = ?");
     $b_stmt->execute([$filter_loc]);
     $buildings = $b_stmt->fetchAll();
-}
-
-$pens = [];
-if ($filter_build) {
-    $p_stmt = $conn->prepare("SELECT * FROM pens WHERE BUILDING_ID = ?");
-    $p_stmt->execute([$filter_build]);
-    $pens = $p_stmt->fetchAll();
 }
 ?>
 
@@ -116,15 +105,26 @@ if ($filter_build) {
         }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
 
-        /* Header */
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        /* Navigation & Header */
+        .back-link { 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            color: #94a3b8; 
+            text-decoration: none; 
+            font-weight: 500; 
+            margin-bottom: 1.5rem; 
+            transition: color 0.2s; 
+        }
+        .back-link:hover { color: #fff; }
+
+        .page-header { margin-bottom: 2rem; }
         .page-title {
-            font-size: 2rem; font-weight: 800; 
+            font-size: 2.5rem; font-weight: 800; 
             background: linear-gradient(135deg, #22c55e, #16a34a);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
         }
-        .back-link { color: #94a3b8; text-decoration: none; font-weight: 500; transition: color 0.2s; }
-        .back-link:hover { color: #fff; }
 
         /* Filter Section */
         .filter-card {
@@ -150,7 +150,6 @@ if ($filter_build) {
             width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155;
             color: white; border-radius: 6px; font-size: 0.9rem;
         }
-        .form-select:focus, .form-input:focus { border-color: #22c55e; outline: none; }
 
         .btn-filter {
             background: #22c55e; color: white; border: none; padding: 10px 20px;
@@ -161,7 +160,6 @@ if ($filter_build) {
             padding: 9px 20px; border-radius: 6px; text-decoration: none; 
             display: flex; align-items: center; justify-content: center; height: 38px;
         }
-        .btn-reset:hover { border-color: #94a3b8; color: white; }
 
         /* Data Table */
         .table-responsive { overflow-x: auto; border-radius: 12px; border: 1px solid #334155; }
@@ -177,34 +175,30 @@ if ($filter_build) {
             padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05);
             color: #cbd5e1; font-size: 0.95rem; vertical-align: middle;
         }
-        .data-table tr:hover { background: rgba(255,255,255,0.02); }
 
         /* Custom Badges */
         .tag-badge { background: rgba(34, 197, 94, 0.1); color: #22c55e; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-weight: bold; }
-        
         .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
         .status-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         .status-sold { background: rgba(234, 179, 8, 0.2); color: #facc15; }
         .status-cull { background: rgba(239, 68, 68, 0.2); color: #f87171; } 
-
-        .location-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
-        .empty-state { text-align: center; padding: 4rem; color: #64748b; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <a href="animal_record_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Dashboard
+    </a>
+
     <div class="page-header">
-        <div>
-            <h1 class="page-title">Animal Record History</h1>
-            <p style="color: #64748b;">View-only archive of all livestock records.</p>
-        </div>
-        <a href="animal_record_dashboard.php" class="back-link">&larr; Back to Dashboard</a>
+        <h1 class="page-title">Animal Record History</h1>
+        <p style="color: #64748b;">View-only archive of all livestock records.</p>
     </div>
 
     <div class="filter-card">
         <form method="GET" class="filter-form">
-            
             <div class="form-group">
                 <label>Location</label>
                 <select name="location_id" class="form-select" onchange="this.form.submit()">
@@ -268,7 +262,8 @@ if ($filter_build) {
                     <th>Tag No</th>
                     <th>Type / Breed</th>
                     <th>Sex</th>
-                    <th>Age</th> <th>Stage / Class</th>
+                    <th>Age</th> 
+                    <th>Stage / Class</th>
                     <th>Current Location</th>
                     <th>Weight</th>
                     <th>Status</th>
@@ -278,10 +273,8 @@ if ($filter_build) {
             <tbody>
                 <?php if (count($animals) > 0): ?>
                     <?php foreach ($animals as $row): 
-                        // Status Badge Color Logic
                         $statusText = $row['CURRENT_STATUS'];
                         $statusClass = 'status-active';
-                        
                         if ($statusText === 'Sold') $statusClass = 'status-sold';
                         elseif (in_array($statusText, ['Cull', 'Deceased', 'Dead'])) $statusClass = 'status-cull';
                     ?>
@@ -292,46 +285,29 @@ if ($filter_build) {
                             <div style="font-size: 0.8rem; color: #64748b;"><?= htmlspecialchars($row['BREED_NAME']) ?></div>
                         </td>
                         <td><?= $row['SEX'] ?></td>
-                        
                         <td style="color: #fcd34d; font-weight: 600;">
                             <?= $row['DAYS_OLD'] !== null ? $row['DAYS_OLD'] . " days" : "N/A" ?>
                         </td>
-
                         <td><?= $row['STAGE_NAME'] ?? '<span style="color:#64748b;">Unknown</span>' ?></td>
                         <td>
                             <div><?= htmlspecialchars($row['LOCATION_NAME']) ?></div>
-                            <div class="location-sub">
+                            <div style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">
                                 <?= htmlspecialchars($row['BUILDING_NAME'] ?? '-') ?> &bull; <?= htmlspecialchars($row['PEN_NAME'] ?? '-') ?>
                             </div>
                         </td>
                         <td style="font-weight: bold; color: #fbbf24;">
                             <?= $row['CURRENT_ACTUAL_WEIGHT'] > 0 ? number_format($row['CURRENT_ACTUAL_WEIGHT'], 2) . ' kg' : '-' ?>
                         </td>
-                        <td>
-                            <span class="status-badge <?= $statusClass ?>">
-                                <?= $statusText ?>
-                            </span>
-                        </td>
-                        <td>
-                            <?= $row['BIRTH_DATE'] ? date('M d, Y', strtotime($row['BIRTH_DATE'])) : '-' ?>
-                        </td>
+                        <td><span class="status-badge <?= $statusClass ?>"><?= $statusText ?></span></td>
+                        <td><?= $row['BIRTH_DATE'] ? date('M d, Y', strtotime($row['BIRTH_DATE'])) : '-' ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr>
-                        <td colspan="9" class="empty-state">
-                            No records found matching your criteria.
-                        </td>
-                    </tr>
+                    <tr><td colspan="9" style="text-align: center; padding: 4rem; color: #64748b; font-style: italic;">No records found.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-    
-    <div style="margin-top: 1rem; text-align: right; color: #64748b; font-size: 0.9rem;">
-        Showing <?= count($animals) ?> records
-    </div>
-
 </div>
 
 </body>

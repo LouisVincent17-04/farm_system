@@ -33,7 +33,6 @@ try {
     $inv = $conn->query($inv_sql)->fetch(PDO::FETCH_ASSOC);
 
     // --- 2. CHART: SPENDING TREND (Line) ---
-    // Feed costs over the last 12 months
     $trend_sql = "SELECT 
                     DATE_FORMAT(TRANSACTION_DATE, '%Y-%m') as month_year,
                     SUM(TRANSACTION_COST) as cost
@@ -44,7 +43,6 @@ try {
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 3. CHART: TOP FEEDS BY CONSUMPTION (Bar) ---
-    // Joins with FEEDS to get the name
     $top_feeds_sql = "SELECT 
                         f.FEED_NAME, 
                         SUM(ft.QUANTITY_KG) as total_kg
@@ -56,7 +54,6 @@ try {
     $top_feeds = $conn->query($top_feeds_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. CHART: INVENTORY VALUE DISTRIBUTION (Pie) ---
-    // Which feeds hold the most value in stock
     $stock_val_sql = "SELECT FEED_NAME, TOTAL_COST 
                       FROM feeds 
                       WHERE TOTAL_COST > 0
@@ -65,7 +62,6 @@ try {
     $stock_val = $conn->query($stock_val_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 5. CHART: TOP CONSUMERS (Horizontal Bar) ---
-    // Animals consuming the most feed (by KG)
     $top_animal_sql = "SELECT 
                             ar.TAG_NO, 
                             SUM(ft.QUANTITY_KG) as total_kg
@@ -88,6 +84,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Feed Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     
     <style>
         /* --- THEME: AMBER / ORANGE --- */
@@ -99,10 +96,18 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #f59e0b, #d97706); /* Amber Gradient */
+            background: linear-gradient(135deg, #f59e0b, #d97706); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -124,9 +129,7 @@ try {
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
 
         .text-amber { color: #fbbf24; }
-        .text-orange { color: #fb923c; }
         .text-red { color: #f87171; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -154,6 +157,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="analytics_dashboard.php" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Analytics Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Feed & Feeding Analytics</h1>
         <p class="subtitle">Consumption rates, cost tracking, and inventory levels.</p>
@@ -220,12 +229,10 @@ try {
 </div>
 
 <script>
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
 
-    // 1. Trend Line Chart
     const trendData = <?= json_encode($trend_data) ?>;
     new Chart(document.getElementById('trendChart'), {
         type: 'line',
@@ -234,7 +241,7 @@ try {
             datasets: [{
                 label: 'Cost (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#f59e0b', // Amber
+                borderColor: '#f59e0b',
                 backgroundColor: 'rgba(245, 158, 11, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -249,7 +256,6 @@ try {
         }
     });
 
-    // 2. Stock Value Pie Chart
     const stockData = <?= json_encode($stock_val) ?>;
     new Chart(document.getElementById('stockChart'), {
         type: 'doughnut',
@@ -257,7 +263,7 @@ try {
             labels: stockData.map(d => d.FEED_NAME),
             datasets: [{
                 data: stockData.map(d => d.TOTAL_COST),
-                backgroundColor: ['#f59e0b', '#d97706', '#fbbf24', '#b45309', '#fcd34d'], // Amber/Orange shades
+                backgroundColor: ['#f59e0b', '#d97706', '#fbbf24', '#b45309', '#fcd34d'],
                 borderWidth: 0
             }]
         },
@@ -268,7 +274,6 @@ try {
         }
     });
 
-    // 3. Top Feeds Bar Chart
     const topFeeds = <?= json_encode($top_feeds) ?>;
     new Chart(document.getElementById('topFeedsChart'), {
         type: 'bar',
@@ -277,7 +282,7 @@ try {
             datasets: [{
                 label: 'Total Consumed (KG)',
                 data: topFeeds.map(d => d.total_kg),
-                backgroundColor: 'rgba(251, 191, 36, 0.7)', // Light Amber
+                backgroundColor: 'rgba(251, 191, 36, 0.7)',
                 borderColor: '#fbbf24',
                 borderWidth: 1,
                 borderRadius: 4
@@ -291,7 +296,6 @@ try {
         }
     });
 
-    // 4. Top Animal Consumers Horizontal Bar
     const animalData = <?= json_encode($top_animals) ?>;
     new Chart(document.getElementById('animalChart'), {
         type: 'bar',
@@ -300,7 +304,7 @@ try {
             datasets: [{
                 label: 'Consumed (KG)',
                 data: animalData.map(d => d.total_kg),
-                backgroundColor: 'rgba(217, 119, 6, 0.7)', // Darker Orange
+                backgroundColor: 'rgba(217, 119, 6, 0.7)',
                 borderColor: '#b45309',
                 borderWidth: 1,
                 borderRadius: 4

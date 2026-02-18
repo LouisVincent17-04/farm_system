@@ -151,6 +151,14 @@ try {
         }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
@@ -262,6 +270,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="reports.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Reports Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Equipment Purchase Report</h1>
         <p class="subtitle">Log of purchased tools, machinery, and equipment.</p>

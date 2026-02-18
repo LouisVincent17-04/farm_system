@@ -1,5 +1,6 @@
 <?php
 // views/inventory_adjustment.php
+$page = "farm";
 include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('farm'); 
@@ -14,7 +15,20 @@ include '../common/navbar.php';
     <style>
         :root { --dark: #0f172a; --dark-light: #1e293b; --red: #ef4444; --orange: #f97316; --gray: #64748b; --blue: #3b82f6; }
         body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: system-ui, sans-serif; min-height: 100vh; }
-        .container { max-width: 700px; margin: 3rem auto; padding: 0 1rem; }
+        
+        /* Wrapper to align button left on wide screens */
+        .nav-wrapper { max-width: 1400px; margin: 1.5rem auto 0; padding: 0 1rem; }
+
+        /* Main Form Container - Centered and Narrow */
+        .container { max-width: 700px; margin: 1rem auto 3rem; padding: 0 1rem; }
+        
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
 
         .card { background: var(--dark-light); padding: 2rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
         .header { text-align: center; margin-bottom: 2rem; }
@@ -68,6 +82,13 @@ include '../common/navbar.php';
     </style>
 </head>
 <body>
+
+<div class="nav-wrapper">
+    <a href="farm_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Farm Dashboard
+    </a>
+</div>
 
 <div class="container">
     <div class="card">

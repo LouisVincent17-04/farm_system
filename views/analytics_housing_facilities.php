@@ -14,7 +14,6 @@ try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 1. KPI: ASSET METRICS ---
-    // Counts items under 'Housing & Facilities' (ITEM_TYPE_ID = 3)
     $kpi_sql = "SELECT 
                     COUNT(*) as total_items,
                     COALESCE(SUM(TOTAL_COST), 0) as total_asset_value,
@@ -23,13 +22,11 @@ try {
                 WHERE ITEM_TYPE_ID = 3 AND STATUS = 1";
     $kpi = $conn->query($kpi_sql)->fetch(PDO::FETCH_ASSOC);
 
-    // Calculate Average Cost per Unit
     $avg_cost = ($kpi['total_units'] > 0) 
         ? ($kpi['total_asset_value'] / $kpi['total_units']) 
         : 0;
 
-    // --- 2. CHART: COST DISTRIBUTION (Pie) ---
-    // Which specific items (like 'Pig Pen', 'Fencing') cost the most
+    // --- 2. CHART: COST DISTRIBUTION ---
     $dist_sql = "SELECT ITEM_NAME, TOTAL_COST 
                  FROM items 
                  WHERE ITEM_TYPE_ID = 3 AND STATUS = 1
@@ -37,8 +34,7 @@ try {
                  LIMIT 5";
     $dist_data = $conn->query($dist_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 3. CHART: RECENT ACQUISITIONS (Line/Bar) ---
-    // Value of housing items added over time
+    // --- 3. CHART: RECENT ACQUISITIONS ---
     $trend_sql = "SELECT 
                     DATE_FORMAT(CREATED_AT, '%Y-%m') as month_year,
                     SUM(TOTAL_COST) as cost
@@ -49,8 +45,7 @@ try {
                   ORDER BY month_year ASC";
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 4. CHART: ASSET QUANTITY BREAKDOWN (Bar) ---
-    // Which items do we have the most of (by quantity)
+    // --- 4. CHART: ASSET QUANTITY BREAKDOWN ---
     $qty_sql = "SELECT ITEM_NAME, QUANTITY 
                 FROM items 
                 WHERE ITEM_TYPE_ID = 3 AND STATUS = 1
@@ -70,6 +65,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Housing & Facilities Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* --- THEME: SLATE / GRAY --- */
@@ -81,10 +77,19 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Navigation Style */
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: #cbd5e1; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #94a3b8, #475569); /* Slate Gradient */
+            background: linear-gradient(135deg, #94a3b8, #475569);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -101,13 +106,9 @@ try {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
             background: linear-gradient(90deg, #94a3b8, #64748b); 
         }
-        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
-
-        .text-slate { color: #cbd5e1; }
-        .text-blue { color: #60a5fa; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -117,17 +118,7 @@ try {
             background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
             border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
         }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
-
-        /* Buttons */
-        .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
-        .btn { 
-            padding: 10px 20px; background: rgba(148, 163, 184, 0.1); 
-            color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); 
-            border-radius: 8px; text-decoration: none; font-weight: 600; 
-            transition: all 0.2s; 
-        }
-        .btn:hover { background: rgba(148, 163, 184, 0.2); transform: translateY(-2px); }
+        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
         @media (max-width: 1024px) { .charts-container { grid-template-columns: 1fr; } }
     </style>
@@ -135,6 +126,12 @@ try {
 <body>
 
 <div class="container">
+    <div class="nav-header">
+        <a href="analytics_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
+        </a>
+    </div>
+
     <div class="header">
         <h1 class="title">Housing & Facilities Analytics</h1>
         <p class="subtitle">Asset valuation, facility counts, and acquisition trends.</p>
@@ -142,50 +139,48 @@ try {
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-label">Total Asset Value</div>
+            <div class="kpi-label"><i class="fa-solid fa-building-shield"></i> Total Asset Value</div>
             <div class="kpi-value text-white">₱<?= number_format($kpi['total_asset_value'] / 1000, 1) ?>k</div>
             <div class="kpi-sub">Investment in Housing</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Facility Items</div>
-            <div class="kpi-value text-slate"><?= number_format($kpi['total_items']) ?></div>
+            <div class="kpi-label"><i class="fa-solid fa-warehouse"></i> Facility Items</div>
+            <div class="kpi-value" style="color: #cbd5e1;"><?= number_format($kpi['total_items']) ?></div>
             <div class="kpi-sub">Distinct Asset Types</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Total Units</div>
+            <div class="kpi-label"><i class="fa-solid fa-layer-group"></i> Total Units</div>
             <div class="kpi-value"><?= number_format($kpi['total_units']) ?></div>
             <div class="kpi-sub">Physical Count</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Avg. Cost / Unit</div>
-            <div class="kpi-value text-blue">₱<?= number_format($avg_cost, 2) ?></div>
+            <div class="kpi-label"><i class="fa-solid fa-calculator"></i> Avg. Cost / Unit</div>
+            <div class="kpi-value" style="color: #60a5fa;">₱<?= number_format($avg_cost, 0) ?></div>
             <div class="kpi-sub">Per Facility Unit</div>
         </div>
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
-            <div class="chart-title">🏗️ Investment Trend (Last 12 Months)</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Investment Trend (Last 12 Months)</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">💰 Asset Value Distribution</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Asset Value Distribution</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="distChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box" style="grid-column: 1 / -1;">
-            <div class="chart-title">📊 Top 5 Facilities by Quantity</div>
+            <div class="chart-title"><i class="fa-solid fa-list-ol"></i> Top 5 Facilities by Quantity</div>
             <div style="flex-grow: 1; position: relative; max-height: 300px;">
                 <canvas id="qtyChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
@@ -204,7 +199,7 @@ try {
             datasets: [{
                 label: 'Investment (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#cbd5e1', // Slate
+                borderColor: '#cbd5e1',
                 backgroundColor: 'rgba(203, 213, 225, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -227,7 +222,7 @@ try {
             labels: distData.map(d => d.ITEM_NAME),
             datasets: [{
                 data: distData.map(d => d.TOTAL_COST),
-                backgroundColor: ['#64748b', '#94a3b8', '#cbd5e1', '#475569', '#334155'], // Slate shades
+                backgroundColor: ['#64748b', '#94a3b8', '#cbd5e1', '#475569', '#334155'],
                 borderWidth: 0
             }]
         },
@@ -247,7 +242,7 @@ try {
             datasets: [{
                 label: 'Units Available',
                 data: qtyData.map(d => d.QUANTITY),
-                backgroundColor: 'rgba(148, 163, 184, 0.7)', // Light Slate
+                backgroundColor: 'rgba(148, 163, 184, 0.7)',
                 borderColor: '#94a3b8',
                 borderWidth: 1,
                 borderRadius: 4

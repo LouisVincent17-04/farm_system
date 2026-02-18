@@ -29,7 +29,6 @@ try {
         : 0;
 
     // --- 2. CHART: COST DISTRIBUTION (Pie) ---
-    // High-value utility items
     $dist_sql = "SELECT ITEM_NAME, TOTAL_COST 
                  FROM items 
                  WHERE ITEM_TYPE_ID = 9 AND STATUS = 1
@@ -38,7 +37,6 @@ try {
     $dist_data = $conn->query($dist_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 3. CHART: SPENDING TREND (Line) ---
-    // Spending on utilities over the last 12 months
     $trend_sql = "SELECT 
                     DATE_FORMAT(CREATED_AT, '%Y-%m') as month_year,
                     SUM(TOTAL_COST) as cost
@@ -50,7 +48,6 @@ try {
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. CHART: INVENTORY COUNT (Bar) ---
-    // Most abundant consumables
     $qty_sql = "SELECT ITEM_NAME, QUANTITY 
                 FROM items 
                 WHERE ITEM_TYPE_ID = 9 AND STATUS = 1
@@ -70,6 +67,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utilities & Consumables Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* --- THEME: SKY BLUE / CYAN --- */
@@ -81,10 +79,19 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Navigation Style */
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: #38bdf8; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #0ea5e9, #0284c7); /* Sky Blue Gradient */
+            background: linear-gradient(135deg, #0ea5e9, #0284c7); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
         }
@@ -101,13 +108,12 @@ try {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
             background: linear-gradient(90deg, #0ea5e9, #0369a1); 
         }
-        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
 
         .text-sky { color: #38bdf8; }
         .text-cyan { color: #22d3ee; }
-        .text-white { color: #fff; }
 
         /* Chart Grid */
         .charts-container { 
@@ -117,17 +123,7 @@ try {
             background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
             border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
         }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
-
-        /* Buttons */
-        .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
-        .btn { 
-            padding: 10px 20px; background: rgba(14, 165, 233, 0.1); 
-            color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); 
-            border-radius: 8px; text-decoration: none; font-weight: 600; 
-            transition: all 0.2s; 
-        }
-        .btn:hover { background: rgba(14, 165, 233, 0.2); transform: translateY(-2px); }
+        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
         @media (max-width: 1024px) { .charts-container { grid-template-columns: 1fr; } }
     </style>
@@ -135,6 +131,12 @@ try {
 <body>
 
 <div class="container">
+    <div class="nav-header">
+        <a href="analytics_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
+        </a>
+    </div>
+
     <div class="header">
         <h1 class="title">Utilities & Consumables Analytics</h1>
         <p class="subtitle">Operational supplies, utility costs, and consumption tracking.</p>
@@ -142,55 +144,52 @@ try {
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-label">Total Expense Value</div>
+            <div class="kpi-label"><i class="fa-solid fa-receipt"></i> Total Expense Value</div>
             <div class="kpi-value text-white">₱<?= number_format($kpi['total_value'] / 1000, 1) ?>k</div>
             <div class="kpi-sub">Cost of Consumables</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Distinct Items</div>
+            <div class="kpi-label"><i class="fa-solid fa-faucet-drip"></i> Distinct Items</div>
             <div class="kpi-value text-sky"><?= number_format($kpi['distinct_items']) ?></div>
             <div class="kpi-sub">Utility Types</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Total Units</div>
+            <div class="kpi-label"><i class="fa-solid fa-boxes-stacked"></i> Total Units</div>
             <div class="kpi-value"><?= number_format($kpi['total_units']) ?></div>
             <div class="kpi-sub">Stock Count</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Avg. Cost / Unit</div>
-            <div class="kpi-value text-cyan">₱<?= number_format($avg_cost, 2) ?></div>
-            <div class="kpi-sub">Per Consumable</div>
+            <div class="kpi-label"><i class="fa-solid fa-scale-balanced"></i> Avg. Cost / Unit</div>
+            <div class="kpi-value text-cyan">₱<?= number_format($avg_cost, 0) ?></div>
+            <div class="kpi-sub">Per Consumable Item</div>
         </div>
     </div>
 
     <div class="charts-container">
-        
         <div class="chart-box">
-            <div class="chart-title">⚡ Utility Spending Trend (Last 12 Months)</div>
+            <div class="chart-title"><i class="fa-solid fa-bolt"></i> Utility Spending Trend (Last 12 Months)</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">💰 Cost Breakdown by Item</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Cost Breakdown by Item</div>
             <div style="flex-grow: 1; position: relative;">
                 <canvas id="distChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box" style="grid-column: 1 / -1;">
-            <div class="chart-title">📊 Top 5 Consumables by Quantity</div>
+            <div class="chart-title"><i class="fa-solid fa-list-check"></i> Top 5 Consumables by Quantity</div>
             <div style="flex-grow: 1; position: relative; max-height: 300px;">
                 <canvas id="qtyChart"></canvas>
             </div>
         </div>
-
     </div>
 </div>
 
 <script>
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
@@ -204,7 +203,7 @@ try {
             datasets: [{
                 label: 'Cost (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#0ea5e9', // Sky Blue
+                borderColor: '#0ea5e9',
                 backgroundColor: 'rgba(14, 165, 233, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -227,7 +226,7 @@ try {
             labels: distData.map(d => d.ITEM_NAME),
             datasets: [{
                 data: distData.map(d => d.TOTAL_COST),
-                backgroundColor: ['#0284c7', '#0369a1', '#0ea5e9', '#38bdf8', '#7dd3fc'], // Sky Blue shades
+                backgroundColor: ['#0284c7', '#0369a1', '#0ea5e9', '#38bdf8', '#7dd3fc'],
                 borderWidth: 0
             }]
         },
@@ -247,7 +246,7 @@ try {
             datasets: [{
                 label: 'Units Available',
                 data: qtyData.map(d => d.QUANTITY),
-                backgroundColor: 'rgba(56, 189, 248, 0.7)', // Light Sky
+                backgroundColor: 'rgba(56, 189, 248, 0.7)',
                 borderColor: '#0ea5e9',
                 borderWidth: 1,
                 borderRadius: 4

@@ -108,8 +108,18 @@ try {
         /* Navigation Header */
         .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .page-title { font-size: 2rem; font-weight: 800; color: white; margin: 0; }
+        
+        /* Back Link Styles */
         .btn-back { color: #94a3b8; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: color 0.2s; }
         .btn-back:hover { color: #cbd5e1; }
+        
+        /* Upper Left Dashboard Link */
+        .dashboard-link { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 1.5rem; transition: color 0.2s;
+        }
+        .dashboard-link:hover { color: white; }
 
         /* Filter Bar */
         .filter-card {
@@ -182,6 +192,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="farm_dashboard.php" class="dashboard-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Farm Dashboard
+    </a>
+
     <div class="nav-header">
         <h1 class="page-title">Sow Card Management</h1>
         <?php if($selected_animal_id): ?>

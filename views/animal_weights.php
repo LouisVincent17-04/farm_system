@@ -63,6 +63,14 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
             padding: 2rem; 
         }
         
+        /* Back Link Style - Standard Text Link */
+        .back-link { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 1rem; margin-bottom: 1rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         /* DESKTOP GRID (Default) */
         .main-grid { 
             display: grid; 
@@ -140,6 +148,12 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
 <body>
 
 <div class="container">
+    
+    <a href="farm_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Farm Dashboard
+    </a>
+
     <div class="main-grid">
         
         <div class="panel">

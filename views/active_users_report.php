@@ -94,6 +94,7 @@ try {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
         /* --- GLOBAL VARIABLES & RESET --- */
@@ -106,6 +107,14 @@ try {
         }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
@@ -179,9 +188,11 @@ try {
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: #3b82f6; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
-        .btn-export { background: #10b981; color: white; } /* Green for Excel */
-        .btn-pdf { background: #ef4444; color: white; } /* Red for PDF */
-        .btn-csv { background: #f59e0b; color: #1e293b; } /* Orange for CSV */
+        
+        /* Export Buttons (Updated Colors & Icons) */
+        .btn-pdf { background: #3b82f6; color: white; } /* Blue */
+        .btn-excel { background: #10b981; color: white; } /* Green */
+        .btn-csv { background: #f59e0b; color: white; } /* Orange */
 
         /* --- TABLE --- */
         .table-wrap { 
@@ -230,6 +241,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="reports.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Reports Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Active User Report</h1>
         <p class="subtitle">System access logs, role distribution, and account status.</p>
@@ -290,13 +307,13 @@ try {
             
             <div class="action-bar">
                 <button type="button" class="btn btn-pdf" onclick="exportPDF()">
-                    <span>📄</span> PDF
+                    <i class="fa-solid fa-file-pdf"></i> PDF
                 </button>
                 <button type="button" class="btn btn-excel" onclick="exportExcel()">
-                    <span>📊</span> Excel
+                    <i class="fa-solid fa-file-excel"></i> Excel
                 </button>
                 <button type="button" class="btn btn-csv" onclick="exportCSV()">
-                    <span>📝</span> CSV
+                    <i class="fa-solid fa-file-csv"></i> CSV
                 </button>
             </div>
         </form>

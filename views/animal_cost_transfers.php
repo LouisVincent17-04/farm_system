@@ -25,6 +25,14 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
             padding: 2rem; 
         }
 
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         
         /* DESKTOP GRID (Default) */
@@ -87,9 +95,9 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
             border-radius: 50%;
             width: 20px;
             height: 20px;
-            display: flex;
+            display: flex; 
             align-items: center;
-            justify-content: center;
+            justify-content: center; 
             font-size: 0.8rem;
         }
         
@@ -178,6 +186,12 @@ $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fet
 <body>
 
 <div class="container">
+    
+    <a href="farm_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Farm Dashboard
+    </a>
+
     <div class="header">
         <h1 style="color:#facc15; margin:0; font-size: clamp(1.5rem, 4vw, 2.5rem);">Strict Cost Transfer</h1>
     </div>

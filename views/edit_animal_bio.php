@@ -70,12 +70,18 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; padding-bottom: 100px; }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid rgba(250, 204, 21, 0.2); flex-wrap: wrap; gap: 1rem; }
         .header-content h1 { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #facc15, #eab308); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
         .header-content p { color: #94a3b8; font-size: 0.95rem; }
-        .back-link { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.3); color: #facc15; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.2s; }
-        .back-link:hover { background: rgba(250, 204, 21, 0.2); transform: translateX(-4px); }
-
+        
         .filter-card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(250, 204, 21, 0.2); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; backdrop-filter: blur(10px); }
         .filter-title { font-size: 1.1rem; font-weight: 700; color: #facc15; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
@@ -133,15 +139,17 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
 <body>
 
 <div class="container">
+    
+    <a href="farm_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Farm Dashboard
+    </a>
+
     <div class="page-header">
         <div class="header-content">
             <h1>🧬 Bulk Edit Bio Info</h1>
             <p>Efficiently update animal records by location, building, and pen</p>
         </div>
-        <a href="farm_dashboard.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-            Back to Dashboard
-        </a>
     </div>
 
     <div id="alertBox" class="alert"></div>

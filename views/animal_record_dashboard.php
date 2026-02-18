@@ -25,6 +25,14 @@ include '../common/navbar.php';
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .page-header { margin-bottom: 3rem; }
         .page-title {
             font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;
@@ -134,6 +142,12 @@ include '../common/navbar.php';
 <body>
 
     <div class="container">
+        
+        <a href="admin_dashboard.php" class="back-link">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Admin Dashboard
+        </a>
+
         <header class="page-header">
             <h1 class="page-title">Animal Records Dashboard</h1>
             <p class="page-subtitle">Central hub for livestock data management and historical tracking.</p>

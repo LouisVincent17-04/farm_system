@@ -31,7 +31,6 @@ try {
         : 0;
 
     // --- 2. CHART: CURRENT REPRODUCTIVE STATUS (Doughnut) ---
-    // Snapshot of the herd based on 'IS_ACTIVE = 1' in sow_status_history
     $status_sql = "SELECT STATUS_NAME, COUNT(DISTINCT ANIMAL_ID) as count 
                    FROM sow_status_history 
                    WHERE IS_ACTIVE = 1 
@@ -39,7 +38,6 @@ try {
     $status_data = $conn->query($status_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 3. CHART: PIGLET PRODUCTION TREND (Line) ---
-    // Piglets born over the last 12 months
     $trend_sql = "SELECT 
                     DATE_FORMAT(DATE_FARROWED, '%Y-%m') as month_year,
                     SUM(TOTAL_BORN) as total_born,
@@ -51,7 +49,6 @@ try {
     $trend_data = $conn->query($trend_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. CHART: TOP PRODUCING SOWS (Bar) ---
-    // Sows with the highest total born count
     $top_sows_sql = "SELECT 
                         ar.TAG_NO, 
                         SUM(sbr.TOTAL_BORN) as total_piglets
@@ -63,7 +60,6 @@ try {
     $top_sows = $conn->query($top_sows_sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 5. CHART: LITTER HEALTH BREAKDOWN (Pie/Polar) ---
-    // Ratio of Live vs Dead vs Mummified
     $health_sql = "SELECT 
                     SUM(ACTIVE_COUNT) as live,
                     SUM(DEAD_COUNT) as dead,
@@ -83,6 +79,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Breeding & Reproduction Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     
     <style>
         /* --- THEME: PINK / FUCHSIA --- */
@@ -94,6 +91,14 @@ try {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
@@ -119,9 +124,8 @@ try {
         .kpi-sub { font-size: 0.85rem; color: #64748b; }
 
         .text-pink { color: #f472b6; }
-        .text-rose { color: #fb7185; }
         .text-green { color: #4ade80; }
-        .text-white { color: #fff; }
+        .text-rose { color: #fb7185; }
 
         /* Chart Grid */
         .charts-container { 
@@ -149,6 +153,11 @@ try {
 <body>
 
 <div class="container">
+    <a href="analytics_dashboard.php" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Analytics Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Breeding & Reproduction Analytics</h1>
         <p class="subtitle">Herd fertility, farrowing performance, and litter health.</p>
@@ -215,12 +224,10 @@ try {
 </div>
 
 <script>
-    // --- CHART DEFAULTS ---
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     Chart.defaults.font.family = 'system-ui';
 
-    // 1. Production Trend Line Chart
     const trendData = <?= json_encode($trend_data) ?>;
     new Chart(document.getElementById('trendChart'), {
         type: 'line',
@@ -229,7 +236,7 @@ try {
             datasets: [{
                 label: 'Total Born',
                 data: trendData.map(d => d.total_born),
-                borderColor: '#db2777', // Pink
+                borderColor: '#db2777',
                 backgroundColor: 'rgba(219, 39, 119, 0.1)',
                 borderWidth: 2,
                 fill: true,
@@ -238,7 +245,7 @@ try {
             {
                 label: 'Live Born',
                 data: trendData.map(d => d.live_born),
-                borderColor: '#4ade80', // Green
+                borderColor: '#4ade80',
                 backgroundColor: 'transparent',
                 borderWidth: 2,
                 borderDash: [5, 5],
@@ -253,7 +260,6 @@ try {
         }
     });
 
-    // 2. Status Doughnut Chart
     const statusData = <?= json_encode($status_data) ?>;
     new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
@@ -261,14 +267,7 @@ try {
             labels: statusData.map(d => d.STATUS_NAME),
             datasets: [{
                 data: statusData.map(d => d.count),
-                backgroundColor: [
-                    '#db2777', // Pink (Active/Main)
-                    '#9333ea', // Purple
-                    '#2563eb', // Blue
-                    '#e11d48', // Red
-                    '#f59e0b', // Amber
-                    '#10b981'  // Green
-                ],
+                backgroundColor: ['#db2777', '#9333ea', '#2563eb', '#e11d48', '#f59e0b', '#10b981'],
                 borderWidth: 0
             }]
         },
@@ -279,7 +278,6 @@ try {
         }
     });
 
-    // 3. Top Sows Bar Chart
     const sowData = <?= json_encode($top_sows) ?>;
     new Chart(document.getElementById('sowChart'), {
         type: 'bar',
@@ -288,7 +286,7 @@ try {
             datasets: [{
                 label: 'Total Piglets Produced',
                 data: sowData.map(d => d.total_piglets),
-                backgroundColor: 'rgba(244, 114, 182, 0.7)', // Light Pink
+                backgroundColor: 'rgba(244, 114, 182, 0.7)',
                 borderColor: '#f472b6',
                 borderWidth: 1,
                 borderRadius: 4
@@ -302,7 +300,6 @@ try {
         }
     });
 
-    // 4. Health Ratio Pie Chart
     const healthData = <?= json_encode($health_data) ?>;
     new Chart(document.getElementById('healthChart'), {
         type: 'pie',
@@ -310,11 +307,7 @@ try {
             labels: ['Live', 'Dead', 'Mummified'],
             datasets: [{
                 data: [healthData.live, healthData.dead, healthData.mummified],
-                backgroundColor: [
-                    '#4ade80', // Green (Live)
-                    '#f87171', // Red (Dead)
-                    '#94a3b8'  // Gray (Mummified)
-                ],
+                backgroundColor: ['#4ade80', '#f87171', '#94a3b8'],
                 borderWidth: 0
             }]
         },

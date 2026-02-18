@@ -18,9 +18,6 @@ try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 2. BUILD SQL QUERY ---
-    // Joins: 
-    // - ITEMS (to get Vitamin Name)
-    // - ANIMAL_RECORDS (to get Animal Tag)
     $sql = "SELECT 
             vt.VST_ID,
             vt.DOSAGE,
@@ -86,6 +83,7 @@ try {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
         /* --- GLOBAL STYLES --- */
@@ -98,6 +96,14 @@ try {
         }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
             font-size: 2.2rem; font-weight: 800; 
@@ -169,9 +175,11 @@ try {
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: #65a30d; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
-        .btn-export { background: #3b82f6; color: white; }
-        .btn-excel { background: #10b981; color: white; }
-        .btn-csv { background: #f59e0b; color: #1e293b; }
+        
+        /* Export Buttons (Updated Colors & Icons) */
+        .btn-pdf { background: #3b82f6; color: white; } /* Blue */
+        .btn-excel { background: #10b981; color: white; } /* Green */
+        .btn-csv { background: #f59e0b; color: white; } /* Orange */
 
         /* --- TABLE --- */
         .table-wrap { 
@@ -210,6 +218,12 @@ try {
 <body>
 
 <div class="container">
+    
+    <a href="reports.php" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Reports Dashboard
+    </a>
+
     <div class="header">
         <h1 class="title">Vitamin Usage History</h1>
         <p class="subtitle">Log of administered supplements, dosages, and costs.</p>
@@ -253,14 +267,14 @@ try {
             </div>
             
             <div class="action-bar">
-                <button type="button" class="btn btn-export" onclick="exportPDF()">
-                    <span>📄</span> PDF
+                <button type="button" class="btn btn-pdf" onclick="exportPDF()">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
                 </button>
                 <button type="button" class="btn btn-excel" onclick="exportExcel()">
-                    <span>📊</span> Excel
+                    <i class="fa-solid fa-file-excel"></i> Excel
                 </button>
                 <button type="button" class="btn btn-csv" onclick="exportCSV()">
-                    <span>📝</span> CSV
+                    <i class="fa-solid fa-file-csv"></i> CSV
                 </button>
             </div>
         </form>
@@ -339,7 +353,7 @@ try {
         ]);
 
         doc.autoTable({
-            head: [['Date', 'Animal Tag', 'Vitamin', 'Dosage', 'Qty Used', 'Cost', 'Remarks']],
+            head: [['Date', 'Tag', 'Vitamin', 'Dosage', 'Qty Used', 'Cost', 'Remarks']],
             body: rows,
             startY: 35,
             styles: { fontSize: 8 },

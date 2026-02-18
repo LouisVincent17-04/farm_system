@@ -109,6 +109,14 @@ try {
             padding: 1.5rem; 
         }
         
+        /* Back Link Style */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        }
+        .back-link:hover { color: white; }
+        
         /* Header Flexbox */
         .disease-header-flex { 
             display: flex; 
@@ -373,6 +381,11 @@ try {
 
 <div class="disease-container">
     
+    <a href="admin_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Admin Dashboard
+    </a>
+    
     <div class="disease-header-flex">
         <div>
             <h1 class="disease-title">Disease Management</h1>
@@ -424,7 +437,6 @@ try {
 
 </div>
 
-<!-- Add Modal -->
 <div id="diseaseAddModal" class="disease-modal-overlay">
     <div class="disease-modal">
         <div class="disease-modal-header">Add New Disease</div>
@@ -454,7 +466,6 @@ try {
     </div>
 </div>
 
-<!-- Edit Modal -->
 <div id="diseaseEditModal" class="disease-modal-overlay">
     <div class="disease-modal">
         <div class="disease-modal-header">Edit Disease</div>
@@ -485,7 +496,6 @@ try {
     </div>
 </div>
 
-<!-- Delete Form -->
 <form id="diseaseDeleteForm" method="POST" action="diseases.php" style="display:none;">
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="delete_id" id="diseaseDeleteInput">

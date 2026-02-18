@@ -152,6 +152,15 @@ if ($animal_id) {
         }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 
+        /* Back Link - Upper Left, No Outline */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; 
+            text-decoration: none; color: #94a3b8; font-weight: 600; 
+            font-size: 1rem; margin-bottom: 1rem; transition: color 0.2s;
+            border: none; background: transparent; padding: 0;
+        }
+        .back-link:hover { color: white; }
+
         .page-header { margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 1rem; }
         .page-title { font-size: 2rem; font-weight: 800; color: white; margin-bottom: 0.5rem; }
         .page-desc { color: #94a3b8; }
@@ -267,6 +276,12 @@ if ($animal_id) {
 <body>
 
 <div class="container">
+    
+    <a href="farm_dashboard.php" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Dashboard
+    </a>
+
     <header class="page-header">
         <h1 class="page-title">Operational History</h1>
         <p class="page-desc">Comprehensive transaction log per animal.</p>

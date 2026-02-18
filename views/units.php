@@ -1,17 +1,17 @@
 <?php
 
-$page="settings";
-include '../config/Connection.php';
+// $page="settings";
+// include '../config/Connection.php';
 
-include '../security/checkAccess.php';
-checkAccess('settings');
+// include '../security/checkAccess.php';
+// checkAccess('settings');
 
-include '../common/navbar.php';
-include '../config/Queries.php';
+// include '../common/navbar.php';
+// include '../config/Queries.php';
 
-$sql = "SELECT * FROM Units order by UNIT_ID ASC";
-$unit_data = retrieveData($conn, $sql);
-
+// $sql = "SELECT * FROM Units order by UNIT_ID ASC";
+// $unit_data = retrieveData($conn, $sql);
+die('This page is currently unavailable. Please contact the administrator for more information.');
 ?>
 
 <!DOCTYPE html>
@@ -21,7 +21,7 @@ $unit_data = retrieveData($conn, $sql);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unit Management System</title>
     <style>
-        * {
+        /* * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -352,12 +352,11 @@ $unit_data = retrieveData($conn, $sql);
             .table {
                 min-width: 600px;
             }
-        }
+        } */
     </style>
 </head>
-<body>
+<!-- <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <div class="header-info">
                 <h1>Unit Management</h1>
@@ -371,7 +370,6 @@ $unit_data = retrieveData($conn, $sql);
             </button>
         </div>
 
-        <!-- Search -->
         <div class="search-container">
             <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -379,7 +377,6 @@ $unit_data = retrieveData($conn, $sql);
             <input type="text" class="search-input" placeholder="Search Units by name or abbreviation..." onkeyup="filterTable()">
         </div>
 
-        <!-- Table -->
         <div class="table-container">
             <table class="table">
                 <thead>
@@ -431,7 +428,6 @@ $unit_data = retrieveData($conn, $sql);
         </div>
     </div>
 
-    <!-- Add Modal -->
     <div id="addModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -456,7 +452,6 @@ $unit_data = retrieveData($conn, $sql);
         </div>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -480,138 +475,138 @@ $unit_data = retrieveData($conn, $sql);
                 <button type="button" class="btn-save" onclick="submitEditForm()">Update Unit</button>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Delete Form (Hidden) -->
-    <form id="deleteUnitForm" method="POST" action="../process/deleteUnit.php" style="display: none;">
+    <!-- <form id="deleteUnitForm" method="POST" action="../process/deleteUnit.php" style="display: none;">
         <input type="hidden" id="delete_unit_id" name="unit_id">
-    </form>
+    </form> -->
 
     <script>
         // Open add modal
-        function openAddModal() {
-            document.getElementById('addUnitForm').reset();
-            document.getElementById('addModal').classList.add('show');
-        }
+        // function openAddModal() {
+        //     document.getElementById('addUnitForm').reset();
+        //     document.getElementById('addModal').classList.add('show');
+        // }
 
-        // Close add modal
-        function closeAddModal() {
-            document.getElementById('addModal').classList.remove('show');
-        }
+        // // Close add modal
+        // function closeAddModal() {
+        //     document.getElementById('addModal').classList.remove('show');
+        // }
 
-        // Submit add form
-        function submitAddForm() {
-            const form = document.getElementById('addUnitForm');
-            const name = document.getElementById('add_unit_name').value.trim();
-            const abbreviation = document.getElementById('add_unit_abbreviation').value.trim();
+        // // Submit add form
+        // function submitAddForm() {
+        //     const form = document.getElementById('addUnitForm');
+        //     const name = document.getElementById('add_unit_name').value.trim();
+        //     const abbreviation = document.getElementById('add_unit_abbreviation').value.trim();
 
-            if (!name || !abbreviation) {
-                alert('Please fill in all fields');
-                return;
-            }
+        //     if (!name || !abbreviation) {
+        //         alert('Please fill in all fields');
+        //         return;
+        //     }
 
-            if (confirm('Do you want to add this unit?')) {
-                form.submit();
-            }
-        }
+        //     if (confirm('Do you want to add this unit?')) {
+        //         form.submit();
+        //     }
+        // }
 
-        // Open edit modal
-        function editUnit(button) {
-            const row = button.closest('tr');
-            const unitId = row.getAttribute('data-id');
-            const name = row.querySelector('.Unit-details h3').textContent.trim();
-            const abbreviation = row.querySelector('.unit_abbreviation-info').textContent.trim();
+        // // Open edit modal
+        // function editUnit(button) {
+        //     const row = button.closest('tr');
+        //     const unitId = row.getAttribute('data-id');
+        //     const name = row.querySelector('.Unit-details h3').textContent.trim();
+        //     const abbreviation = row.querySelector('.unit_abbreviation-info').textContent.trim();
             
-            document.getElementById('edit_unit_id').value = unitId;
-            document.getElementById('edit_unit_name').value = name;
-            document.getElementById('edit_unit_abbreviation').value = abbreviation;
-            document.getElementById('editModal').classList.add('show');
-        }
+        //     document.getElementById('edit_unit_id').value = unitId;
+        //     document.getElementById('edit_unit_name').value = name;
+        //     document.getElementById('edit_unit_abbreviation').value = abbreviation;
+        //     document.getElementById('editModal').classList.add('show');
+        // }
 
-        // Close edit modal
-        function closeEditModal() {
-            document.getElementById('editModal').classList.remove('show');
-        }
+        // // Close edit modal
+        // function closeEditModal() {
+        //     document.getElementById('editModal').classList.remove('show');
+        // }
 
-        // Submit edit form
-        function submitEditForm() {
-            const form = document.getElementById('editUnitForm');
-            const name = document.getElementById('edit_unit_name').value.trim();
-            const abbreviation = document.getElementById('edit_unit_abbreviation').value.trim();
+        // // Submit edit form
+        // function submitEditForm() {
+        //     const form = document.getElementById('editUnitForm');
+        //     const name = document.getElementById('edit_unit_name').value.trim();
+        //     const abbreviation = document.getElementById('edit_unit_abbreviation').value.trim();
 
-            if (!name || !abbreviation) {
-                alert('Please fill in all fields');
-                return;
-            }
+        //     if (!name || !abbreviation) {
+        //         alert('Please fill in all fields');
+        //         return;
+        //     }
 
-            if (confirm('Do you want to update this unit?')) {
-                form.submit();
-            }
-        }
+        //     if (confirm('Do you want to update this unit?')) {
+        //         form.submit();
+        //     }
+        // }
 
-        // Delete unit
-        function deleteUnit(button) {
-            const row = button.closest('tr');
-            const unitId = row.getAttribute('data-id');
+        // // Delete unit
+        // function deleteUnit(button) {
+        //     const row = button.closest('tr');
+        //     const unitId = row.getAttribute('data-id');
             
-            if (confirm('Are you sure you want to delete this unit?')) {
-                document.getElementById('delete_unit_id').value = unitId;
-                document.getElementById('deleteUnitForm').submit();
-            }
-        }
+        //     if (confirm('Are you sure you want to delete this unit?')) {
+        //         document.getElementById('delete_unit_id').value = unitId;
+        //         document.getElementById('deleteUnitForm').submit();
+        //     }
+        // }
 
-        // Filter table
-        function filterTable() {
-            const searchTerm = document.querySelector('.search-input').value.toLowerCase();
-            const rows = document.querySelectorAll('#Unit-table tr');
-            let visibleCount = 0;
+        // // Filter table
+        // function filterTable() {
+        //     const searchTerm = document.querySelector('.search-input').value.toLowerCase();
+        //     const rows = document.querySelectorAll('#Unit-table tr');
+        //     let visibleCount = 0;
 
-            rows.forEach(row => {
-                const name = row.querySelector('.Unit-details h3').textContent.toLowerCase();
-                const abbreviation = row.querySelector('.unit_abbreviation-info').textContent.toLowerCase();
+        //     rows.forEach(row => {
+        //         const name = row.querySelector('.Unit-details h3').textContent.toLowerCase();
+        //         const abbreviation = row.querySelector('.unit_abbreviation-info').textContent.toLowerCase();
                 
-                if (name.includes(searchTerm) || abbreviation.includes(searchTerm)) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+        //         if (name.includes(searchTerm) || abbreviation.includes(searchTerm)) {
+        //             row.style.display = '';
+        //             visibleCount++;
+        //         } else {
+        //             row.style.display = 'none';
+        //         }
+        //     });
 
-            checkEmptyState(visibleCount);
-        }
+        //     checkEmptyState(visibleCount);
+        // }
 
-        // Check empty state
-        function checkEmptyState(visibleCount) {
-            const tbody = document.getElementById('Unit-table');
-            const emptyState = document.getElementById('empty-state');
-            const totalRows = tbody.querySelectorAll('tr').length;
-            const actualVisibleCount = visibleCount !== undefined ? visibleCount : tbody.querySelectorAll('tr:not([style*="display: none"])').length;
+        // // Check empty state
+        // function checkEmptyState(visibleCount) {
+        //     const tbody = document.getElementById('Unit-table');
+        //     const emptyState = document.getElementById('empty-state');
+        //     const totalRows = tbody.querySelectorAll('tr').length;
+        //     const actualVisibleCount = visibleCount !== undefined ? visibleCount : tbody.querySelectorAll('tr:not([style*="display: none"])').length;
 
-            if (totalRows === 0 || actualVisibleCount === 0) {
-                emptyState.style.display = 'block';
-            } else {
-                emptyState.style.display = 'none';
-            }
-        }
+        //     if (totalRows === 0 || actualVisibleCount === 0) {
+        //         emptyState.style.display = 'block';
+        //     } else {
+        //         emptyState.style.display = 'none';
+        //     }
+        // }
 
-        // Close modals when clicking outside
-        document.getElementById('addModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAddModal();
-            }
-        });
+        // // Close modals when clicking outside
+        // document.getElementById('addModal').addEventListener('click', function(e) {
+        //     if (e.target === this) {
+        //         closeAddModal();
+        //     }
+        // });
 
-        document.getElementById('editModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeEditModal();
-            }
-        });
+        // document.getElementById('editModal').addEventListener('click', function(e) {
+        //     if (e.target === this) {
+        //         closeEditModal();
+        //     }
+        // });
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            checkEmptyState();
-        });
+        // // Initialize
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     checkEmptyState();
+        // });
     </script>
 </body>
 </html>
