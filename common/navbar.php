@@ -77,7 +77,7 @@ if (session_status() === PHP_SESSION_NONE) {
         }
         .mobile-menu-toggle:hover { background: rgba(34, 197, 94, 0.1); border-color: #22c55e; }
 
-        @media (max-width: 768px) {
+        @media (max-width: 1350px) {
             .navbar-container { padding: 0 1rem; }
             .nav-links {
                 display: none; position: absolute; top: 100%; left: 0; right: 0;
