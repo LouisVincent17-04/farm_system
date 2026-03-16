@@ -10,7 +10,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('animal_weights');
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
 
 // =========================================================
 // AJAX HANDLER (Internal API)
@@ -32,14 +32,30 @@ if (isset($_GET['action'])) {
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
         if ($action === 'get_animals' && isset($_GET['pen_id'])) {
-            $stmt = $conn->prepare("
-                SELECT ANIMAL_ID, TAG_NO, CURRENT_ACTUAL_WEIGHT, SEX 
-                FROM animal_records 
-                WHERE PEN_ID = ? AND IS_ACTIVE = 1 AND CURRENT_STATUS != 'Sold' 
-                ORDER BY TAG_NO
-            ");
-            $stmt->execute([$_GET['pen_id']]);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
+            $sql = "SELECT ANIMAL_ID, TAG_NO, CLASS_ID, WEIGHT_AT_BIRTH, WEANING_WEIGHT, CURRENT_ACTUAL_WEIGHT, SEX, BIRTH_DATE 
+                    FROM animal_records 
+                    WHERE PEN_ID = :pen_id AND IS_ACTIVE = 1 AND CURRENT_STATUS != 'Sold' ";
+            
+            $params = [':pen_id' => $_GET['pen_id']];
+
+            if (!empty($_GET['date_from']) && !empty($_GET['date_to'])) {
+                $sql .= " AND DATE(BIRTH_DATE) BETWEEN :d_from AND :d_to ";
+                $params[':d_from'] = $_GET['date_from'];
+                $params[':d_to']   = $_GET['date_to'];
+            }
+
+            $sql .= " ORDER BY TAG_NO";
+            
+            $stmt = $conn->prepare($sql);
+            $stmt->execute($params);
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Format dates before sending to frontend
+            foreach($results as &$r) {
+                $r['FMT_BIRTH_DATE'] = $r['BIRTH_DATE'] ? date('M d, Y', strtotime($r['BIRTH_DATE'])) : 'N/A';
+            }
+
+            echo json_encode($results); exit;
         }
     } catch (Exception $e) { echo json_encode([]); exit; }
 }
@@ -51,7 +67,13 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Update Weights</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Update Weights</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         /* [Standard Styling] */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -63,7 +85,7 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
             padding: 2rem; 
         }
         
-        /* Back Link Style - Standard Text Link */
+        /* Back Link Style */
         .back-link { 
             display: inline-flex; align-items: center; gap: 8px; 
             text-decoration: none; color: #94a3b8; font-weight: 600; 
@@ -71,10 +93,10 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         }
         .back-link:hover { color: white; }
 
-        /* DESKTOP GRID (Default) */
+        /* DESKTOP GRID */
         .main-grid { 
             display: grid; 
-            grid-template-columns: 300px 1fr; 
+            grid-template-columns: 320px 1fr; 
             gap: 2rem; 
             align-items: start; 
         }
@@ -85,8 +107,9 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         
         .form-group { margin-bottom: 1rem; }
         .form-label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600; }
-        .form-select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 8px; font-size: 1rem; }
-        .form-select:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-select, .form-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 8px; font-size: 0.95rem; outline:none; }
+        .form-select:disabled, .form-input:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-select:focus, .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 
         /* Table Area */
         .table-area { background: #1e293b; border-radius: 16px; border: 1px solid #475569; overflow: hidden; display: flex; flex-direction: column;}
@@ -95,26 +118,29 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         #table-container {
             max-height: 70vh; 
             overflow-y: auto;
-            overflow-x: auto; /* Enable horizontal scroll on mobile */
-            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch;
         }
 
-        .w-table { width: 100%; border-collapse: collapse; min-width: 600px; /* Force width to trigger scroll on small screens */ }
+        .w-table { width: 100%; border-collapse: collapse; min-width: 900px; } 
         .w-table th { background: #0f172a; padding: 15px; text-align: left; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #334155; position: sticky; top: 0; z-index: 10; }
         .w-table td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle;}
         .w-table tr:hover { background: rgba(255,255,255,0.02); }
 
         /* Inputs */
         .weight-input { 
-            background: #0f172a; border: 1px solid #475569; color: #fff; padding: 10px; border-radius: 6px; width: 100px; text-align: right; 
-            font-family: monospace; font-size: 1.1rem; font-weight: bold; transition: 0.2s;
+            background: #0f172a; border: 1px solid #475569; color: #fff; padding: 8px; border-radius: 6px; width: 90px; text-align: right; 
+            font-family: monospace; font-size: 1rem; font-weight: bold; transition: 0.2s;
         }
         .weight-input:focus { border-color: #3b82f6; outline: none; background: #1e293b; }
         .weight-input::placeholder { color: #475569; font-weight: normal; }
+        
+        /* Disabled Input Style */
+        .weight-input:disabled { background: #1e293b; color: #64748b; cursor: not-allowed; border-color: #334155; opacity: 0.6;}
 
         /* Changes visualizer */
         .weight-input.changed { border-color: #34d399; background: rgba(52, 211, 153, 0.1); }
-        .diff-tag { font-size: 0.85rem; margin-left: 10px; font-weight: bold; font-family: monospace; white-space: nowrap; }
+        .diff-tag { display: block; font-size: 0.75rem; font-weight: bold; font-family: monospace; white-space: nowrap; margin-top: 4px; text-align: right; width: 90px;}
         .diff-pos { color: #34d399; }
         .diff-neg { color: #f87171; }
 
@@ -125,22 +151,10 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         /* --- MOBILE RESPONSIVENESS --- */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
-            
-            .main-grid { 
-                grid-template-columns: 1fr; /* Stack columns */
-                gap: 1.5rem; 
-            }
-
+            .main-grid { grid-template-columns: 1fr; gap: 1.5rem; }
             .panel { padding: 1rem; }
-            
-            /* Make table header smaller or scrollable */
             .w-table th, .w-table td { padding: 10px; }
-            
-            /* Ensure inputs are easy to tap */
-            .weight-input { width: 90px; padding: 8px; font-size: 1rem; }
-            
-            /* Sticky Header Adjustment */
-            .table-area { max-height: none; } /* Let page scroll naturally on mobile if preferred, or keep fixed height */
+            .table-area { max-height: none; } 
             #table-container { max-height: 50vh; }
         }
     </style>
@@ -157,7 +171,8 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
     <div class="main-grid">
         
         <div class="panel">
-            <div class="panel-title">1. Select Pen</div>
+            <div class="panel-title">1. Filter & Select</div>
+            
             <div class="form-group">
                 <label class="form-label">Location</label>
                 <select id="loc_id" class="form-select" onchange="loadBuildings()">
@@ -165,13 +180,25 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
                     <?php foreach($locs as $l): echo "<option value='{$l['LOCATION_ID']}'>{$l['LOCATION_NAME']}</option>"; endforeach; ?>
                 </select>
             </div>
+            
             <div class="form-group">
                 <label class="form-label">Building</label>
                 <select id="bldg_id" class="form-select" onchange="loadPens()" disabled><option value="">-- Select --</option></select>
             </div>
+            
             <div class="form-group">
                 <label class="form-label">Pen</label>
                 <select id="pen_id" class="form-select" onchange="loadAnimals()" disabled><option value="">-- Select --</option></select>
+            </div>
+
+            <div style="border-top: 1px solid #475569; margin: 1.5rem 0 1rem 0;"></div>
+
+            <div class="form-group">
+                <label class="form-label">Farrowing Date Range</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="date_from" class="form-input date-picker" placeholder="Start Date" onchange="if(document.getElementById('pen_id').value) loadAnimals()">
+                    <input type="text" id="date_to" class="form-input date-picker" placeholder="End Date" onchange="if(document.getElementById('pen_id').value) loadAnimals()">
+                </div>
             </div>
             
             <button class="btn-save" id="btn_save" onclick="saveWeights()" disabled>Save All Weights</button>
@@ -181,7 +208,7 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
             <div style="padding: 1.5rem; border-bottom:1px solid #475569; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <h2 style="margin:0; font-size:1.25rem;">Weight Entry Table</h2>
-                    <p style="margin:5px 0 0 0; color:#94a3b8; font-size:0.9rem;">Input current actual weights.</p>
+                    <p style="margin:5px 0 0 0; color:#94a3b8; font-size:0.9rem;">Review and edit weights (kg).</p>
                 </div>
                 <div id="count_display" style="color: #64748b; font-weight: 600; font-size: 0.9rem;">0 Animals</div>
             </div>
@@ -197,6 +224,15 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", 
+            altInput: true,      
+            altFormat: "m/d/Y",  
+            allowInput: true
+        });
+    });
+
     const API_URL = window.location.pathname.split("/").pop();
 
     async function fetchJson(params) {
@@ -242,6 +278,9 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
     // --- Table Logic ---
     async function loadAnimals() {
         const id = document.getElementById('pen_id').value;
+        const dateFrom = document.getElementById('date_from').value;
+        const dateTo = document.getElementById('date_to').value;
+
         const container = document.getElementById('table-container');
         const saveBtn = document.getElementById('btn_save');
         const countDisplay = document.getElementById('count_display');
@@ -254,10 +293,10 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
 
         container.innerHTML = '<div style="padding:4rem; text-align:center; color:#94a3b8;">Loading animals...</div>';
         
-        const animals = await fetchJson(`?action=get_animals&pen_id=${id}`);
+        const animals = await fetchJson(`?action=get_animals&pen_id=${id}&date_from=${dateFrom}&date_to=${dateTo}`);
         
         if(animals.length === 0) {
-            container.innerHTML = '<div style="padding:4rem; text-align:center; color:#ef4444;">No active animals found.</div>';
+            container.innerHTML = '<div style="padding:4rem; text-align:center; color:#ef4444;">No active animals found matching filters.</div>';
             saveBtn.disabled = true;
             countDisplay.innerText = "0 Animals";
             return;
@@ -271,8 +310,10 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
                 <thead>
                     <tr>
                         <th style="padding-left: 1.5rem;">Tag / Info</th>
-                        <th>Current</th>
-                        <th>New Weight (kg)</th>
+                        <th>Farrowing Date</th>
+                        <th>Birth Wt</th>
+                        <th>Weaning Wt</th>
+                        <th>Current Wt</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -280,7 +321,15 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
 
         animals.forEach(a => {
             const current = parseFloat(a.CURRENT_ACTUAL_WEIGHT) || 0;
+            const birth = parseFloat(a.WEIGHT_AT_BIRTH) || 0;
+            const weaning = parseFloat(a.WEANING_WEIGHT) || 0;
+            const classId = parseInt(a.CLASS_ID) || 0; 
             const sexIcon = a.SEX === 'M' ? '♂' : (a.SEX === 'F' ? '♀' : '');
+            
+            // Logic to disable weaning weight
+            const isWeaningDisabled = classId <= 1;
+            const weaningAttr = isWeaningDisabled ? 'disabled title="Not applicable for Class 1 or below"' : '';
+            const weaningPlaceholder = isWeaningDisabled ? 'N/A' : '0.00';
             
             html += `
                 <tr>
@@ -288,17 +337,32 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
                         <div style="font-weight:bold; font-size:1.1rem; color:white; margin-bottom:2px; white-space:nowrap;">${a.TAG_NO}</div>
                         <div style="font-size:0.8rem; color:#64748b; white-space:nowrap;">${sexIcon} ID: ${a.ANIMAL_ID}</div>
                     </td>
-                    <td style="color:#94a3b8; font-family:monospace; font-size:1rem;">
-                        ${current > 0 ? current.toFixed(2) : '-'}
+                    <td data-label="Farrowing Date" style="color: #cbd5e1; font-weight: 500;">
+                        ${a.FMT_BIRTH_DATE}
                     </td>
                     <td>
-                        <div style="display:flex; align-items:center;">
-                            <input type="number" 
-                                   step="0.01" 
-                                   min="0"
-                                   class="weight-input" 
-                                   name="weights[${a.ANIMAL_ID}]" 
-                                   placeholder="${current > 0 ? current.toFixed(2) : '0.00'}" 
+                        <div>
+                            <input type="number" step="0.01" min="0" class="weight-input" 
+                                   name="birth_weights[${a.ANIMAL_ID}]" 
+                                   value="${birth > 0 ? birth.toFixed(2) : ''}" placeholder="0.00"
+                                   oninput="handleInput(this, ${birth}); syncCurrentWeight(this, ${birth}, ${current}, '${a.ANIMAL_ID}')">
+                            <span class="diff-tag"></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            <input type="number" step="0.01" min="0" class="weight-input" 
+                                   name="weaning_weights[${a.ANIMAL_ID}]" 
+                                   value="${weaning > 0 ? weaning.toFixed(2) : ''}" placeholder="${weaningPlaceholder}"
+                                   oninput="handleInput(this, ${weaning})" ${weaningAttr}>
+                            <span class="diff-tag"></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            <input type="number" step="0.01" min="0" class="weight-input" 
+                                   name="current_weights[${a.ANIMAL_ID}]" 
+                                   value="${current > 0 ? current.toFixed(2) : ''}" placeholder="0.00"
                                    oninput="handleInput(this, ${current})">
                             <span class="diff-tag"></span>
                         </div>
@@ -328,6 +392,9 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
                         diffSpan.className = `diff-tag ${colorClass}`;
                         diffSpan.innerText = `${sign}${diff.toFixed(2)}`;
                     } else { diffSpan.innerText = ''; }
+                } else {
+                    diffSpan.className = `diff-tag diff-pos`;
+                    diffSpan.innerText = 'New';
                 }
             } else {
                 input.classList.remove('changed');
@@ -339,6 +406,23 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         }
     }
 
+    // Live Syncs the current weight on every keystroke
+    function syncCurrentWeight(birthInput, oldBirth, oldCurrent, animalId) {
+        // Only mirror if the database has the old birth weight as exactly 0
+        if (Number(oldBirth) === 0) {
+            // Safely locate the current weight field by name 
+            const currentInput = document.getElementsByName('current_weights[' + animalId + ']')[0];
+            
+            if (currentInput) {
+                // Copy the value live
+                currentInput.value = birthInput.value;
+                
+                // Trigger the visual styling so it highlights green as a "New" weight
+                handleInput(currentInput, Number(oldCurrent));
+            }
+        }
+    }
+
     function saveWeights() {
         const form = document.getElementById('weightForm');
         if(!form) return;
@@ -346,11 +430,11 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         const formData = new FormData(form);
         const btn = document.getElementById('btn_save');
 
-        let hasData = false;
-        for(let pair of formData.entries()) { if(pair[1] !== "") hasData = true; }
+        let hasChanges = false;
+        for(let pair of formData.entries()) { if(pair[1] !== "") hasChanges = true; }
 
-        if(!hasData) { alert("Please enter at least one new weight."); return; }
-        if(!confirm("Update records with these new weights?")) return;
+        if(!hasChanges) { alert("Please enter at least one weight."); return; }
+        if(!confirm("Update records with these weights?")) return;
 
         btn.disabled = true;
         btn.innerText = "Updating...";

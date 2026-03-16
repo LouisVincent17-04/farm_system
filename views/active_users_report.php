@@ -8,6 +8,7 @@ include '../security/checkAccess.php';
 checkAccess('active_users_report');
 
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 // --- 1. GET FILTER INPUTS ---
 $user_type = $_GET['user_type'] ?? '';
@@ -19,6 +20,7 @@ try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 2. BUILD SQL QUERY ---
+    // Updated DATE_FORMAT to output: mm/dd/yyyy hh:mm AM/PM
     $sql = "SELECT 
         u.USER_ID,
         u.FULL_NAME,
@@ -26,8 +28,8 @@ try {
         u.CONTACT_INFO,
         u.IS_ACTIVE,
         ut.USER_TYPE_NAME,
-        DATE_FORMAT(u.CREATED_AT, '%Y-%m-%d %H:%i') AS CREATED_AT,
-        DATE_FORMAT(u.DATE_UPDATED, '%Y-%m-%d %H:%i') AS DATE_UPDATED
+        DATE_FORMAT(u.CREATED_AT, '%m/%d/%Y %h:%i %p') AS CREATED_AT_FMT,
+        DATE_FORMAT(u.DATE_UPDATED, '%m/%d/%Y %h:%i %p') AS DATE_UPDATED_FMT
     FROM USERS u
     LEFT JOIN USER_TYPES ut ON u.USER_TYPE = ut.USER_TYPE_ID
     WHERE 1=1";
@@ -91,6 +93,10 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Active User Report</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -98,6 +104,7 @@ try {
 
     <style>
         /* --- GLOBAL VARIABLES & RESET --- */
+        * { box-sizing: border-box; }
         body { 
             font-family: system-ui, -apple-system, sans-serif; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
@@ -105,7 +112,7 @@ try {
             margin: 0; 
             padding-bottom: 40px;
         }
-        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; width: 100%; }
         
         /* Back Link Style */
         .back-link {
@@ -117,10 +124,12 @@ try {
 
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
-            font-size: 2.2rem; font-weight: 800; 
+            font-size: clamp(1.8rem, 4vw, 2.5rem); /* Fluid font size */
+            font-weight: 800; 
             background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
+            line-height: 1.2;
         }
         .subtitle { color: #94a3b8; font-size: 1rem; margin: 0; }
 
@@ -165,10 +174,10 @@ try {
         .form-input { 
             width: 100%; padding: 10px; background: #0f172a; 
             border: 1px solid #334155; color: white; border-radius: 8px; 
-            font-size: 0.9rem;
+            font-size: 0.9rem; outline: none;
             box-sizing: border-box; 
         }
-        .form-input:focus { border-color: #3b82f6; outline: none; }
+        .form-input:focus { border-color: #3b82f6; }
 
         /* Buttons */
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -181,7 +190,7 @@ try {
         .btn { 
             padding: 10px 20px; border: none; border-radius: 8px; 
             font-weight: 600; cursor: pointer; display: inline-flex; 
-            align-items: center; gap: 8px; text-decoration: none; 
+            align-items: center; justify-content: center; gap: 8px; text-decoration: none; 
             font-size: 0.9rem; transition: transform 0.1s;
             white-space: nowrap;
         }
@@ -189,10 +198,10 @@ try {
         .btn-primary { background: #3b82f6; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
         
-        /* Export Buttons (Updated Colors & Icons) */
-        .btn-pdf { background: #3b82f6; color: white; } /* Blue */
-        .btn-excel { background: #10b981; color: white; } /* Green */
-        .btn-csv { background: #f59e0b; color: white; } /* Orange */
+        /* Export Buttons */
+        .btn-pdf { background: #3b82f6; color: white; } 
+        .btn-excel { background: #10b981; color: white; } 
+        .btn-csv { background: #f59e0b; color: white; } 
 
         /* --- TABLE --- */
         .table-wrap { 
@@ -200,7 +209,6 @@ try {
             border-radius: 16px; 
             overflow: hidden; 
             border: 1px solid #334155; 
-            overflow-x: auto; 
         }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { 
@@ -221,10 +229,10 @@ try {
         .b-active { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
         .b-inactive { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
-        /* --- RESPONSIVE --- */
-        @media (max-width: 768px) {
+        /* --- RESPONSIVE OVERRIDES --- */
+        @media (max-width: 900px) {
             .container { padding: 1rem; }
-            .title { font-size: 1.8rem; }
+            .header { text-align: left; }
             
             .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
             .stat-card { padding: 1rem; display: flex; justify-content: space-between; align-items: center; text-align: left; }
@@ -232,9 +240,48 @@ try {
             .stat-lbl { order: 1; }
 
             .filter-grid { grid-template-columns: 1fr; }
-            .btn { flex: 1; justify-content: center; }
+            .date-flex-mobile { flex-direction: column; gap: 10px; } /* Stack dates on mobile */
+            .btn-group { display: flex; flex-direction: column; }
+            .btn { width: 100%; }
+
             .action-bar { flex-direction: column; }
-            .action-bar .btn { width: 100%; }
+            .action-bar .btn { width: 100%; justify-content: center; }
+
+            /* Table to Card Layout */
+            .table-wrap { border: none; background: transparent; overflow: visible; }
+            table { min-width: 0; display: block; }
+            thead { display: none; } /* Hide table headers */
+            tbody { display: block; width: 100%; }
+            
+            tr { 
+                display: block; 
+                background: rgba(30, 41, 59, 0.6); 
+                border: 1px solid #475569; 
+                border-radius: 12px; 
+                margin-bottom: 1rem; 
+                padding: 1rem; 
+            }
+            
+            td { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                padding: 0.5rem 0; 
+                border-bottom: 1px dashed rgba(255,255,255,0.1); 
+                text-align: right; 
+            }
+            td:last-child { border-bottom: none; }
+            
+            /* Inject Data Labels via pseudo-elements */
+            td::before { 
+                content: attr(data-label); 
+                font-weight: 700; 
+                color: #94a3b8; 
+                font-size: 0.8rem; 
+                text-transform: uppercase; 
+                margin-right: 1rem; 
+                text-align: left;
+            }
         }
     </style>
 </head>
@@ -272,9 +319,9 @@ try {
             <div class="filter-grid">
                 <div class="form-group">
                     <label>Registration Date Range</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="date" name="date_from" class="form-input" value="<?= htmlspecialchars($date_from) ?>">
-                        <input type="date" name="date_to" class="form-input" value="<?= htmlspecialchars($date_to) ?>">
+                    <div class="date-flex-mobile" style="display: flex; gap: 5px;">
+                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
                     </div>
                 </div>
                 
@@ -342,14 +389,14 @@ try {
                         $statusText = ($u['IS_ACTIVE'] == 1) ? 'Active' : 'Inactive';
                     ?>
                     <tr>
-                        <td style="font-family:monospace; color:#64748b;"><?= $u['USER_ID'] ?></td>
-                        <td style="font-weight:bold; color:#fff;"><?= htmlspecialchars($u['FULL_NAME']) ?></td>
-                        <td><?= htmlspecialchars($u['EMAIL']) ?></td>
-                        <td style="color:#60a5fa;"><?= htmlspecialchars($u['USER_TYPE_NAME']) ?></td>
-                        <td><?= htmlspecialchars($u['CONTACT_INFO']) ?></td>
-                        <td><span class="badge <?= $statusClass ?>"><?= $statusText ?></span></td>
-                        <td><?= $u['CREATED_AT'] ?></td>
-                        <td style="font-size:0.85rem; color:#64748b;"><?= $u['DATE_UPDATED'] ?? '-' ?></td>
+                        <td data-label="User ID" style="font-family:monospace; color:#64748b;"><?= $u['USER_ID'] ?></td>
+                        <td data-label="Full Name" style="font-weight:bold; color:#fff;"><?= htmlspecialchars($u['FULL_NAME']) ?></td>
+                        <td data-label="Email"><?= htmlspecialchars($u['EMAIL']) ?></td>
+                        <td data-label="Role" style="color:#60a5fa;"><?= htmlspecialchars($u['USER_TYPE_NAME']) ?></td>
+                        <td data-label="Contact"><?= htmlspecialchars($u['CONTACT_INFO']) ?></td>
+                        <td data-label="Status"><span class="badge <?= $statusClass ?>"><?= $statusText ?></span></td>
+                        <td data-label="Registered"><?= $u['CREATED_AT_FMT'] ?></td>
+                        <td data-label="Last Update" style="font-size:0.85rem; color:#64748b;"><?= $u['DATE_UPDATED_FMT'] ?? '-' ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -359,6 +406,16 @@ try {
 </div>
 
 <script>
+    // Initialize Flatpickr for Date Inputs
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", // Value submitted to PHP
+            altInput: true,      // Visual input
+            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            allowInput: true
+        });
+    });
+
     const jsPDF = window.jspdf.jsPDF;
     // Pass PHP data to JS
     const records = <?php echo json_encode($users); ?>;
@@ -384,7 +441,7 @@ try {
             r.USER_TYPE_NAME || 'N/A',
             r.CONTACT_INFO || '-',
             r.IS_ACTIVE == 1 ? 'Active' : 'Inactive',
-            r.CREATED_AT
+            r.CREATED_AT_FMT
         ]);
 
         doc.autoTable({
@@ -407,8 +464,8 @@ try {
             'Role': r.USER_TYPE_NAME,
             'Contact': r.CONTACT_INFO,
             'Status': r.IS_ACTIVE == 1 ? 'Active' : 'Inactive',
-            'Registered Date': r.CREATED_AT,
-            'Last Update': r.DATE_UPDATED
+            'Registered Date': r.CREATED_AT_FMT,
+            'Last Update': r.DATE_UPDATED_FMT
         }));
 
         const ws = XLSX.utils.json_to_sheet(excelData);
@@ -426,7 +483,7 @@ try {
             const status = r.IS_ACTIVE == 1 ? 'Active' : 'Inactive';
             const row = [
                 r.USER_ID, r.FULL_NAME, r.EMAIL, r.USER_TYPE_NAME, 
-                r.CONTACT_INFO, status, r.CREATED_AT
+                r.CONTACT_INFO, status, r.CREATED_AT_FMT
             ].map(e => `"${e || ''}"`).join(","); 
             csvContent += row + "\n";
         });

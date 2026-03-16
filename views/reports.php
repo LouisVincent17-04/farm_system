@@ -7,6 +7,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('reports');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 ?>
 
@@ -34,6 +35,7 @@ include '../common/navbar.php';
         .admin-container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 2rem;
         }
 
         .admin-header {
@@ -173,6 +175,7 @@ include '../common/navbar.php';
         .card-icon.vitamins-trans { background: linear-gradient(135deg, #16a34a, #15803d); }
         .card-icon.feeding-trans { background: linear-gradient(135deg, #ea580c, #c2410c); }
         .card-icon.financial { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .card-icon.usage { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
 
         .card-title {
             font-size: 1.5rem;
@@ -298,7 +301,7 @@ include '../common/navbar.php';
             <h2 class="stats-title">Reporting Overview</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-value">20</div>
+                    <div class="stat-value">24</div>
                     <div class="stat-desc">Report Types</div>
                 </div>
                 <div class="stat-card">
@@ -365,7 +368,7 @@ include '../common/navbar.php';
 
             <a href="medicine_report.php" class="management-card">
                 <div class="card-icon medicine">💊</div>
-                <h3 class="card-title">Medicine Report</h3>
+                <h3 class="card-title">Medicine Inventory Report</h3>
                 <p class="card-description">Track medicine inventory levels, usage rates, expiration dates, and procurement history.</p>
                 <div class="card-stats">
                     <div class="stat-item">
@@ -384,8 +387,8 @@ include '../common/navbar.php';
 
             <a href="feeds_report.php" class="management-card">
                 <div class="card-icon feeds">🌾</div>
-                <h3 class="card-title">Feeds & Feeding Supplies Report</h3>
-                <p class="card-description">Monitor feed inventory, consumption patterns, supplier information, and nutritional data for livestock.</p>
+                <h3 class="card-title">Feeds Inventory Report</h3>
+                <p class="card-description">Monitor feed inventory, stock thresholds, supplier information, and general nutritional data.</p>
                 <div class="card-stats">
                     <div class="stat-item">
                         <div class="stat-number">2,450</div>
@@ -422,7 +425,7 @@ include '../common/navbar.php';
 
             <a href="equipment_report.php" class="management-card">
                 <div class="card-icon equipment">🔧</div>
-                <h3 class="card-title">Farm Equipment & Tools Report</h3>
+                <h3 class="card-title">Farm Equipment Report</h3>
                 <p class="card-description">Track equipment inventory, usage logs, maintenance schedules, and operational efficiency metrics.</p>
                 <div class="card-stats">
                     <div class="stat-item">
@@ -441,7 +444,7 @@ include '../common/navbar.php';
 
             <a href="sanitation_report.php" class="management-card">
                 <div class="card-icon sanitation">♻️</div>
-                <h3 class="card-title">Sanitation & Waste Management Report</h3>
+                <h3 class="card-title">Sanitation & Waste Report</h3>
                 <p class="card-description">Monitor cleaning schedules, waste disposal records, biosecurity measures, and hygiene compliance data.</p>
                 <div class="card-stats">
                     <div class="stat-item">
@@ -479,7 +482,7 @@ include '../common/navbar.php';
 
             <a href="admin_records_report.php" class="management-card">
                 <div class="card-icon admin">📋</div>
-                <h3 class="card-title">Administration & Records Report</h3>
+                <h3 class="card-title">Administration Report</h3>
                 <p class="card-description">Comprehensive administrative documentation, regulatory compliance records, and official certifications.</p>
                 <div class="card-stats">
                     <div class="stat-item">
@@ -498,7 +501,7 @@ include '../common/navbar.php';
 
             <a href="maintenance_report.php" class="management-card">
                 <div class="card-icon maintenance">🔩</div>
-                <h3 class="card-title">Maintenance & Parts Report</h3>
+                <h3 class="card-title">Maintenance Report</h3>
                 <p class="card-description">Monitor maintenance activities, spare parts inventory, repair histories, and preventive care schedules.</p>
                 <div class="card-stats">
                     <div class="stat-item">
@@ -517,7 +520,7 @@ include '../common/navbar.php';
 
             <a href="utilities_report.php" class="management-card">
                 <div class="card-icon utilities">⚡</div>
-                <h3 class="card-title">Utilities & Consumables Report</h3>
+                <h3 class="card-title">Utilities & Consumables</h3>
                 <p class="card-description">Track utility usage, consumable supplies, energy consumption, and resource efficiency metrics.</p>
                 <div class="card-stats">
                     <div class="stat-item">
@@ -536,8 +539,8 @@ include '../common/navbar.php';
 
             <a href="vitamins_report.php" class="management-card">
                 <div class="card-icon vitamins">💚</div>
-                <h3 class="card-title">Vitamins & Supplements Report</h3>
-                <p class="card-description">Monitor vitamin inventory, supplement distribution, dosage schedules, and nutritional support programs.</p>
+                <h3 class="card-title">Vitamins Inventory</h3>
+                <p class="card-description">Monitor vitamin inventory levels, supplement stock thresholds, and expiration data.</p>
                 <div class="card-stats">
                     <div class="stat-item">
                         <div class="stat-number">178</div>
@@ -555,12 +558,12 @@ include '../common/navbar.php';
 
             <a href="vaccine_report.php" class="management-card">
                 <div class="card-icon vaccine">💉</div>
-                <h3 class="card-title">Vaccine Report</h3>
-                <p class="card-description">Track vaccination schedules, immunization records, vaccine inventory, and herd immunity coverage.</p>
+                <h3 class="card-title">Vaccine Inventory</h3>
+                <p class="card-description">Track vaccine inventory, procurement records, expiration dates, and safe storage requirements.</p>
                 <div class="card-stats">
                     <div class="stat-item">
                         <div class="stat-number">234</div>
-                        <div class="stat-label">Vaccinated</div>
+                        <div class="stat-label">Vials</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-number">12</div>
@@ -609,83 +612,7 @@ include '../common/navbar.php';
                     </div>
                 </div>
             </a>
-
-            <a href="medication_report.php" class="management-card">
-                <div class="card-icon medication">💊</div>
-                <h3 class="card-title">Medication Report</h3>
-                <p class="card-description">Detailed medication administration records, treatment histories, and therapeutic protocol compliance data.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">456</div>
-                        <div class="stat-label">Treatments</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">34</div>
-                        <div class="stat-label">Active</div>
-                    </div>
-                    <div class="card-action">
-                        Review →
-                    </div>
-                </div>
-            </a>
-
-            <a href="vaccination_report.php" class="management-card">
-                <div class="card-icon vaccination">🩺</div>
-                <h3 class="card-title">Vaccination Report</h3>
-                <p class="card-description">Track vaccination campaigns, immunization coverage rates, and preventive healthcare program effectiveness.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">89%</div>
-                        <div class="stat-label">Coverage</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">156</div>
-                        <div class="stat-label">Scheduled</div>
-                    </div>
-                    <div class="card-action">
-                        Monitor →
-                    </div>
-                </div>
-            </a>
-
-            <a href="vitamins_transaction_report.php" class="management-card">
-                <div class="card-icon vitamins-trans">💚</div>
-                <h3 class="card-title">Vitamins & Supplements Transaction Report</h3>
-                <p class="card-description">Detailed transaction logs for vitamin and supplement distribution, usage patterns, and cost analysis.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">567</div>
-                        <div class="stat-label">Transactions</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">₱23k</div>
-                        <div class="stat-label">Value</div>
-                    </div>
-                    <div class="card-action">
-                        Track →
-                    </div>
-                </div>
-            </a>
-
-            <a href="feeding_transaction_report.php" class="management-card">
-                <div class="card-icon feeding-trans">🌾</div>
-                <h3 class="card-title">Feeding Transaction Report</h3>
-                <p class="card-description">Monitor feeding schedules, feed distribution records, consumption rates, and feeding cost analysis.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">1,234</div>
-                        <div class="stat-label">Transactions</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">₱145k</div>
-                        <div class="stat-label">Cost</div>
-                    </div>
-                    <div class="card-action">
-                        Analyze →
-                    </div>
-                </div>
-            </a>
-
+            
             <a href="animal_sales_reports.php" class="management-card">
                 <div class="card-icon financial">💰</div>
                 <h3 class="card-title">Animal Sales Reports</h3>
@@ -704,6 +631,75 @@ include '../common/navbar.php';
                     </div>
                 </div>
             </a>
+
+            <a href="feeds_usage_report.php" class="management-card">
+                <div class="card-icon usage">📉</div>
+                <h3 class="card-title">Feeds Usage Report</h3>
+                <p class="card-description">Analyze feed consumption rates, conversion efficiency, and overall feed usage across different pens and buildings.</p>
+                <div class="card-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">2.1k</div>
+                        <div class="stat-label">Logs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">Avg</div>
+                        <div class="stat-label">Consumption</div>
+                    </div>
+                    <div class="card-action">Generate →</div>
+                </div>
+            </a>
+
+            <a href="vaccines_usage_report.php" class="management-card">
+                <div class="card-icon usage">📈</div>
+                <h3 class="card-title">Vaccines Usage Report</h3>
+                <p class="card-description">Track vaccine administration, monitor batch usage, and analyze vaccination costs over time.</p>
+                <div class="card-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">850</div>
+                        <div class="stat-label">Doses</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">95%</div>
+                        <div class="stat-label">Efficacy</div>
+                    </div>
+                    <div class="card-action">Generate →</div>
+                </div>
+            </a>
+
+            <a href="vitamins_usage_report.php" class="management-card">
+                <div class="card-icon usage">📊</div>
+                <h3 class="card-title">Vitamins Usage Report</h3>
+                <p class="card-description">Review vitamin and supplement administration trends, tracking distribution volumes and overall expenses.</p>
+                <div class="card-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">1.2k</div>
+                        <div class="stat-label">Doses</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">Daily</div>
+                        <div class="stat-label">Frequency</div>
+                    </div>
+                    <div class="card-action">Generate →</div>
+                </div>
+            </a>
+
+            <a href="medicine_usage_report.php" class="management-card">
+                <div class="card-icon usage">📋</div>
+                <h3 class="card-title">Medicine Usage Report</h3>
+                <p class="card-description">Monitor therapeutic drug usage, track treatment regimens, and evaluate overall medication expenditures.</p>
+                <div class="card-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">420</div>
+                        <div class="stat-label">Treatments</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">15</div>
+                        <div class="stat-label">Diseases</div>
+                    </div>
+                    <div class="card-action">Generate →</div>
+                </div>
+            </a>
+            
         </div>
     </div>
 </body>

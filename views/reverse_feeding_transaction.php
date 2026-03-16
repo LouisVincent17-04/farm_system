@@ -10,6 +10,7 @@ include '../security/checkAccess.php';
 // IMPORTANT: Ensure only Admins or specific roles can access this page
 // checkAccess('admin_access'); // Uncomment if you have a specific admin permission column
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 $last_batch = null;
 $message = "";

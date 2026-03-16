@@ -25,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         // 1. Fetch Item Names for the Log (Locking rows being processed)
-        // UPDATED: Added EXPIRATION_DATE to query
         $check_sql = "SELECT ITEM_NAME, IFNULL(EXPIRATION_DATE, 'No Expiry') as EXP_LABEL FROM ITEMS WHERE ITEM_TYPE_ID = :type_id AND STATUS = 0 FOR UPDATE";
         $check_stmt = $conn->prepare($check_sql);
         $check_stmt->execute([':type_id' => $ITEM_TYPE_ID]);
@@ -45,13 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 2. MERGE INTO VACCINES (Upsert Logic)
-        // MySQL uses INSERT ... ON DUPLICATE KEY UPDATE logic
         
-        // First, get the aggregated data including COST and EXPIRY
-        // UPDATED: Added EXPIRATION_DATE to SELECT and GROUP BY to separate batches
+        // First, get the aggregated data including COST, EXPIRY, and LOCATION_ID
         $agg_sql = "SELECT 
                         ITEM_NAME, 
                         UNIT_ID,
+                        LOCATION_ID,
                         -- Use specific date, or default to 12 months from now if NULL
                         IFNULL(EXPIRATION_DATE, DATE_ADD(NOW(), INTERVAL 12 MONTH)) as EXP_DATE,
                         -- Sum up the Total Cost column from ITEMS table
@@ -60,20 +58,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         SUM(IFNULL(QUANTITY, 0) * IFNULL(ITEM_NET_WEIGHT, 1)) AS SUM_STOCK
                     FROM ITEMS 
                     WHERE ITEM_TYPE_ID = :type_id AND STATUS = 0 
-                    GROUP BY ITEM_NAME, UNIT_ID, EXPIRATION_DATE";
+                    GROUP BY ITEM_NAME, UNIT_ID, LOCATION_ID, EXPIRATION_DATE";
         
         $agg_stmt = $conn->prepare($agg_sql);
         $agg_stmt->execute([':type_id' => $ITEM_TYPE_ID]);
         $aggregated_data = $agg_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Perform the Upsert
-        // UPDATED: Added EXPIRATION_DATE to Check, Insert, and Update logic
         
         // Prepare statements outside loop for efficiency
+        // UPDATED FIX: Using MySQL NULL-safe equal operator <=>
         $check_inv = $conn->prepare("SELECT SUPPLY_ID FROM VACCINES 
                                      WHERE SUPPLY_NAME = :name 
                                      AND UNIT_ID = :unit 
                                      AND EXPIRATION_DATE = :expiry 
+                                     AND LOCATION_ID <=> :location
                                      FOR UPDATE");
                                      
         $update_inv = $conn->prepare("UPDATE VACCINES 
@@ -82,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                           DATE_UPDATED = NOW() 
                                       WHERE SUPPLY_ID = :id");
                                       
-        $insert_inv = $conn->prepare("INSERT INTO VACCINES (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, EXPIRATION_DATE, DATE_CREATED, DATE_UPDATED)
-                                      VALUES (:name, :stock, :cost, :unit, :expiry, NOW(), NOW())");
+        $insert_inv = $conn->prepare("INSERT INTO VACCINES (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, EXPIRATION_DATE, LOCATION_ID, DATE_CREATED, DATE_UPDATED)
+                                      VALUES (:name, :stock, :cost, :unit, :expiry, :location, NOW(), NOW())");
 
         foreach ($aggregated_data as $row) {
             $name = $row['ITEM_NAME'];
@@ -91,9 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stock = $row['SUM_STOCK'];
             $cost = $row['SUM_COST'];
             $expiry = $row['EXP_DATE'];
+            $location = $row['LOCATION_ID'];
 
-            // Check if batch exists
-            $check_inv->execute([':name' => $name, ':unit' => $unit, ':expiry' => $expiry]);
+            // Check if exact batch & location exists
+            $check_inv->execute([
+                ':name' => $name, 
+                ':unit' => $unit, 
+                ':expiry' => $expiry,
+                ':location' => $location
+            ]);
             $existing = $check_inv->fetch(PDO::FETCH_ASSOC);
 
             if ($existing) {
@@ -110,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':stock' => $stock,
                     ':cost' => $cost,
                     ':unit' => $unit,
-                    ':expiry' => $expiry
+                    ':expiry' => $expiry,
+                    ':location' => $location
                 ]);
             }
         }
@@ -130,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $item_list = substr($item_list, 0, 3750) . "... [truncated]";
         }
         
-        $logDetails = "Bulk confirmed $count Vaccine items (Merged into Inventory with Expiry): " . $item_list;
+        $logDetails = "Bulk confirmed $count Vaccine items (Merged into Inventory with Expiry & Location): " . $item_list;
         
 
         $log_sql = "INSERT INTO AUDIT_LOGS 

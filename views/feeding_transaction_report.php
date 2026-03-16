@@ -7,6 +7,8 @@ include '../config/Connection.php';
 
 include '../security/checkAccess.php';
 checkAccess('feeding_transaction_report');
+include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- 1. GET FILTER INPUTS ---

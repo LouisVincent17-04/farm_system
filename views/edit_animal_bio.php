@@ -7,6 +7,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('edit_bio_info');
 include '../security/checkRole.php';    
+include '../common/chat_support.php';
 
 
 // --- AJAX HANDLER ---
@@ -27,7 +28,6 @@ if (isset($_GET['action'])) {
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
         if ($action === 'get_animals_editable') {
-            // UPDATED QUERY: Join with animal_classifications to get STAGE_NAME
             $animalsStmt = $conn->prepare("
                 SELECT a.ANIMAL_ID, a.TAG_NO, a.SEX, a.BIRTH_DATE, a.BREED_ID, a.ANIMAL_TYPE_ID, a.CLASS_ID,
                        at.ANIMAL_TYPE_NAME, b.BREED_NAME, a.CURRENT_ACTUAL_WEIGHT, a.ACQUISITION_COST,
@@ -64,8 +64,12 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bulk Edit Bio Info</title>
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
-        /* [Keeping existing CSS styles exactly as they were for consistency] */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; padding-bottom: 100px; }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
@@ -240,7 +244,6 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
 <script>
     const ALL_TYPES = <?= json_encode($types) ?>;
     const ALL_BREEDS = <?= json_encode($allBreeds) ?>;
-    // Current date for max attribute
     const TODAY = "<?= date('Y-m-d') ?>";
 
     function showAlert(message, type) {
@@ -369,10 +372,19 @@ $allBreeds = $conn->query("SELECT BREED_ID, BREED_NAME, ANIMAL_TYPE_ID FROM bree
                             </select>
                         </td>
                         <td>
-                            <input type="date" class="tbl-input" name="animals[${a.ANIMAL_ID}][dob]" value="${dobVal}" max="${TODAY}" required>
+                            <input type="date" class="tbl-input date-picker" name="animals[${a.ANIMAL_ID}][dob]" value="${dobVal}" required>
                         </td>
                     `;
                     tbody.appendChild(row);
+                });
+
+                // Initialize Flatpickr on newly loaded inputs
+                flatpickr(".date-picker", {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "m/d/Y",
+                    allowInput: true,
+                    maxDate: TODAY
                 });
 
                 document.getElementById('totalAnimals').innerText = animals.length;

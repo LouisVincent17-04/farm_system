@@ -12,6 +12,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('vitamins_supplements');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- AJAX HANDLER ---
@@ -266,6 +267,50 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
             white-space: nowrap;
         }
 
+        /* ========================================= */
+        /* MOBILE SWIPE ANIMATION OVERLAY            */
+        /* ========================================= */
+        .scroll-hint-overlay {
+            position: fixed; /* Fixed to viewport */
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(3px);
+            display: none; /* Controlled by JS */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: #fff;
+            transition: opacity 0.5s ease;
+            pointer-events: none; /* Let clicks pass through */
+        }
+        .scroll-hint-icon {
+            font-size: 4rem;
+            display: inline-block;
+            animation: swipeHand 1.8s infinite ease-in-out;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+        }
+        .scroll-hint-text {
+            margin-top: 1.5rem;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            color: #fbbf24; /* Amber for Vitamins Theme */
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(245, 158, 11, 0.4); /* Amber Border */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        @keyframes swipeHand {
+            0% { transform: translateX(40px) rotate(-15deg); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateX(-40px) rotate(-15deg); opacity: 0; }
+        }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Mobile Adjustments */
@@ -278,6 +323,11 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
     </style>
 </head>
 <body>
+
+<div class="scroll-hint-overlay" id="mobileScrollHint">
+    <div class="scroll-hint-icon">👆</div>
+    <div class="scroll-hint-text">Swipe left on the table for more info</div>
+</div>
 
 <div class="container">
     
@@ -359,6 +409,40 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
 </div>
 
 <script>
+    // State flag to ensure the animation only plays once per page session
+    let hasShownScrollHint = false;
+
+    function triggerMobileScrollHint() {
+        const scrollHint = document.getElementById('mobileScrollHint');
+        const tableContainer = document.querySelector('.table-scroll-wrapper');
+        
+        // Trigger condition: <= 1100px width and hasn't been shown yet
+        if (window.innerWidth <= 1100 && !hasShownScrollHint) {
+            scrollHint.style.display = 'flex';
+            hasShownScrollHint = true;
+
+            const dismissHint = () => {
+                scrollHint.style.opacity = '0';
+                setTimeout(() => {
+                    scrollHint.style.display = 'none';
+                }, 500); // Wait for CSS transition
+                
+                // Cleanup listeners
+                tableContainer.removeEventListener('scroll', dismissHint);
+                window.removeEventListener('touchstart', dismissHint);
+                window.removeEventListener('click', dismissHint);
+            };
+
+            // Auto dismiss after 4 seconds
+            setTimeout(dismissHint, 4000);
+
+            // Instant dismiss if user interacts
+            tableContainer.addEventListener('scroll', dismissHint, { once: true });
+            window.addEventListener('touchstart', dismissHint, { once: true });
+            window.addEventListener('click', dismissHint, { once: true });
+        }
+    }
+
     async function fetchData(params) {
         try {
             // Point to THIS file
@@ -475,6 +559,9 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         tableBody.innerHTML = response.html;
         grandTotal.textContent = response.total;
         resultsArea.style.display = 'block';
+
+        // Trigger mobile swipe animation after table populates
+        triggerMobileScrollHint();
     }
 
     async function loadHistory() {
@@ -511,6 +598,9 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         tableBody.innerHTML = response.html;
         grandTotal.textContent = response.total;
         resultsArea.style.display = 'block';
+
+        // Trigger mobile swipe animation after table populates
+        triggerMobileScrollHint();
     }
 </script>
 

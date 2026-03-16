@@ -6,6 +6,7 @@ ini_set('display_errors', 0);
 $page="admin_dashboard";
 include '../common/navbar.php';
 include '../config/Connection.php';
+include '../common/chat_support.php';
 
 
 // Check for status messages from redirects

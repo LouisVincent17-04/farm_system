@@ -6,6 +6,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('sow_cards');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- 1. INITIALIZE VARIABLES ---
@@ -15,6 +16,7 @@ $pens = [];
 $sow_list = [];
 $selected_sow_data = null;
 $history = [];
+$birthing_date = null; // NEW: Variable to hold the active birthing date
 
 $location_id = $_GET['location_id'] ?? '';
 $building_id = $_GET['building_id'] ?? '';
@@ -86,6 +88,17 @@ try {
         $stmt = $conn->prepare("SELECT * FROM animal_records WHERE ANIMAL_ID = ?");
         $stmt->execute([$selected_animal_id]);
         $selected_sow_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // NEW: Fetch the active BIRTHING status date to prepopulate the form
+        if ($selected_sow_data) {
+            $stmtBirth = $conn->prepare("SELECT STATUS_START_DATE FROM sow_status_history WHERE ANIMAL_ID = ? AND STATUS_NAME = 'BIRTHING' AND IS_ACTIVE = 1");
+            $stmtBirth->execute([$selected_animal_id]);
+            $birth_row = $stmtBirth->fetch(PDO::FETCH_ASSOC);
+            if ($birth_row) {
+                // Extract just the Date portion (Y-m-d) for the Flatpickr input
+                $birthing_date = date('Y-m-d', strtotime($birth_row['STATUS_START_DATE']));
+            }
+        }
     }
 
 } catch (Exception $e) {
@@ -99,6 +112,11 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sow Card Management</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         /* --- CORE STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -176,7 +194,8 @@ try {
         .form-grid-modal { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .form-row-modal { margin-bottom: 15px; }
         .form-row-modal label { display: block; color: #94a3b8; margin-bottom: 5px; font-size: 0.9rem; }
-        .form-row-modal input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; }
+        .form-row-modal input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; outline: none;}
+        .form-row-modal input:focus { border-color: #ec4899; box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1); }
         
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
         .btn-cancel { background: transparent; border: 1px solid #475569; color: #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
@@ -201,7 +220,7 @@ try {
     <div class="nav-header">
         <h1 class="page-title">Sow Card Management</h1>
         <?php if($selected_animal_id): ?>
-            <a href="manage_sow_status.php?location_id=<?= $location_id ?>&building_id=<?= $building_id ?>&animal_id=<?= $selected_animal_id ?>" class="btn-back">
+            <a href="animal_sow_status.php?location_id=<?= $location_id ?>&building_id=<?= $building_id ?>&animal_id=<?= $selected_animal_id ?>" class="btn-back">
                 &larr; Back to Status Manager
             </a>
         <?php endif; ?>
@@ -309,7 +328,7 @@ try {
                                 <th>Parity</th>
                                 <th>Date Farrowed</th>
                                 <th>Born</th>
-                                <th>Active</th>
+                                <th>Alive</th>
                                 <th>Dead</th>
                                 <th>Mummified</th>
                                 <th style="text-align:right;">Edit</th>
@@ -344,7 +363,7 @@ try {
 
             <div class="form-row-modal">
                 <label>Date Farrowed</label>
-                <input type="date" id="date_farrowed" name="date_farrowed" required value="<?php echo date('Y-m-d'); ?>">
+                <input type="date" id="date_farrowed" name="date_farrowed" required>
             </div>
 
             <div class="form-grid-modal">
@@ -378,6 +397,14 @@ try {
 </div>
 
 <script>
+    // Initialize Flatpickr for strictly mm/dd/yyyy visual inputs
+    const fpFarrow = flatpickr("#date_farrowed", {
+        dateFormat: "Y-m-d", // Value submitted to PHP
+        altInput: true,      // Dummy visually formatted input
+        altFormat: "m/d/Y",  // mm/dd/yyyy visual style
+        allowInput: true
+    });
+
     // --- SCROLL TO DETAILS ---
     <?php if($selected_sow_data): ?>
         setTimeout(() => {
@@ -427,10 +454,18 @@ try {
         }
 
         data.forEach(row => {
+            // Render the history date gracefully in mm/dd/yyyy using JS
+            let dt = new Date(row.DATE_FARROWED);
+            // JS timezone offset handler to ensure accurate local day display
+            let tzOffset = dt.getTimezoneOffset() * 60000; 
+            let localTime = new Date(dt.getTime() + tzOffset); 
+            
+            let formattedDate = `${String(localTime.getMonth() + 1).padStart(2, '0')}/${String(localTime.getDate()).padStart(2, '0')}/${localTime.getFullYear()}`;
+
             const tr = `
                 <tr>
                     <td style="font-weight:bold; color:#f472b6;">${row.PARITY}</td>
-                    <td>${row.DATE_FARROWED}</td>
+                    <td>${formattedDate}</td>
                     <td>${row.TOTAL_BORN}</td>
                     <td style="color:#34d399;">${row.ACTIVE_COUNT}</td>
                     <td style="color:#f87171;">${row.DEAD_COUNT}</td>
@@ -455,7 +490,10 @@ try {
         document.getElementById('action_type').value = 'add';
         document.getElementById('record_id').value = '';
         document.getElementById('animal_id').value = '<?php echo $selected_animal_id; ?>';
-        document.getElementById('date_farrowed').value = new Date().toISOString().split('T')[0];
+        
+        // NEW: Fetch the active birthing date from PHP (or default to today if not birthing yet)
+        const defaultDate = '<?php echo $birthing_date ?? "today"; ?>';
+        fpFarrow.setDate(defaultDate); 
         
         // Reset counts
         document.getElementById('total_born').value = '';
@@ -473,7 +511,8 @@ try {
         document.getElementById('record_id').value = data.RECORD_ID;
         document.getElementById('animal_id').value = data.ANIMAL_ID;
         
-        document.getElementById('date_farrowed').value = data.DATE_FARROWED;
+        fpFarrow.setDate(data.DATE_FARROWED); // Set existing date securely
+        
         document.getElementById('total_born').value = data.TOTAL_BORN;
         document.getElementById('dead_count').value = data.DEAD_COUNT;
         document.getElementById('mummified_count').value = data.MUMMIFIED_COUNT;
@@ -525,8 +564,6 @@ try {
             alert("System error occurred.");
         });
     });
-
-    modal.addEventListener('click', (e) => { if(e.target===modal) closeModal(); });
 </script>
 
 </body>

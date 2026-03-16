@@ -12,6 +12,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('animal_cost');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- AJAX HANDLER FOR DROPDOWNS ---
@@ -214,7 +215,13 @@ foreach ($data as $row) {
         .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #475569; padding: 10px 20px; border-radius: 6px; text-decoration: none; text-align: center; height: 40px; display: inline-block; line-height: 18px; }
 
         /* TABLE */
-        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 12px; overflow-x: auto; border: 1px solid #475569; }
+        .table-container { 
+            background: rgba(30, 41, 59, 0.5); 
+            border-radius: 12px; 
+            overflow-x: auto; 
+            border: 1px solid #475569; 
+            position: relative;
+        }
         .cost-table { width: 100%; border-collapse: collapse; min-width: 1200px; }
         .cost-table th { background: rgba(15, 23, 42, 0.8); padding: 15px; text-align: left; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #475569; }
         .cost-table td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; vertical-align: top; font-size: 0.9rem; }
@@ -233,9 +240,58 @@ foreach ($data as $row) {
         
         /* OR Divider for search */
         .or-divider { text-align: center; color: #64748b; font-size: 0.8rem; font-weight: bold; padding-top: 25px; }
+
+        /* ========================================= */
+        /* MOBILE SWIPE ANIMATION OVERLAY            */
+        /* ========================================= */
+        .scroll-hint-overlay {
+            position: fixed; /* Fix to viewport so it centers on screen */
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(3px);
+            display: none; /* Controlled by JS */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* Place above everything, including navbars */
+            color: #fff;
+            transition: opacity 0.5s ease;
+            pointer-events: none; /* Let clicks/scrolls pass through to the page */
+        }
+        .scroll-hint-icon {
+            font-size: 4rem;
+            display: inline-block;
+            animation: swipeHand 1.8s infinite ease-in-out;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+        }
+        .scroll-hint-text {
+            margin-top: 1.5rem;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            color: #38bdf8;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        @keyframes swipeHand {
+            0% { transform: translateX(40px) rotate(-15deg); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateX(-40px) rotate(-15deg); opacity: 0; }
+        }
     </style>
 </head>
 <body>
+
+<div class="scroll-hint-overlay" id="mobileScrollHint">
+    <div class="scroll-hint-icon">👆</div>
+    <div class="scroll-hint-text">Swipe left on the table for more info</div>
+</div>
 
 <div class="container">
     
@@ -388,7 +444,39 @@ foreach ($data as $row) {
 </div>
 
 <script>
-    // Pre-select values if page reloaded with filters
+    // --- Mobile Swipe Animation Logic ---
+    document.addEventListener("DOMContentLoaded", () => {
+        const tableContainer = document.querySelector('.table-container');
+        const scrollHint = document.getElementById('mobileScrollHint');
+        const hasData = <?php echo count($data) > 0 ? 'true' : 'false'; ?>;
+
+        // Only show if width <= 925px AND there is table data to scroll
+        if (window.innerWidth <= 925 && hasData) {
+            scrollHint.style.display = 'flex';
+
+            const dismissHint = () => {
+                scrollHint.style.opacity = '0';
+                setTimeout(() => {
+                    scrollHint.style.display = 'none';
+                }, 500); // Wait for CSS transition
+                
+                // Cleanup listeners
+                tableContainer.removeEventListener('scroll', dismissHint);
+                window.removeEventListener('touchstart', dismissHint);
+                window.removeEventListener('click', dismissHint);
+            };
+
+            // Auto dismiss after 4 seconds
+            setTimeout(dismissHint, 4000);
+
+            // Instant dismiss if user starts interacting (scrolls table, touches screen, or clicks)
+            tableContainer.addEventListener('scroll', dismissHint, { once: true });
+            window.addEventListener('touchstart', dismissHint, { once: true });
+            window.addEventListener('click', dismissHint, { once: true });
+        }
+    });
+
+    // --- Select Data Logic ---
     const selectedLocation = "<?php echo $location_id; ?>";
     const selectedBuilding = "<?php echo $building_id; ?>";
     const selectedPen = "<?php echo $pen_id; ?>";

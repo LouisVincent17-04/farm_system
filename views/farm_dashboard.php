@@ -6,6 +6,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('farm');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 ?>
 
@@ -263,7 +264,7 @@ include '../common/navbar.php';
                 <div class="category-header">
                     <div class="category-icon pink">🐖</div>
                     <div class="category-info">
-                        <h3 class="category-title">Sow Status</h3>
+                        <h3 class="category-title">Sow Management</h3>
                         <p class="category-subtitle">Reproductive Cycle</p>
                     </div>
                 </div>
@@ -277,7 +278,7 @@ include '../common/navbar.php';
                     </ul>
                 </div>
                 <div class="card-action">
-                    <span>Manage Status</span>
+                    <span>Manage Sow</span>
                     <span>→</span>
                 </div>
             </a>

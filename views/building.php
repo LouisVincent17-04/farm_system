@@ -9,6 +9,7 @@ include '../security/checkAccess.php';
 checkAccess('building');
 
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 // Check for status messages
 $status = $_GET['status'] ?? '';

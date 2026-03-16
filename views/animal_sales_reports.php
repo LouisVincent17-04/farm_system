@@ -8,7 +8,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('animal_sales_report');
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
 
 // --- 1. CONFIGURATION & INPUTS ---
 $limit = 50; // Rows per page
@@ -80,7 +80,7 @@ try {
     // --- 4. QUERY B: FETCH PAGINATED DATA ---
     $data_sql = "SELECT 
             s.sale_id,
-            DATE_FORMAT(s.sale_date, '%Y-%m-%d %H:%i') as SALE_DATE_FMT,
+            DATE_FORMAT(s.sale_date, '%m/%d/%Y %h:%i %p') as SALE_DATE_FMT,
             s.customer_name,
             s.weight_at_sale,
             s.price_per_kg,
@@ -128,6 +128,10 @@ function getQueryUrl($newPage, $currentParams) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Animal Sales Report</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -159,8 +163,8 @@ function getQueryUrl($newPage, $currentParams) {
         .filter-box { background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; }
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
         .form-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase; }
-        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; }
-        .form-input:focus { border-color: #10b981; outline: none; }
+        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; outline: none; }
+        .form-input:focus { border-color: #10b981; }
 
         .active-filters { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
         .active-filters-label { color: #10b981; font-size: 0.85rem; font-weight: 600; }
@@ -213,7 +217,7 @@ function getQueryUrl($newPage, $currentParams) {
 <div class="container">
     
     <a href="reports.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7-7h18"></path></svg>
         Back to Reports Dashboard
     </a>
 
@@ -269,8 +273,8 @@ function getQueryUrl($newPage, $currentParams) {
                 <div class="form-group">
                     <label>Sale Date Range</label>
                     <div style="display: flex; gap: 5px;">
-                        <input type="date" name="date_from" class="form-input" value="<?= htmlspecialchars($date_from ?? '') ?>">
-                        <input type="date" name="date_to" class="form-input" value="<?= htmlspecialchars($date_to ?? '') ?>">
+                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from ?? '') ?>" placeholder="Start Date">
+                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to ?? '') ?>" placeholder="End Date">
                     </div>
                 </div>
                 
@@ -385,6 +389,16 @@ function getQueryUrl($newPage, $currentParams) {
 </div>
 
 <script>
+    // Initialize Flatpickr for Date Inputs
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", // Value submitted to PHP
+            altInput: true,      // Visual input
+            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            allowInput: true
+        });
+    });
+
     const jsPDF = window.jspdf.jsPDF;
     const records = <?php echo json_encode($sales); ?>;
     const searchTerm = <?php echo json_encode($search_term); ?>;

@@ -1,11 +1,12 @@
 <?php
-
+// purchase_dashboard.php
 $page = "transactions";
 include '../config/Connection.php';
 
 include '../security/checkAccess.php';
 checkAccess('purchases');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 ?>
 

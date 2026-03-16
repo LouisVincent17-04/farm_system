@@ -8,6 +8,7 @@ include '../security/checkAccess.php';
 checkAccess('animal_type');
 $page = "admin_dashboard"; // Keeps the dashboard highlighted in navbar
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 // Check for status messages from redirects
 $status = $_GET['status'] ?? '';

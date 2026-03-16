@@ -9,10 +9,12 @@ include '../security/checkAccess.php';
 checkAccess('animal_record');
 
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
+include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
 
 // --- 1. HANDLING FILTERS ---
-$filter_loc = $_GET['f_loc'] ?? '';
+// Auto-assign location filter if user is restricted
+$filter_loc = ($USER_LOCATION_ != 1000) ? $USER_LOCATION_ : ($_GET['f_loc'] ?? '');
 $filter_bld = $_GET['f_bld'] ?? '';
 $filter_pen = $_GET['f_pen'] ?? '';
 
@@ -27,7 +29,15 @@ try {
 
     // --- 2. FETCH DROPDOWN DATA ---
     $animal_types = $conn->query("SELECT * FROM Animal_Type ORDER BY ANIMAL_TYPE_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
-    $locations = $conn->query("SELECT * FROM Locations ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Filter Locations dropdown based on user access
+    if ($USER_LOCATION_ != 1000) {
+        $loc_stmt = $conn->prepare("SELECT * FROM Locations WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME ASC");
+        $loc_stmt->execute([$USER_LOCATION_]);
+        $locations = $loc_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $locations = $conn->query("SELECT * FROM Locations ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     if ($filter_loc) {
         $stmt = $conn->prepare("SELECT * FROM Buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
@@ -43,14 +53,13 @@ try {
     // --- 3. FETCH ANIMALS ---
     if (!empty($filter_loc) || !empty($filter_bld) || !empty($filter_pen)) {
         
-        // UPDATED QUERY: JOIN animal_classifications to get STAGE_NAME
         $sql = "SELECT 
                     a.ANIMAL_ID, a.TAG_NO, a.SEX, a.BIRTH_DATE, a.CURRENT_STATUS, 
                     a.LOCATION_ID, a.BUILDING_ID, a.PEN_ID, a.ANIMAL_TYPE_ID, a.BREED_ID, a.ANIMAL_ITEM_ID,
                     a.WEIGHT_AT_BIRTH, a.CURRENT_ESTIMATED_WEIGHT, a.CURRENT_ACTUAL_WEIGHT, a.ACQUISITION_COST,
                     a.MOTHER_ID, a.FATHER_ID,
                     at.ANIMAL_TYPE_NAME, b.BREED_NAME, l.LOCATION_NAME, 
-                    ac.STAGE_NAME,  -- Added Stage Name
+                    ac.STAGE_NAME,  
                     bld.BUILDING_NAME, p.PEN_NAME,
                     m.TAG_NO as MOTHER_TAG,
                     f.TAG_NO as FATHER_TAG,
@@ -61,7 +70,7 @@ try {
                 LEFT JOIN Locations l ON a.LOCATION_ID = l.LOCATION_ID
                 LEFT JOIN Buildings bld ON a.BUILDING_ID = bld.BUILDING_ID
                 LEFT JOIN Pens p ON a.PEN_ID = p.PEN_ID
-                LEFT JOIN animal_classifications ac ON a.CLASS_ID = ac.CLASS_ID -- Join Classification
+                LEFT JOIN animal_classifications ac ON a.CLASS_ID = ac.CLASS_ID 
                 LEFT JOIN Animal_Records m ON a.MOTHER_ID = m.ANIMAL_ID 
                 LEFT JOIN Animal_Records f ON a.FATHER_ID = f.ANIMAL_ID 
                 WHERE a.IS_ACTIVE = 1";
@@ -88,13 +97,18 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Animal Record Management System</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         /* --- CORE STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; padding-bottom: 80px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; width: 100%; }
         
         /* --- BACK LINK STYLE --- */
         .back-link {
@@ -105,112 +119,151 @@ try {
         .back-link:hover { color: white; }
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
-        .header-info h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; }
-        .header-info p { color: #cbd5e1; font-size: clamp(0.875rem, 2vw, 1rem); }
+        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; line-height: 1.2; }
+        .header-info p { color: #cbd5e1; font-size: 0.95rem; }
         .header-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
         
         /* Buttons */
-        .add-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-size: 0.875rem; white-space: nowrap; }
-        .add-btn:hover { transform: scale(1.05); }
+        .add-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); font-size: 0.95rem; white-space: nowrap; }
+        .add-btn:hover { transform: translateY(-2px); }
         .btn-purchase { background: linear-gradient(135deg, #2563eb, #9333ea); }
         .btn-existing { background: linear-gradient(135deg, #f59e0b, #d97706); } 
         
         /* Filter Bar */
-        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
+        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
         .filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
-        .filter-group label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
-        .filter-select { width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 0.5rem; font-size: 0.875rem; }
-        .btn-reset { padding: 0.6rem 1.5rem; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
-        .btn-reset:hover { border-color: white; color: white; }
+        .filter-group label { font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
+        .filter-select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border-color 0.2s;}
+        .filter-select:focus { border-color: #3b82f6; }
+        .btn-reset { padding: 12px 24px; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 8px; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; white-space: nowrap; transition: 0.2s;}
+        .btn-reset:hover { background: rgba(255,255,255,0.05); color: white; border-color: white;}
 
         /* Search */
         .search-container { position: relative; margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 1rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; }
+        .search-input { width: 100%; padding: 14px; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;}
+        .search-input:focus { border-color: #3b82f6; }
         
         /* Table */
-        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 0.75rem; border: 1px solid #475569; overflow-x: auto; min-height: 200px; }
-        .table { width: 100%; border-collapse: collapse; min-width: 900px; }
-        .table thead { background: linear-gradient(135deg, #475569, #334155); }
-        .table th { padding: 0.75rem 1rem; text-align: left; color: #e2e8f0; text-transform: uppercase; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
-        .table td { padding: 0.75rem 1rem; vertical-align: middle; border-bottom: 1px solid #475569; font-size: 0.875rem; }
+        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 12px; border: 1px solid #475569; overflow-x: auto; min-height: 200px; }
+        .table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        .table thead { background: rgba(15, 23, 42, 0.5); }
+        .table th { padding: 1rem 1.5rem; text-align: left; color: #e2e8f0; text-transform: uppercase; font-size: 0.85rem; font-weight: 600; white-space: nowrap; border-bottom: 1px solid #475569;}
+        .table td { padding: 1rem 1.5rem; vertical-align: middle; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #cbd5e1;}
+        .table tbody tr:hover { background: rgba(255,255,255,0.02); }
         
-        .animal-details h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .animal-details h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; color: #fff;}
         .animal-type-info { color: #cbd5e1; font-size: 0.875rem; }
 
-        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; display: inline-block; }
-        .status-badge.active { background: rgba(34, 197, 94, 0.2); color: #86efac; }
-        .status-badge.sold { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
-        .status-badge.deceased { background: rgba(107, 114, 128, 0.2); color: #d1d5db; }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display: inline-block; white-space: nowrap; }
+        .status-badge.active { background: rgba(34, 197, 94, 0.1); color: #34d399; border: 1px solid rgba(34, 197, 94, 0.2);}
+        .status-badge.sold { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2);}
+        .status-badge.deceased { background: rgba(107, 114, 128, 0.1); color: #94a3b8; border: 1px solid rgba(107, 114, 128, 0.2);}
         
-        .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; background: transparent; }
-        .action-btn.edit { color: #60a5fa; }
-        .action-btn.delete { color: #f87171; }
+        .actions { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .action-btn { padding: 8px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; transition: 0.2s;}
+        .action-btn:hover { background: rgba(255,255,255,0.1); }
+        .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { color: #93c5fd; border-color: #3b82f6; background: rgba(59, 130, 246, 0.2);}
+        .action-btn.delete { color: #f87171; } .action-btn.delete:hover { color: #fca5a5; border-color: #ef4444; background: rgba(239, 68, 68, 0.2);}
 
         /* Modal Styles */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; overflow-y: auto; }
-        .modal.show { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 36rem; padding: 0; border: 1px solid #475569; margin: 1rem auto; max-height: 90vh; display: flex; flex-direction: column; }
-        .modal-content.large { max-width: 50rem; }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; flex-shrink: 0; }
-        .modal-header h2 { font-size: clamp(1.25rem, 4vw, 1.5rem); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
+        .modal.show { display: flex; }
+        .modal-content { background: #1e293b; border-radius: 16px; width: 100%; max-width: 700px; padding: 0; border: 1px solid #475569; margin: auto; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);}
+        .modal-content.large { max-width: 800px; }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
+        .modal-header h2 { margin: 0; font-size: 1.4rem; color: #fff;}
         .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+        .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
         
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
         .form-group.full-width { grid-column: 1 / -1; }
         
-        .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
-        .form-group input, .form-group select { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 0.875rem; }
-        
+        .form-group label { color: #94a3b8; font-size: 0.85rem; font-weight: 500; }
+        .form-group input, .form-group select { padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; transition: 0.2s; outline: none;}
+        .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        select[disabled], input[readonly] { opacity: 0.6; cursor: not-allowed; background: #1e293b; }
+
         .input-group { display: flex; gap: 10px; }
         .input-group input { flex: 1; }
-        .btn-select { background: #475569; color: white; border: none; padding: 0 1rem; border-radius: 0.5rem; cursor: pointer; white-space: nowrap; font-size: 0.875rem; }
+        .btn-select { background: #475569; color: white; border: none; padding: 0 1.5rem; border-radius: 8px; cursor: pointer; white-space: nowrap; font-weight: 600; transition: 0.2s;}
+        .btn-select:hover { background: #64748b; }
         
-        /* Lineage Container Fix */
-        .lineage-container { background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
-        .lineage-container > label { color: #cbd5e1; margin-bottom: 0.75rem; display: block; font-weight: 600; }
-        .lineage-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        .lineage-container { background: rgba(15, 23, 42, 0.5); padding: 1.5rem; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; }
+        .lineage-container > label { color: #cbd5e1; margin-bottom: 1rem; display: block; font-weight: 600; border-bottom: 1px solid #334155; padding-bottom: 5px;}
+        .lineage-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #475569; display: flex; justify-content: flex-end; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap; }
-        .btn-save { padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; }
-        .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; color: #cbd5e1; border: none; cursor: pointer; }
+        .btn-save { padding: 12px 20px; background: #2563eb; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-save:hover { background: #1d4ed8; }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-cancel { padding: 12px 20px; background: transparent; color: #cbd5e1; border: 1px solid #475569; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: 600;}
+        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
         
         .empty-state { text-align: center; padding: 3rem 1rem; display: block; color: #94a3b8; }
-        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: none; font-size: 0.875rem; }
-        .alert.success { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #86efac; }
-        .alert.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 15px; display: none; font-size: 0.9rem; text-align: center; font-weight: 600;}
+        .alert.success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; }
+        .alert.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; }
         
         .icon { width: 18px; height: 18px; }
         
         /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .container { padding: 0.5rem; }
-            .header { flex-direction: column; align-items: stretch; }
-            .header-buttons { flex-direction: column; }
+        @media (max-width: 900px) {
+            .container { padding: 1rem; }
+            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .header-buttons { flex-direction: column; width: 100%; }
             .add-btn { width: 100%; justify-content: center; }
+            
             .filter-bar { grid-template-columns: 1fr; }
             .btn-reset { width: 100%; }
-            .form-row { grid-template-columns: 1fr; }
-            .lineage-row { grid-template-columns: 1fr; }
-            .modal-content { max-width: 100%; margin: 0.5rem; }
-            .modal-body { padding: 1rem; }
-            .modal-header, .modal-footer { padding: 1rem; }
-            .table th, .table td { padding: 0.5rem; font-size: 0.75rem; }
-        }
-        
-        @media (max-width: 480px) {
-            .header-info h1 { font-size: 1.25rem; }
-            .add-btn { padding: 0.6rem 1rem; font-size: 0.8rem; }
-            .input-group { flex-direction: column; }
-            .btn-select { width: 100%; padding: 0.75rem 1rem; }
+            
+            .form-row, .lineage-row { grid-template-columns: 1fr; gap: 0;}
+            .modal-footer { flex-direction: column; }
+            .modal-footer button { width: 100%; margin-left: 0; }
+
+            /* Table to Card Layout */
+            .table-container { border: none; background: transparent; overflow: visible; }
+            .table { min-width: 0; display: block; }
+            .table thead { display: none; }
+            .table tbody { display: block; width: 100%; }
+            .table tr { 
+                display: block; 
+                background: rgba(30, 41, 59, 0.6); 
+                border: 1px solid #475569; 
+                border-radius: 12px; 
+                margin-bottom: 1rem; 
+                padding: 1rem; 
+            }
+            .table td { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                padding: 0.75rem 0; 
+                border-bottom: 1px dashed rgba(255,255,255,0.1); 
+                text-align: right; 
+                font-size: 0.95rem;
+                white-space: normal;
+            }
+            .table td:last-child { border-bottom: none; }
+            .table td::before { 
+                content: attr(data-label); 
+                font-weight: 700; 
+                color: #94a3b8; 
+                font-size: 0.8rem; 
+                text-transform: uppercase; 
+                margin-right: 1rem; 
+                text-align: left;
+                flex-shrink: 0;
+            }
+            .animal-details h3 { font-size: 1.1rem; text-align: right; margin: 0;}
+            .animal-type-info { text-align: right; }
+            .actions { justify-content: flex-end; width: 100%; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <a href="animal_record_dashboard.php" class="back-link">
+        <a href="farm_dashboard.php" class="back-link">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             Back to Dashboard
         </a>
@@ -229,8 +282,10 @@ try {
         <form method="GET" class="filter-bar">
             <div class="filter-group">
                 <label>1. Location</label>
-                <select name="f_loc" class="filter-select" onchange="this.form.submit()">
-                    <option value="">-- All Locations --</option>
+                <select name="f_loc" class="filter-select" onchange="this.form.submit()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events: none; opacity: 0.7; background-color: #1e293b;"' : ''; ?>>
+                    <?php if($USER_LOCATION_ == 1000): ?>
+                        <option value="">-- All Locations --</option>
+                    <?php endif; ?>
                     <?php foreach ($locations as $loc): ?>
                         <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
@@ -260,7 +315,7 @@ try {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <a href="animal_record.php" class="btn-reset">Reset</a>
+            <a href="animal_records.php" class="btn-reset">Reset</a>
         </form>
 
         <div class="search-container">
@@ -272,60 +327,61 @@ try {
                 <thead>
                     <tr>
                         <th>Tag No</th>
-                        <th>Class / Breed</th> <th>Sex</th>
+                        <th>Class / Breed</th> 
+                        <th>Sex</th>
                         <th>Age</th>
                         <th>Birth Date</th>
-                        <th>Weight (kg)<br><small>Est / Act</small></th>
+                        <th>Weight (Est / Act)</th>
                         <th>Lineage (Dam/Sire)</th>
                         <th>Status</th>
                         <th>Cost</th>
                         <th>Location</th>
-                        <th>Actions</th>
+                        <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="animal-table">
                     <?php if (empty($animal_data)): ?>
-                    <?php else: ?>
+                        <?php else: ?>
                         <?php foreach ($animal_data as $data): ?>
                             <tr data-id="<?php echo $data['ANIMAL_ID']; ?>">
-                                <td>
+                                <td data-label="Tag No">
                                     <div class="animal-details">
                                         <h3><?php echo htmlspecialchars($data['TAG_NO']); ?></h3>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Class / Breed">
                                     <div class="animal-type-info">
-                                        <span style="color:#e2e8f0; font-weight:600;">
+                                        <span style="color:#fff; font-weight:600;">
                                             <?php echo htmlspecialchars($data['STAGE_NAME'] ?? 'Unclassified'); ?>
                                         </span><br>
                                         <small style="color:#94a3b8"><?php echo htmlspecialchars($data['BREED_NAME']); ?></small>
                                     </div>
                                 </td>
-                                <td><?php echo $data['SEX'] == 'M' ? 'Male' : 'Female'; ?></td>
-                                <td style="color:#fcd34d; font-weight:600;">
+                                <td data-label="Sex"><?php echo $data['SEX'] == 'M' ? 'Male' : 'Female'; ?></td>
+                                <td data-label="Age" style="color:#fcd34d; font-weight:600;">
                                     <?php echo $data['DAYS_OLD'] !== null ? $data['DAYS_OLD'] . " days" : "N/A"; ?>
                                 </td>
-                                <td><?php echo $data['BIRTH_DATE'] ? date('M d, Y', strtotime($data['BIRTH_DATE'])) : 'N/A'; ?></td>
-                                <td>
+                                <td data-label="Birth Date"><?php echo $data['BIRTH_DATE'] ? date('m/d/Y', strtotime($data['BIRTH_DATE'])) : 'N/A'; ?></td>
+                                <td data-label="Weight (Est/Act)">
                                     <span style="color:#60a5fa;"><?php echo number_format($data['CURRENT_ESTIMATED_WEIGHT'], 2); ?></span> / 
                                     <span style="color:#34d399;"><?php echo number_format($data['CURRENT_ACTUAL_WEIGHT'], 2); ?></span>
                                 </td>
-                                <td>
+                                <td data-label="Lineage">
                                     <div style="font-size:0.85rem;">
                                         <span style="color: #f472b6;">Dam: <?php echo $data['MOTHER_TAG'] ? $data['MOTHER_TAG'] : '-'; ?></span><br>
                                         <span style="color: #60a5fa;">Sire: <?php echo $data['FATHER_TAG'] ? $data['FATHER_TAG'] : '-'; ?></span>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Status">
                                     <span class="status-badge <?php echo strtolower($data['CURRENT_STATUS']); ?>">
                                         <?php echo htmlspecialchars($data['CURRENT_STATUS']); ?>
                                     </span>
                                 </td>
-                                <td>
-                                    <span style="color:#fbbf24;">₱<?php echo number_format($data['ACQUISITION_COST'], 2); ?></span>
+                                <td data-label="Cost">
+                                    <span style="color:#fbbf24; font-family: monospace; font-size: 1.1rem; font-weight: bold;">₱<?php echo number_format($data['ACQUISITION_COST'], 2); ?></span>
                                 </td>
-                                <td><?php echo htmlspecialchars($data['LOCATION_NAME']); ?> - <?php echo htmlspecialchars($data['PEN_NAME']); ?></td>
-                                <td>
+                                <td data-label="Location"><?php echo htmlspecialchars($data['LOCATION_NAME']); ?> - <?php echo htmlspecialchars($data['PEN_NAME']); ?></td>
+                                <td data-label="Actions">
                                     <div class="actions">
                                         <button class="action-btn edit" onclick="editAnimal(this)" title="Edit"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
                                         <button class="action-btn delete" onclick="deleteAnimal(this)" title="Delete"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
@@ -338,9 +394,9 @@ try {
             </table>
             <div id="empty-state" class="empty-state" style="display: <?php echo empty($animal_data) ? 'block' : 'none'; ?>;">
                 <?php if (empty($filter_loc)): ?>
-                    <h3 style="color:#94a3b8;">Please select a Location to view records</h3>
+                    <h3>Please select a Location to view records</h3>
                 <?php else: ?>
-                    <h3>No records found in this location</h3>
+                    <h3>No records found matching criteria</h3>
                 <?php endif; ?>
             </div>
         </div>
@@ -425,7 +481,7 @@ try {
                         </div>
                         <div id="birth-date-group" class="form-group">
                             <label>Birth Date *</label>
-                            <input type="date" id="add_birth_date" name="birth_date">
+                            <input type="date" id="add_birth_date" name="birth_date" required>
                         </div>
                     </div>
 
@@ -440,10 +496,14 @@ try {
 
                     <div class="form-group">
                         <label>Location *</label>
-                        <select id="add_location" name="location_id" required onchange="loadBuildings(this.value, 'add')">
-                            <option value="">Select Location</option>
+                        <select id="add_location" name="location_id" required onchange="loadBuildings(this.value, 'add')" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #1e293b; pointer-events: none; color: #94a3b8;"' : ''; ?>>
+                            <?php if($USER_LOCATION_ == 1000): ?>
+                                <option value="">Select Location</option>
+                            <?php endif; ?>
                             <?php foreach ($locations as $loc): ?>
-                                <option value="<?php echo $loc['LOCATION_ID']; ?>"><?php echo htmlspecialchars($loc['LOCATION_NAME']); ?></option>
+                                <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -478,7 +538,7 @@ try {
             <div class="modal-body">
                 <div class="table-container">
                     <table class="table">
-                        <thead><tr><th>Tag No</th><th>Breed</th><th>Location</th><th>Action</th></tr></thead>
+                        <thead><tr><th>Tag No</th><th>Breed</th><th>Location</th><th style="text-align:center;">Action</th></tr></thead>
                         <tbody id="parent-table-body"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
                     </table>
                 </div>
@@ -493,7 +553,7 @@ try {
             <div class="modal-body">
                 <div class="table-container">
                     <table class="table">
-                        <thead><tr><th>ID</th><th>Name</th><th>Cost</th><th>Location</th><th>Action</th></tr></thead>
+                        <thead><tr><th>ID</th><th>Name</th><th>Cost</th><th>Location</th><th style="text-align:center;">Action</th></tr></thead>
                         <tbody id="add-purchase-table-body"></tbody>
                     </table>
                 </div>
@@ -582,7 +642,7 @@ try {
                         </div>
                         <div id="edit-birth-date-group" class="form-group">
                             <label for="edit_birth_date">Birth Date *</label>
-                            <input type="date" id="edit_birth_date" name="birth_date">
+                            <input type="date" id="edit_birth_date" name="birth_date" required>
                         </div>
                     </div>
 
@@ -612,10 +672,14 @@ try {
 
                     <div class="form-group">
                         <label for="edit_location">Location *</label>
-                        <select id="edit_location" name="location_id" required onchange="loadBuildings(this.value, 'edit')">
-                            <option value="">Select Location</option>
+                        <select id="edit_location" name="location_id" required onchange="loadBuildings(this.value, 'edit')" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #1e293b; pointer-events: none; color: #94a3b8;"' : ''; ?>>
+                            <?php if($USER_LOCATION_ == 1000): ?>
+                                <option value="">Select Location</option>
+                            <?php endif; ?>
                             <?php foreach ($locations as $location): ?>
-                                <option value="<?php echo $location['LOCATION_ID']; ?>"><?php echo htmlspecialchars($location['LOCATION_NAME']); ?></option>
+                                <option value="<?php echo $location['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $location['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($location['LOCATION_NAME']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -651,7 +715,7 @@ try {
             <div class="modal-body">
                 <div class="table-container">
                     <table class="table">
-                        <thead><tr><th>ID</th><th>Name</th><th>Cost</th><th>Location</th><th>Action</th></tr></thead>
+                        <thead><tr><th>ID</th><th>Name</th><th>Cost</th><th>Location</th><th style="text-align:center;">Action</th></tr></thead>
                         <tbody id="edit-purchase-table-body"></tbody>
                     </table>
                 </div>
@@ -663,6 +727,28 @@ try {
     </div>
 
     <script>
+        const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+
+        // Initialize Flatpickr for guaranteed mm/dd/yyyy visual inputs while keeping YYYY-MM-DD logic
+        const fpAddBirth = flatpickr("#add_birth_date", {
+            dateFormat: "Y-m-d", // The actual value submitted to PHP
+            altInput: true,      // Create a visually clean dummy input
+            altFormat: "m/d/Y",  // Visually format it as mm/dd/yyyy
+            allowInput: true
+        });
+
+        const fpEditBirth = flatpickr("#edit_birth_date", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "m/d/Y",
+            allowInput: true
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const rows = document.querySelectorAll('#animal-table tr');
+            if(rows.length === 0) document.getElementById('empty-state').style.display = 'block';
+        });
+
         // --- MODAL CONTROLLERS ---
         let acquisition_type = 0;
         let currentParentMode = '';
@@ -671,13 +757,10 @@ try {
         function openAddModal(type, acquisition = 0) {
             const form = document.getElementById('addAnimalForm');
             form.reset();
+            fpAddBirth.clear(); // Reset the datepicker
             
             document.getElementById('add_breed').innerHTML = '<option value="">Select Type First</option>';
             document.getElementById('add_breed').disabled = true;
-            document.getElementById('add_building').innerHTML = '<option value="">Select Location First</option>';
-            document.getElementById('add_building').disabled = true;
-            document.getElementById('add_pen').innerHTML = '<option value="">Select Building First</option>';
-            document.getElementById('add_pen').disabled = true;
 
             const modalTitle = document.getElementById('modal-title');
             const purchaseGroup = document.getElementById('purchase-group');
@@ -692,13 +775,17 @@ try {
             }
             document.getElementById('add_acquisition_cost').value = '';
 
+            // Set default date logic
+            const today = new Date().toISOString().split('T')[0];
+
             if (type === 'purchase') {
                 modalTitle.textContent = 'Add Purchased Animal';
                 entryType.value = 'purchase';
                 purchaseGroup.style.display = 'block';
-                birthGroup.style.display = 'none';
+                birthGroup.style.display = 'flex'; 
                 costGroup.style.display = 'block'; 
                 lineageGroup.style.display = 'none';
+                fpAddBirth.setDate(today); // Use flatpickr api to set value
                 
             } else if (type === 'existing') {
                 modalTitle.textContent = 'Add Existing Record';
@@ -707,7 +794,19 @@ try {
                 birthGroup.style.display = 'flex';
                 costGroup.style.display = 'block'; 
                 lineageGroup.style.display = 'block';
-                document.getElementById('add_birth_date').value = '';
+                fpAddBirth.setDate(today); // Use flatpickr api to set value
+            }
+
+            const locSelect = document.getElementById('add_location');
+            if (USER_LOCATION != 1000) {
+                locSelect.value = USER_LOCATION;
+                loadBuildings(USER_LOCATION, 'add');
+            } else {
+                locSelect.value = "";
+                document.getElementById('add_building').innerHTML = '<option value="">Select Location First</option>';
+                document.getElementById('add_building').disabled = true;
+                document.getElementById('add_pen').innerHTML = '<option value="">Select Building First</option>';
+                document.getElementById('add_pen').disabled = true;
             }
 
             document.getElementById('addModal').classList.add('show');
@@ -736,16 +835,16 @@ try {
                 if (data.success && list.length > 0) {
                     tbody.innerHTML = list.map(s => `
                         <tr>
-                            <td style="font-weight:bold; color:${type==='sow'?'#f472b6':'#60a5fa'};">${s.TAG_NO}</td>
-                            <td>${s.BREED_NAME}</td>
-                            <td>${s.LOCATION_NAME} - ${s.PEN_NAME}</td>
-                            <td><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="selectParent('${s.ANIMAL_ID}', '${s.TAG_NO}')">SELECT</button></td>
+                            <td data-label="Tag No" style="font-weight:bold; color:${type==='sow'?'#f472b6':'#60a5fa'};">${s.TAG_NO}</td>
+                            <td data-label="Breed">${s.BREED_NAME}</td>
+                            <td data-label="Location">${s.LOCATION_NAME} - ${s.PEN_NAME}</td>
+                            <td data-label="Action" style="text-align:center;"><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="selectParent('${s.ANIMAL_ID}', '${s.TAG_NO}')">SELECT</button></td>
                         </tr>`).join('');
-                } else { tbody.innerHTML = `<tr><td colspan="4">No active ${type}s found.</td></tr>`; }
+                } else { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No active ${type}s found.</td></tr>`; }
             })
             .catch(err => {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="4">Error loading data.</td></tr>'; 
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Error loading data.</td></tr>'; 
             });
         }
 
@@ -767,17 +866,20 @@ try {
 
         function loadAvailablePurchases(targetBodyId) {
             const tbody = document.getElementById(targetBodyId);
-            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
             fetch('../process/getAvailablePurchasedAnimals.php').then(r=>r.json()).then(data=>{
                 if(data.success && data.items.length > 0) {
                     tbody.innerHTML = data.items.map(i => {
                         const funcName = targetBodyId === 'add-purchase-table-body' ? 'selectPurchaseItem' : 'selectEditPurchaseItem';
                         return `<tr>
-                            <td>${i.ITEM_ID}</td><td>${i.ITEM_NAME}</td><td>${i.UNIT_COST}</td><td>${i.LOCATION_NAME}</td>
-                            <td><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="${funcName}('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">SELECT</button></td>
+                            <td data-label="ID">${i.ITEM_ID}</td>
+                            <td data-label="Name">${i.ITEM_NAME}</td>
+                            <td data-label="Cost">${i.UNIT_COST}</td>
+                            <td data-label="Location">${i.LOCATION_NAME}</td>
+                            <td data-label="Action" style="text-align:center;"><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="${funcName}('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">SELECT</button></td>
                         </tr>`;
                     }).join('');
-                } else { tbody.innerHTML = '<tr><td colspan="5">No items found</td></tr>'; }
+                } else { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No items found</td></tr>'; }
             });
         }
 
@@ -907,12 +1009,13 @@ try {
                         document.getElementById('edit-purchase-group').style.display = 'block';
                         document.getElementById('edit_animal_item_id').value = animal.ANIMAL_ITEM_ID; 
                         document.getElementById('edit_has_purchase').value = "1";
-                        document.getElementById('edit-birth-date-group').style.display = 'none';
+                        document.getElementById('edit-birth-date-group').style.display = 'flex'; 
+                        fpEditBirth.setDate(animal.BIRTH_DATE || ''); // Flatpickr set API
                     } else {
                         document.getElementById('edit-purchase-group').style.display = 'none';
                         document.getElementById('edit_has_purchase').value = "0";
-                        document.getElementById('edit-birth-date-group').style.display = 'block';
-                        document.getElementById('edit_birth_date').value = animal.BIRTH_DATE || '';
+                        document.getElementById('edit-birth-date-group').style.display = 'flex';
+                        fpEditBirth.setDate(animal.BIRTH_DATE || ''); // Flatpickr set API
                     }
 
                     document.getElementById('edit_location').value = animal.LOCATION_ID;
@@ -1008,8 +1111,11 @@ try {
 
         function checkEmptyState(count) {
             const el = document.getElementById('empty-state');
-            if (count === undefined) { } else {
-               el.style.display = (count === 0) ? 'block' : 'none';
+            if (count === undefined) { 
+                const rowCount = document.querySelectorAll('#animal-table tr').length;
+                el.style.display = (rowCount === 0) ? 'block' : 'none';
+            } else {
+                el.style.display = (count === 0) ? 'block' : 'none';
             }
         }
 
@@ -1024,10 +1130,6 @@ try {
         document.getElementById('editSelectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeEditSelectPurchaseModal(); });
         document.getElementById('selectParentModal').addEventListener('click', function(e) { if(e.target===this) closeSelectParentModal(); });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const rows = document.querySelectorAll('#animal-table tr');
-            if(rows.length === 0) document.getElementById('empty-state').style.display = 'block';
-        });
     </script>
 </body>
 </html>

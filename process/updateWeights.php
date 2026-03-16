@@ -21,49 +21,90 @@ $username = $_SESSION['user']['FULL_NAME'] ?? 'System';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 // 2. Input Retrieval
-$weights = $_POST['weights'] ?? []; // Expected format: [animal_id => weight_value, ...]
+$birth_weights = $_POST['birth_weights'] ?? []; 
+$weaning_weights = $_POST['weaning_weights'] ?? []; 
+$current_weights = $_POST['current_weights'] ?? []; 
+
 $remarks = $_POST['remarks'] ?? '';
 $weighing_date = $_POST['weighing_date'] ?? date('Y-m-d');
 
-if (empty($weights)) {
+// Combine all unique animal IDs from the three arrays
+$animal_ids = array_unique(array_merge(
+    array_keys($birth_weights),
+    array_keys($weaning_weights),
+    array_keys($current_weights)
+));
+
+if (empty($animal_ids)) {
     echo json_encode(['success' => false, 'message' => 'No weight data received.']);
     exit;
 }
 
 try {
-    // 3. Start Transaction
-    $conn->beginTransaction();
+    // 3. Fetch CLASS_ID for validation
+    // Create placeholders for the IN clause (e.g., ?,?,?)
+    $placeholders = implode(',', array_fill(0, count($animal_ids), '?'));
+    $classStmt = $conn->prepare("SELECT ANIMAL_ID, CLASS_ID FROM animal_records WHERE ANIMAL_ID IN ($placeholders)");
+    $classStmt->execute(array_values($animal_ids));
+    
+    // Map ANIMAL_ID to CLASS_ID for quick lookup
+    $animal_classes = [];
+    while ($row = $classStmt->fetch(PDO::FETCH_ASSOC)) {
+        $animal_classes[$row['ANIMAL_ID']] = intval($row['CLASS_ID']);
+    }
 
-    // Prepare Update Statement
-    $updateStmt = $conn->prepare("
-        UPDATE animal_records 
-        SET CURRENT_ACTUAL_WEIGHT = ?, 
-            UPDATED_AT = NOW() 
-        WHERE ANIMAL_ID = ?
-    ");
+    // 4. Start Transaction
+    $conn->beginTransaction();
 
     $updatedCount = 0;
 
-    foreach ($weights as $animalId => $weightVal) {
-        // Validation: Ensure weight is a valid number and strictly positive
-        if ($weightVal === '' || $weightVal === null) {
+    foreach ($animal_ids as $animalId) {
+        $updateFields = [];
+        $params = [];
+        $classId = $animal_classes[$animalId] ?? 0; // Get the specific animal's class ID
+
+        // Check Birth Weight
+        if (isset($birth_weights[$animalId]) && $birth_weights[$animalId] !== '') {
+            $updateFields[] = "WEIGHT_AT_BIRTH = ?";
+            $params[] = floatval($birth_weights[$animalId]);
+        }
+
+        // Check Weaning Weight (WITH CLASS_ID VALIDATION)
+        if (isset($weaning_weights[$animalId]) && $weaning_weights[$animalId] !== '' && $classId > 1) {
+            $updateFields[] = "WEANING_WEIGHT = ?";
+            $params[] = floatval($weaning_weights[$animalId]);
+        }
+
+        // Check Current Weight
+        if (isset($current_weights[$animalId]) && $current_weights[$animalId] !== '') {
+            $updateFields[] = "CURRENT_ACTUAL_WEIGHT = ?";
+            $params[] = floatval($current_weights[$animalId]);
+        }
+
+        // If no weights were provided (or if the only update was a weaning weight but class was <= 1), skip
+        if (empty($updateFields)) {
             continue;
         }
 
-        $weight = floatval($weightVal);
+        // Add the updated timestamp
+        $updateFields[] = "UPDATED_AT = NOW()";
+        
+        // Build the dynamic SQL query
+        $sql = "UPDATE animal_records SET " . implode(", ", $updateFields) . " WHERE ANIMAL_ID = ?";
+        $params[] = $animalId;
 
-        if ($weight > 0) {
-            $updateStmt->execute([$weight, $animalId]);
-            $updatedCount++;
-        }
+        // Execute
+        $updateStmt = $conn->prepare($sql);
+        $updateStmt->execute($params);
+        $updatedCount++;
     }
 
-    // 4. Commit Transaction & Audit Log
+    // 5. Commit Transaction & Audit Log
     if ($updatedCount > 0) {
         
         // --- INSERT AUDIT LOG ---
         $audit_action = "BATCH_WEIGHT_UPDATE";
-        $audit_details = "Updated weights for $updatedCount animals. Date: $weighing_date. Remarks: " . ($remarks ?: 'None');
+        $audit_details = "Updated weight records (Birth/Weaning/Current) for $updatedCount animals. Date: $weighing_date. Remarks: " . ($remarks ?: 'None');
 
         $audit_sql = "INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
                       VALUES (?, ?, ?, 'ANIMAL_RECORDS', ?, ?)";
@@ -80,12 +121,12 @@ try {
         $conn->rollBack();
         echo json_encode([
             'success' => false, 
-            'message' => "No valid weight changes were detected to save."
+            'message' => "No valid weight changes were detected to save (Note: Weaning weights require Class > 1)."
         ]);
     }
 
 } catch (Exception $e) {
-    // 5. Rollback on Error
+    // 6. Rollback on Error
     if ($conn->inTransaction()) {
         $conn->rollBack();
     }

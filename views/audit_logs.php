@@ -6,10 +6,11 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('audit_logs');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
-
-$start_date = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
-$end_date   = $_GET['end_date']   ?? date('Y-m-d');
+// Handle empty submissions by defaulting to the 30-day window
+$start_date = !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));
+$end_date   = !empty($_GET['end_date'])   ? $_GET['end_date']   : date('Y-m-d');
 $search     = $_GET['search']     ?? '';
 
 try {
@@ -19,7 +20,9 @@ try {
 
     $sql = "SELECT 
                 LOG_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS,
-                DATE_FORMAT(LOG_DATE, '%Y-%m-%d %H:%i:%s') as LOG_DATE_FMT 
+                DATE_FORMAT(LOG_DATE, '%m/%d/%Y') as LOG_DATE_FMT,
+                DATE_FORMAT(LOG_DATE, '%h:%i:%s %p') as LOG_TIME_FMT,
+                DATE_FORMAT(LOG_DATE, '%m/%d/%Y %h:%i %p') as FULL_DATE_FMT 
             FROM AUDIT_LOGS 
             WHERE LOG_DATE BETWEEN :start_dt AND :end_dt";
 
@@ -52,7 +55,13 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Audit Logs | System History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Audit Logs | System History</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <link rel="stylesheet" href="../css/purch_housing_facilities.css">
     <style>
         /* Base Styles */
@@ -71,12 +80,13 @@ try {
         }
         .filter-group { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 200px; }
         .filter-group label { color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
-        .filter-input { background: #1e293b; border: 1px solid #475569; color: white; padding: 0.7rem; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        .filter-input { background: #1e293b; border: 1px solid #475569; color: white; padding: 0.7rem; border-radius: 8px; width: 100%; box-sizing: border-box; outline:none; }
+        .filter-input:focus { border-color: #3b82f6; }
         .btn-filter { padding: 0.7rem 1.5rem; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; height: 42px; min-width: 100px; }
 
         /* Table Desktop Styles */
         .table-container { overflow-x: auto; }
-        .table { width: 100%; border-collapse: collapse; width: 100%; }
+        .table { width: 100%; border-collapse: collapse; }
         .table th { text-align: left; padding: 1rem; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
         .table td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top; }
         .table tbody tr:hover { background: rgba(255,255,255,0.02); }
@@ -174,11 +184,11 @@ try {
             </div>
             <div class="filter-group">
                 <label>Start Date</label>
-                <input type="date" name="start_date" class="filter-input" value="<?php echo $start_date; ?>">
+                <input type="text" name="start_date" id="start_date" class="filter-input" value="<?php echo htmlspecialchars($start_date); ?>" placeholder="Select Start Date">
             </div>
             <div class="filter-group">
                 <label>End Date</label>
-                <input type="date" name="end_date" class="filter-input" value="<?php echo $end_date; ?>">
+                <input type="text" name="end_date" id="end_date" class="filter-input" value="<?php echo htmlspecialchars($end_date); ?>" placeholder="Select End Date">
             </div>
             <button type="submit" class="btn-filter">Filter Logs</button>
         </form>
@@ -212,8 +222,8 @@ try {
                         ?>
                         <tr data-json='<?php echo $logJson; ?>'>
                             <td data-label="Date & Time">
-                                <div style="color:white; font-weight:500;"><?php echo date('M d, Y', strtotime($log['LOG_DATE_FMT'])); ?></div>
-                                <div class="log-meta"><?php echo date('h:i:s A', strtotime($log['LOG_DATE_FMT'])); ?></div>
+                                <div style="color:white; font-weight:500;"><?php echo htmlspecialchars($log['LOG_DATE_FMT']); ?></div>
+                                <div class="log-meta"><?php echo htmlspecialchars($log['LOG_TIME_FMT']); ?></div>
                             </td>
                             <td data-label="User">
                                 <div style="font-weight:600; color:#e2e8f0;"><?php echo htmlspecialchars($log['USERNAME']); ?></div>
@@ -260,6 +270,23 @@ try {
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Flatpickr for the date filters
+            flatpickr("#start_date", {
+                dateFormat: "Y-m-d", // Value submitted to PHP
+                altInput: true,      // Visual input
+                altFormat: "m/d/Y",  // mm/dd/yyyy format
+                allowInput: true
+            });
+            
+            flatpickr("#end_date", {
+                dateFormat: "Y-m-d", // Value submitted to PHP
+                altInput: true,      // Visual input
+                altFormat: "m/d/Y",  // mm/dd/yyyy format
+                allowInput: true
+            });
+        });
+
         function viewLog(btn) {
             const row = btn.closest('tr');
             const data = JSON.parse(row.getAttribute('data-json'));
@@ -283,7 +310,7 @@ try {
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Timestamp</span>
-                    <div class="detail-value">${data.LOG_DATE_FMT}</div>
+                    <div class="detail-value">${data.FULL_DATE_FMT}</div>
                 </div>
             `;
             

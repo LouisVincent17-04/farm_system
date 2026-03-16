@@ -15,22 +15,37 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     // 1. Inputs
-    $pen_id = $_POST['pen_id'];
-    $feed_id = $_POST['feed_id'];
-    $qty_per_head = floatval($_POST['qty_per_head']);
+    $animal_ids = $_POST['animal_ids'] ?? [];
+    $feed_id = $_POST['feed_id'] ?? null;
+    $qty_per_head = floatval($_POST['qty_per_head'] ?? 0);
     $trans_date = str_replace('T', ' ', $_POST['transaction_date']) . ':00';
 
+    if (empty($animal_ids)) throw new Exception("No animals selected.");
+    if (!$feed_id) throw new Exception("Please select a feed.");
     if ($qty_per_head <= 0) throw new Exception("Quantity must be greater than 0");
 
     $conn->beginTransaction();
 
-    // 2. Get Animals in Pen
-    $stmt = $conn->prepare("SELECT ANIMAL_ID, TAG_NO FROM ANIMAL_RECORDS WHERE PEN_ID = ? AND IS_ACTIVE = 1 AND CURRENT_STATUS = 'Active'");
-    $stmt->execute([$pen_id]);
-    $animals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $animal_count = count($animal_ids);
+
+    // 2. Fetch specific Animal Data to ensure they exist and get tags/pens
+    // Create placeholders like ?,?,? 
+    $placeholders = implode(',', array_fill(0, $animal_count, '?'));
     
-    $animal_count = count($animals);
-    if ($animal_count === 0) throw new Exception("No active animals found in this pen.");
+    // Fetch TAG_NO and PEN_ID to create accurate remarks
+    $stmt = $conn->prepare("
+        SELECT a.ANIMAL_ID, a.TAG_NO, p.PEN_NAME 
+        FROM ANIMAL_RECORDS a 
+        LEFT JOIN PENS p ON a.PEN_ID = p.PEN_ID 
+        WHERE a.ANIMAL_ID IN ($placeholders)
+    ");
+    $stmt->execute($animal_ids);
+    $animals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Extract unique pen names for the batch remark
+    $unique_pens = array_unique(array_column($animals, 'PEN_NAME'));
+    $pen_names_str = implode(', ', array_filter($unique_pens));
+    if(empty($pen_names_str)) $pen_names_str = 'Various / Unassigned';
 
     // 3. Calculate Total Deduction
     $total_deduction = $animal_count * $qty_per_head;
@@ -52,18 +67,13 @@ try {
     $batch_id = uniqid('BATCH-', true);
 
     // 6. Prepare Statements
-    // A. Feed Transaction Statement
     $insertSql = "INSERT INTO FEED_TRANSACTIONS (FEED_ID, ANIMAL_ID, TRANSACTION_DATE, QUANTITY_KG, TRANSACTION_COST, REMARKS, BATCH_ID) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $insertStmt = $conn->prepare($insertSql);
-
-    // B. Operational Cost Statement (NEW) 
 
     $opCostSql = "INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, ?)";
     $opCostStmt = $conn->prepare($opCostSql);
 
-    // Get Pen Name for Remark
-    $penName = $conn->query("SELECT PEN_NAME FROM PENS WHERE PEN_ID = $pen_id")->fetchColumn();
-    $remarks = "Bulk Feed: $penName";
+    $remarks = "Bulk Feed: Pens ($pen_names_str)";
     $op_description = "Feed: " . $feed['FEED_NAME'] . " (" . $qty_per_head . "kg)";
 
     // 7. Loop Insert Transactions
@@ -79,7 +89,7 @@ try {
             $batch_id 
         ]);
 
-        // B. Insert into Operational Cost (NEW)
+        // B. Insert into Operational Cost
         if ($cost_per_animal > 0) {
             $opCostStmt->execute([
                 $animal['ANIMAL_ID'],
@@ -94,11 +104,14 @@ try {
     $new_weight = $feed['TOTAL_WEIGHT_KG'] - $total_deduction;
     $new_cost = $feed['TOTAL_COST'] - ($total_deduction * $cost_per_kg);
     
+    // Safety check to prevent negative cost decimals
+    if($new_weight <= 0) $new_cost = 0; 
+    
     $upd = $conn->prepare("UPDATE FEEDS SET TOTAL_WEIGHT_KG = ?, TOTAL_COST = ?, DATE_UPDATED = NOW() WHERE FEED_ID = ?");
     $upd->execute([$new_weight, $new_cost, $feed_id]);
 
     // 9. Audit Log
-    $audit_msg = "Bulk Feeding (Batch: $batch_id): Pen '$penName'. Fed $animal_count animals ($qty_per_head kg each). Total Deducted: $total_deduction kg.";
+    $audit_msg = "Bulk Feeding (Batch: $batch_id) for Pens: '$pen_names_str'. Fed $animal_count animals ($qty_per_head kg each). Total Deducted: $total_deduction kg.";
     
     $audit = $conn->prepare("INSERT INTO AUDIT_LOGS (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) VALUES (?, ?, 'BULK_FEED', 'FEED_TRANSACTIONS', ?, ?)");
     $audit->execute([$user_id, $username, $audit_msg, $ip]);

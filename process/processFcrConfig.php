@@ -9,7 +9,7 @@ $user_id = $_SESSION['user']['USER_ID'] ?? 0;
 // --- 1. SAVE CONFIGURATION ---
 if ($action === 'save_config') {
     $type = $_POST['type'];
-    $fcr = $_POST['fcr'];
+    $fcr = $_POST['fcr'] * 0.01; // Convert percentage to decimal
     
     try {
         $sql = "";
@@ -116,7 +116,7 @@ if ($action === 'list') {
     $stmt = $conn->query($sql);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    echo '<table class="data-table"><thead><tr><th>Priority Type</th><th>Target</th><th>FCR %</th><th>Action</th></tr></thead><tbody>';
+    echo '<table class="data-table"><thead><tr><th>Priority Type</th><th>Target</th><th>FCR</th><th>Action</th></tr></thead><tbody>';
     foreach($rows as $r) {
         $desc = "";
         if ($r['CONFIG_TYPE'] == 'Individual') $desc = "Tag: " . $r['TAG_NO'];

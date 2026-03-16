@@ -9,6 +9,7 @@ include '../security/checkAccess.php';
 checkAccess('buyer');
 
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- 1. HANDLE POST REQUESTS (Add/Edit/Delete) ---

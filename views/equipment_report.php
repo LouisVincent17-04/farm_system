@@ -8,7 +8,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('farm_equipment_tools_report');
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
 
 // --- 1. GET FILTER INPUTS ---
 $location_id  = $_GET['location'] ?? '';
@@ -28,14 +28,14 @@ try {
             i.ITEM_ID,
             i.ITEM_NAME,
             i.ITEM_DESCRIPTION,
-            i.DATE_OF_PURCHASE,
+            DATE_FORMAT(i.DATE_OF_PURCHASE, '%m/%d/%Y') as DATE_OF_PURCHASE_FMT,
             i.QUANTITY,
             i.UNIT_COST,
             i.TOTAL_COST,
             i.LOCATION_ID,
             i.ITEM_TYPE_ID,
             l.LOCATION_NAME,
-            DATE_FORMAT(i.CREATED_AT, '%Y-%m-%d') as DATE_ADDED
+            DATE_FORMAT(i.CREATED_AT, '%m/%d/%Y') as DATE_ADDED_FMT
         FROM items i
         LEFT JOIN locations l ON i.LOCATION_ID = l.LOCATION_ID
         WHERE i.ITEM_TYPE_ID = 4";
@@ -80,7 +80,7 @@ try {
         $debug_info .= "Results found: " . count($raw_data) . "<br>";
         $debug_info .= "<details><summary>Click to see SQL Query</summary><pre style='background: #000; padding: 10px; overflow: auto;'>" . htmlspecialchars($sql) . "</pre></details>";
         
-        // Check if any items contain "pig" regardless of ITEM_TYPE_ID
+        // Check if any items contain search term regardless of ITEM_TYPE_ID
         $test_sql = "SELECT ITEM_NAME, ITEM_TYPE_ID FROM items WHERE LOWER(ITEM_NAME) LIKE :search1 OR LOWER(ITEM_DESCRIPTION) LIKE :search2";
         $test_stmt = $conn->prepare($test_sql);
         $search_pattern = "%" . strtolower($search_term) . "%";
@@ -136,12 +136,18 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Equipment Purchase Report</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
         /* --- GLOBAL STYLES --- */
+        * { box-sizing: border-box; }
         body { 
             font-family: system-ui, -apple-system, sans-serif; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
@@ -149,7 +155,7 @@ try {
             margin: 0; 
             padding-bottom: 40px;
         }
-        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; width: 100%; }
         
         /* Back Link Style */
         .back-link {
@@ -161,10 +167,12 @@ try {
 
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
-            font-size: 2.2rem; font-weight: 800; 
+            font-size: clamp(1.8rem, 4vw, 2.5rem); 
+            font-weight: 800; 
             background: linear-gradient(135deg, #8b5cf6, #7c3aed); /* Purple */
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             margin-bottom: 0.5rem;
+            line-height: 1.2;
         }
         .subtitle { color: #94a3b8; font-size: 1rem; margin: 0; }
 
@@ -208,9 +216,9 @@ try {
         .form-input { 
             width: 100%; padding: 10px; background: #0f172a; 
             border: 1px solid #334155; color: white; border-radius: 8px; 
-            font-size: 0.9rem; box-sizing: border-box; 
+            font-size: 0.9rem; box-sizing: border-box; outline: none;
         }
-        .form-input:focus { border-color: #8b5cf6; outline: none; }
+        .form-input:focus { border-color: #8b5cf6; }
 
         /* Buttons */
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -223,7 +231,7 @@ try {
         .btn { 
             padding: 10px 20px; border: none; border-radius: 8px; 
             font-weight: 600; cursor: pointer; display: inline-flex; 
-            align-items: center; gap: 8px; text-decoration: none; 
+            align-items: center; justify-content: center; gap: 8px; text-decoration: none; 
             font-size: 0.9rem; transition: transform 0.1s; white-space: nowrap;
         }
         .btn:active { transform: scale(0.98); }
@@ -239,7 +247,6 @@ try {
             border-radius: 16px; 
             overflow: hidden; 
             border: 1px solid #334155; 
-            overflow-x: auto; 
         }
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         th { 
@@ -252,18 +259,70 @@ try {
         tr:last-child td { border-bottom: none; }
         tr:hover { background: rgba(255,255,255,0.02); }
 
-        /* --- RESPONSIVE --- */
-        @media (max-width: 768px) {
+        /* --- RESPONSIVE OVERRIDES --- */
+        @media (max-width: 900px) {
             .container { padding: 1rem; }
-            .title { font-size: 1.8rem; }
+            .header { text-align: left; }
+            
             .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
             .stat-card { padding: 1rem; display: flex; justify-content: space-between; align-items: center; text-align: left; }
             .stat-val { font-size: 1.5rem; margin: 0; order: 2; }
             .stat-lbl { order: 1; }
+
             .filter-grid { grid-template-columns: 1fr; }
-            .btn { flex: 1; justify-content: center; }
+            .date-flex-mobile { flex-direction: column; gap: 10px; } /* Stack dates on mobile */
+            
+            .btn-group { display: flex; flex-direction: column; }
+            .btn { width: 100%; }
+
             .action-bar { flex-direction: column; }
-            .action-bar .btn { width: 100%; }
+            .action-bar .btn { width: 100%; justify-content: center; }
+
+            /* Table to Card Layout */
+            .table-wrap { border: none; background: transparent; overflow: visible; }
+            table { min-width: 0; display: block; }
+            thead { display: none; } /* Hide table headers */
+            tbody { display: block; width: 100%; }
+            
+            tr { 
+                display: block; 
+                background: rgba(30, 41, 59, 0.6); 
+                border: 1px solid #475569; 
+                border-radius: 12px; 
+                margin-bottom: 1rem; 
+                padding: 1rem; 
+            }
+            
+            td { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                padding: 0.5rem 0; 
+                border-bottom: 1px dashed rgba(255,255,255,0.1); 
+                text-align: right; 
+            }
+            td:last-child { border-bottom: none; }
+            
+            /* Inject Data Labels via pseudo-elements */
+            td::before { 
+                content: attr(data-label); 
+                font-weight: 700; 
+                color: #94a3b8; 
+                font-size: 0.8rem; 
+                text-transform: uppercase; 
+                margin-right: 1rem; 
+                text-align: left;
+            }
+
+            /* Fix text overflow for description on mobile */
+            td[data-label="Description"] {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            td[data-label="Description"]::before {
+                margin-bottom: 0.5rem;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -303,9 +362,9 @@ try {
             <div class="filter-grid">
                 <div class="form-group">
                     <label>Purchase Date Range</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="date" name="date_from" class="form-input" value="<?= htmlspecialchars($date_from) ?>">
-                        <input type="date" name="date_to" class="form-input" value="<?= htmlspecialchars($date_to) ?>">
+                    <div class="date-flex-mobile" style="display: flex; gap: 5px;">
+                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
                     </div>
                 </div>
                 
@@ -334,13 +393,13 @@ try {
             
             <div class="action-bar">
                 <button type="button" class="btn btn-export" onclick="exportPDF()">
-                    <span>📄</span> PDF
+                    <i class="fa-solid fa-file-pdf"></i> PDF
                 </button>
                 <button type="button" class="btn btn-excel" onclick="exportExcel()">
-                    <span>📊</span> Excel
+                    <i class="fa-solid fa-file-excel"></i> Excel
                 </button>
                 <button type="button" class="btn btn-csv" onclick="exportCSV()">
-                    <span>📝</span> CSV
+                    <i class="fa-solid fa-file-csv"></i> CSV
                 </button>
             </div>
         </form>
@@ -365,19 +424,19 @@ try {
                 <?php else: ?>
                     <?php foreach($items as $i): ?>
                     <tr>
-                        <td style="font-weight:bold; color:#fff;">
+                        <td data-label="Item Name" style="font-weight:bold; color:#fff;">
                             <?= htmlspecialchars($i['ITEM_NAME']) ?>
                         </td>
-                        <td style="color:#94a3b8; font-size:0.85rem; max-width: 250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <td data-label="Description" style="color:#94a3b8; font-size:0.85rem; max-width: 250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                             <?= htmlspecialchars($i['ITEM_DESCRIPTION'] ?: '-') ?>
                         </td>
-                        <td><?= htmlspecialchars($i['LOCATION_NAME'] ?? 'Unassigned') ?></td>
-                        <td><?= $i['DATE_OF_PURCHASE'] ?: '-' ?></td>
-                        <td style="text-align:right; font-weight:bold; color:#a78bfa;">
+                        <td data-label="Location"><?= htmlspecialchars($i['LOCATION_NAME'] ?? 'Unassigned') ?></td>
+                        <td data-label="Date Purchased"><?= $i['DATE_OF_PURCHASE_FMT'] ?: '-' ?></td>
+                        <td data-label="Quantity" style="text-align:right; font-weight:bold; color:#a78bfa;">
                             <?= number_format($i['QUANTITY']) ?>
                         </td>
-                        <td style="text-align:right;">₱<?= number_format($i['UNIT_COST'], 2) ?></td>
-                        <td style="text-align:right; color:#4ade80;">₱<?= number_format($i['CALCULATED_TOTAL'], 2) ?></td>
+                        <td data-label="Unit Cost" style="text-align:right;">₱<?= number_format($i['UNIT_COST'], 2) ?></td>
+                        <td data-label="Total Cost" style="text-align:right; color:#4ade80;">₱<?= number_format($i['CALCULATED_TOTAL'], 2) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -387,6 +446,16 @@ try {
 </div>
 
 <script>
+    // Initialize Flatpickr for Date Inputs
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", // Value submitted to PHP
+            altInput: true,      // Visual input
+            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            allowInput: true
+        });
+    });
+
     const jsPDF = window.jspdf.jsPDF;
     const records = <?php echo json_encode($items); ?>;
     const stats = {
@@ -404,15 +473,16 @@ try {
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const dateStr = new Date().toLocaleString();
-        doc.text(`Generated: ${dateStr}`, 14, 22);
+        let now = new Date();
+        let formattedNow = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
+        doc.text(`Generated: ${formattedNow}`, 14, 22);
         doc.text(`Total Value: PHP ${stats.totalValue}`, 200, 22);
 
         const rows = records.map(r => [
             r.ITEM_NAME,
             r.ITEM_DESCRIPTION || '-',
             r.LOCATION_NAME || 'Unassigned',
-            r.DATE_OF_PURCHASE || '-',
+            r.DATE_OF_PURCHASE_FMT || '-',
             r.QUANTITY,
             parseFloat(r.UNIT_COST).toFixed(2),
             parseFloat(r.CALCULATED_TOTAL).toFixed(2)
@@ -435,7 +505,7 @@ try {
             'Item Name': r.ITEM_NAME,
             'Description': r.ITEM_DESCRIPTION,
             'Location': r.LOCATION_NAME || 'Unassigned',
-            'Purchase Date': r.DATE_OF_PURCHASE,
+            'Purchase Date': r.DATE_OF_PURCHASE_FMT || '-',
             'Quantity': parseInt(r.QUANTITY),
             'Unit Cost': parseFloat(r.UNIT_COST),
             'Total Cost': parseFloat(r.CALCULATED_TOTAL)
@@ -454,7 +524,7 @@ try {
         
         records.forEach(r => {
             const row = [
-                r.ITEM_NAME, r.ITEM_DESCRIPTION, r.LOCATION_NAME, r.DATE_OF_PURCHASE,
+                r.ITEM_NAME, r.ITEM_DESCRIPTION, r.LOCATION_NAME, r.DATE_OF_PURCHASE_FMT || '-',
                 r.QUANTITY, r.UNIT_COST, r.CALCULATED_TOTAL
             ].map(e => `"${e || ''}"`).join(","); 
             csvContent += row + "\n";

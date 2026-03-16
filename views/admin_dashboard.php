@@ -6,12 +6,12 @@ $page = "admin_dashboard";
 include '../config/Connection.php';
 
 if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+    session_start();
 }
 
 include '../security/checkAccess.php';
 if($_SESSION['user']['USER_TYPE'] == 1){
-    header("Location: new_user.php");
+    header("Location: new_user.php?msg=dashboardproblems");
     exit;
 }
 else
@@ -19,8 +19,20 @@ else
     checkAccess('dashboard');
 }
 
-include '../common/navbar.php';
+
 include '../process/autoUpdateAnimalClasses.php';
+include '../common/navbar.php';
+include '../common/chat_support.php';
+include '../common/upcoming_birth_modal.php';
+// Fetch quick counts for the dashboard
+$emp_count = 0;
+$role_count = 0;
+$supplier_count = 0; // NEW: Added supplier count
+try {
+    $emp_count = $conn->query("SELECT COUNT(*) FROM employees WHERE STATUS = 'Active'")->fetchColumn();
+    $role_count = $conn->query("SELECT COUNT(*) FROM farm_roles")->fetchColumn();
+    $supplier_count = $conn->query("SELECT COUNT(*) FROM suppliers WHERE STATUS = 'Active'")->fetchColumn(); 
+} catch(Exception $e) {}
 ?>
 
 <!DOCTYPE html>
@@ -92,6 +104,9 @@ include '../process/autoUpdateAnimalClasses.php';
         .card-icon.veterinary { background: linear-gradient(135deg, #ec4899, #db2777); }
         .card-icon.disease { background: linear-gradient(135deg, #a855f7, #9333ea); }
         .card-icon.buyer { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .card-icon.employee { background: linear-gradient(135deg, #0ea5e9, #0284c7); } 
+        .card-icon.role { background: linear-gradient(135deg, #fbbf24, #d97706); } 
+        .card-icon.supplier { background: linear-gradient(135deg, #f43f5e, #e11d48); } /* New Rose color for Suppliers */
 
         .card-title { font-size: 1.5rem; font-weight: 600; color: #22c55e; margin-bottom: 1rem; }
         .card-description { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin-bottom: 1rem; flex-grow: 1; }
@@ -105,6 +120,7 @@ include '../process/autoUpdateAnimalClasses.php';
         @media (max-width: 768px) {
             .admin-title { font-size: 2rem; }
             .management-grid { grid-template-columns: 1fr; }
+            body { padding: 0px!important; }
         }
     </style>
 </head>
@@ -123,8 +139,9 @@ include '../process/autoUpdateAnimalClasses.php';
                 <div class="stat-card"><div class="stat-number">1,247</div><div class="stat-desc">Total Animals</div></div>
                 <div class="stat-card"><div class="stat-number">89</div><div class="stat-desc">Buildings</div></div>
                 <div class="stat-card"><div class="stat-number">156</div><div class="stat-desc">Pens</div></div>
-                <div class="stat-card"><div class="stat-number">12</div><div class="stat-desc">Veterinarians</div></div>
-                <div class="stat-card"><div class="stat-number">340</div><div class="stat-desc">Stock Items</div></div>
+                <div class="stat-card"><div class="stat-number"><?= $emp_count ?></div><div class="stat-desc">Employees</div></div>
+                
+                <div class="stat-card"><div class="stat-number"><?= $supplier_count ?></div><div class="stat-desc">Suppliers</div></div>
             </div>
         </div>
 
@@ -138,6 +155,26 @@ include '../process/autoUpdateAnimalClasses.php';
                     <div class="stat-item"><div class="stat-val-small">156</div><div class="stat-lbl-small">Heads</div></div>
                     <div class="stat-item"><div class="stat-val-small">5</div><div class="stat-lbl-small">Treatments</div></div>
                     <div class="card-action">Manage →</div>
+                </div>
+            </a>
+
+            <a href="employees.php" class="management-card">
+                <div class="card-icon employee">👷</div>
+                <h3 class="card-title">Employee List</h3>
+                <p class="card-description">Adding, Removing, Updating, and Viewing of farm staff profiles, roles, and contact information.</p>
+                <div class="card-stats">
+                    <div class="stat-item"><div class="stat-val-small"><?= $emp_count ?></div><div class="stat-lbl-small">Active</div></div>
+                    <div class="card-action">Manage Staff →</div>
+                </div>
+            </a>
+
+            <a href="farm_roles.php" class="management-card">
+                <div class="card-icon role">📋</div>
+                <h3 class="card-title">Farm Roles</h3>
+                <p class="card-description">Define standard job titles, responsibilities, and operational designations for employees.</p>
+                <div class="card-stats">
+                    <div class="stat-item"><div class="stat-val-small"><?= $role_count ?></div><div class="stat-lbl-small">Defined Roles</div></div>
+                    <div class="card-action">Configure Roles →</div>
                 </div>
             </a>
 
@@ -220,11 +257,21 @@ include '../process/autoUpdateAnimalClasses.php';
 
             <a href="buyers.php" class="management-card">
                 <div class="card-icon buyer">🤝</div>
-                <h3 class="card-title">Buyer</h3>
+                <h3 class="card-title">Buyers</h3>
                 <p class="card-description">Adding, Removing, Updating, and Viewing of customer profiles, contact directories, and transactional history.</p>
                 <div class="card-stats">
                     <div class="stat-item"><div class="stat-val-small">150+</div><div class="stat-lbl-small">Clients</div></div>
                     <div class="stat-item"><div class="stat-val-small">Active</div><div class="stat-lbl-small">Status</div></div>
+                    <div class="card-action">Manage →</div>
+                </div>
+            </a>
+
+            <a href="suppliers.php" class="management-card">
+                <div class="card-icon supplier">📦</div>
+                <h3 class="card-title">Suppliers</h3>
+                <p class="card-description">Adding, Removing, Updating, and Viewing of external vendors, feed providers, and corporate or individual partners.</p>
+                <div class="card-stats">
+                    <div class="stat-item"><div class="stat-val-small"><?= $supplier_count ?></div><div class="stat-lbl-small">Active</div></div>
                     <div class="card-action">Manage →</div>
                 </div>
             </a>

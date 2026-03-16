@@ -1,5 +1,5 @@
 <?php
-// config/AutoUpdate.php
+// process/AutoUpdateAnimalClasses.php
 
 // 1. Ensure Session is started
 if (session_status() === PHP_SESSION_NONE) {
@@ -41,8 +41,8 @@ try {
             
             // B. Find Mothers to Update
             // 1. Must have an active child >= Starter Days (The trigger)
-            // 2. Must NOT be 'DRY' already
-            // 3. (NEW FIX) Must NOT have any active children < Starter Days (The safety check for new litters)
+            // 2. CRITICAL FIX: She MUST currently be in the 'BIRTHING' phase. Do not touch her if she is PREGNANT or in SERVICE.
+            // 3. Must NOT have any active children < Starter Days (The safety check for new litters)
             
             $sql_find_sows = "
                 SELECT DISTINCT ar.MOTHER_ID 
@@ -51,13 +51,14 @@ try {
                 WHERE ar.IS_ACTIVE = 1 
                 AND ar.MOTHER_ID IS NOT NULL
                 AND DATEDIFF(NOW(), ar.BIRTH_DATE) >= ? 
-                -- Exclude if already DRY
-                AND m.ANIMAL_ID NOT IN (
+                
+                -- CRITICAL FIX: Only auto-wean sows that are currently marked as 'BIRTHING'
+                AND m.ANIMAL_ID IN (
                     SELECT ANIMAL_ID FROM sow_status_history 
-                    WHERE STATUS_NAME = 'DRY' AND IS_ACTIVE = 1
+                    WHERE STATUS_NAME = 'BIRTHING' AND IS_ACTIVE = 1
                 )
-                -- CRITICAL FIX: Ensure she doesn't have a NEW litter currently nursing
-                -- If she has ANY active piglet younger than the threshold, do not Dry her.
+                
+                -- Ensure she doesn't have a NEW litter currently nursing
                 AND m.ANIMAL_ID NOT IN (
                     SELECT MOTHER_ID 
                     FROM animal_records 

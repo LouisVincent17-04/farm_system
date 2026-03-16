@@ -11,6 +11,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('veterinary_checkups');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- AJAX HANDLER ---
@@ -27,108 +28,108 @@ if (isset($_GET['action'])) {
     
     try {
 
-    // Standard Dropdown Handlers
-    if ($action === 'get_buildings' && isset($_GET['location_id'])) {
-        $stmt = $conn->prepare("SELECT BUILDING_ID, BUILDING_NAME FROM BUILDINGS WHERE LOCATION_ID = ?");
-        $stmt->execute([$_GET['location_id']]);
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-        exit;
-    }
-
-    if ($action === 'get_pens' && isset($_GET['building_id'])) {
-        $stmt = $conn->prepare("SELECT PEN_ID, PEN_NAME FROM PENS WHERE BUILDING_ID = ?");
-        $stmt->execute([$_GET['building_id']]);
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-        exit;
-    }
-
-    if ($action === 'get_animals' && isset($_GET['pen_id'])) {
-        $stmt = $conn->prepare("SELECT ANIMAL_ID, TAG_NO FROM ANIMAL_RECORDS WHERE PEN_ID = ? AND IS_ACTIVE = 1");
-        $stmt->execute([$_GET['pen_id']]);
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-        exit;
-    }
-
-    // --- CHECKUP SPECIFIC HANDLERS ---
-
-    // 1. Get History for Entire Pen
-    if ($action === 'get_pen_history' && isset($_GET['pen_id'])) {
-        $query = "SELECT 
-                    ar.TAG_NO,
-                    c.CHECKUP_DATE, 
-                    c.VET_NAME, 
-                    c.COST, 
-                    c.REMARKS 
-                  FROM CHECK_UPS c
-                  JOIN ANIMAL_RECORDS ar ON c.ANIMAL_ID = ar.ANIMAL_ID
-                  WHERE ar.PEN_ID = ?
-                  ORDER BY c.CHECKUP_DATE DESC";
-        
-        $stmt = $conn->prepare($query);
-        $stmt->execute([$_GET['pen_id']]);
-        
-        $html = "";
-        $total_cost = 0;
-        
-        if ($stmt->rowCount() > 0) {
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $date = date("M d, Y", strtotime($row['CHECKUP_DATE']));
-                $cost = number_format($row['COST'], 2);
-                $total_cost += $row['COST'];
-                
-                $html .= "<tr>
-                            <td><span style='background: rgba(139, 92, 246, 0.2); padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #a78bfa; white-space: nowrap;'>{$row['TAG_NO']}</span></td>
-                            <td style='white-space: nowrap;'>{$date}</td>
-                            <td>{$row['VET_NAME']}</td>
-                            <td style='color: #a78bfa; font-weight: bold; white-space: nowrap;'>₱ {$cost}</td>
-                            <td>{$row['REMARKS']}</td>
-                          </tr>";
-            }
-        } else {
-            $html = "<tr><td colspan='5' style='text-align:center; padding: 2rem;'>No check-up history found for this pen.</td></tr>";
+        // Standard Dropdown Handlers
+        if ($action === 'get_buildings' && isset($_GET['location_id'])) {
+            $stmt = $conn->prepare("SELECT BUILDING_ID, BUILDING_NAME FROM BUILDINGS WHERE LOCATION_ID = ?");
+            $stmt->execute([$_GET['location_id']]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            exit;
         }
 
-        echo json_encode(['html' => $html, 'total' => number_format($total_cost, 2)]);
-        exit;
-    }
-
-    // 2. Get History for Single Animal
-    if ($action === 'get_history' && isset($_GET['animal_id'])) {
-        $query = "SELECT 
-                    c.CHECKUP_DATE, 
-                    c.VET_NAME, 
-                    c.COST, 
-                    c.REMARKS 
-                  FROM CHECK_UPS c
-                  WHERE c.ANIMAL_ID = ?
-                  ORDER BY c.CHECKUP_DATE DESC";
-        
-        $stmt = $conn->prepare($query);
-        $stmt->execute([$_GET['animal_id']]);
-        
-        $html = "";
-        $total_cost = 0;
-        
-        if ($stmt->rowCount() > 0) {
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $date = date("M d, Y", strtotime($row['CHECKUP_DATE']));
-                $cost = number_format($row['COST'], 2);
-                $total_cost += $row['COST'];
-                
-                $html .= "<tr>
-                            <td style='white-space: nowrap;'>{$date}</td>
-                            <td>{$row['VET_NAME']}</td>
-                            <td style='color: #a78bfa; font-weight: bold; white-space: nowrap;'>₱ {$cost}</td>
-                            <td>{$row['REMARKS']}</td>
-                          </tr>";
-            }
-        } else {
-            $html = "<tr><td colspan='4' style='text-align:center; padding: 2rem;'>No check-up history found for this animal.</td></tr>";
+        if ($action === 'get_pens' && isset($_GET['building_id'])) {
+            $stmt = $conn->prepare("SELECT PEN_ID, PEN_NAME FROM PENS WHERE BUILDING_ID = ?");
+            $stmt->execute([$_GET['building_id']]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            exit;
         }
 
-        echo json_encode(['html' => $html, 'total' => number_format($total_cost, 2)]);
-        exit;
-    }
+        if ($action === 'get_animals' && isset($_GET['pen_id'])) {
+            $stmt = $conn->prepare("SELECT ANIMAL_ID, TAG_NO FROM ANIMAL_RECORDS WHERE PEN_ID = ? AND IS_ACTIVE = 1");
+            $stmt->execute([$_GET['pen_id']]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            exit;
+        }
+
+        // --- CHECKUP SPECIFIC HANDLERS ---
+
+        // 1. Get History for Entire Pen
+        if ($action === 'get_pen_history' && isset($_GET['pen_id'])) {
+            $query = "SELECT 
+                        ar.TAG_NO,
+                        c.CHECKUP_DATE, 
+                        c.VET_NAME, 
+                        c.COST, 
+                        c.REMARKS 
+                      FROM CHECK_UPS c
+                      JOIN ANIMAL_RECORDS ar ON c.ANIMAL_ID = ar.ANIMAL_ID
+                      WHERE ar.PEN_ID = ?
+                      ORDER BY c.CHECKUP_DATE DESC";
+            
+            $stmt = $conn->prepare($query);
+            $stmt->execute([$_GET['pen_id']]);
+            
+            $html = "";
+            $total_cost = 0;
+            
+            if ($stmt->rowCount() > 0) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $date = date("M d, Y", strtotime($row['CHECKUP_DATE']));
+                    $cost = number_format($row['COST'], 2);
+                    $total_cost += $row['COST'];
+                    
+                    $html .= "<tr>
+                                <td><span style='background: rgba(139, 92, 246, 0.2); padding: 4px 8px; border-radius: 4px; font-weight: 600; color: #a78bfa; white-space: nowrap;'>{$row['TAG_NO']}</span></td>
+                                <td style='white-space: nowrap;'>{$date}</td>
+                                <td>{$row['VET_NAME']}</td>
+                                <td style='color: #a78bfa; font-weight: bold; white-space: nowrap;'>₱ {$cost}</td>
+                                <td>{$row['REMARKS']}</td>
+                              </tr>";
+                }
+            } else {
+                $html = "<tr><td colspan='5' style='text-align:center; padding: 2rem;'>No check-up history found for this pen.</td></tr>";
+            }
+
+            echo json_encode(['html' => $html, 'total' => number_format($total_cost, 2)]);
+            exit;
+        }
+
+        // 2. Get History for Single Animal
+        if ($action === 'get_history' && isset($_GET['animal_id'])) {
+            $query = "SELECT 
+                        c.CHECKUP_DATE, 
+                        c.VET_NAME, 
+                        c.COST, 
+                        c.REMARKS 
+                      FROM CHECK_UPS c
+                      WHERE c.ANIMAL_ID = ?
+                      ORDER BY c.CHECKUP_DATE DESC";
+            
+            $stmt = $conn->prepare($query);
+            $stmt->execute([$_GET['animal_id']]);
+            
+            $html = "";
+            $total_cost = 0;
+            
+            if ($stmt->rowCount() > 0) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $date = date("M d, Y", strtotime($row['CHECKUP_DATE']));
+                    $cost = number_format($row['COST'], 2);
+                    $total_cost += $row['COST'];
+                    
+                    $html .= "<tr>
+                                <td style='white-space: nowrap;'>{$date}</td>
+                                <td>{$row['VET_NAME']}</td>
+                                <td style='color: #a78bfa; font-weight: bold; white-space: nowrap;'>₱ {$cost}</td>
+                                <td>{$row['REMARKS']}</td>
+                              </tr>";
+                }
+            } else {
+                $html = "<tr><td colspan='4' style='text-align:center; padding: 2rem;'>No check-up history found for this animal.</td></tr>";
+            }
+
+            echo json_encode(['html' => $html, 'total' => number_format($total_cost, 2)]);
+            exit;
+        }
     
     } catch (Exception $e) {
         echo json_encode(['error' => $e->getMessage()]);
@@ -205,7 +206,7 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         .results-section {
             background: rgba(30, 41, 59, 0.4);
             border-radius: 16px;
-            overflow: hidden; /* Important for containing the scroll wrapper */
+            overflow: hidden; 
             display: none;
             animation: fadeIn 0.5s ease;
         }
@@ -215,7 +216,7 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
             background: rgba(139, 92, 246, 0.1);
             border-bottom: 1px solid rgba(139, 92, 246, 0.2);
             display: flex; justify-content: space-between; align-items: center;
-            flex-wrap: wrap; /* Allows stacking on small screens */
+            flex-wrap: wrap; 
             gap: 10px;
         }
 
@@ -229,7 +230,7 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         .data-table { 
             width: 100%; 
             border-collapse: collapse; 
-            min-width: 800px; /* Ensure table is wide enough to scroll */
+            min-width: 800px; 
         }
         
         .data-table th {
@@ -264,6 +265,50 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ========================================= */
+        /* MOBILE SWIPE ANIMATION OVERLAY            */
+        /* ========================================= */
+        .scroll-hint-overlay {
+            position: fixed; /* Fixed to viewport */
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(3px);
+            display: none; /* Controlled by JS */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: #fff;
+            transition: opacity 0.5s ease;
+            pointer-events: none; /* Let clicks pass through */
+        }
+        .scroll-hint-icon {
+            font-size: 4rem;
+            display: inline-block;
+            animation: swipeHand 1.8s infinite ease-in-out;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+        }
+        .scroll-hint-text {
+            margin-top: 1.5rem;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            color: #a78bfa; /* Purple for Checkups Theme */
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(139, 92, 246, 0.4); /* Purple Border */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        @keyframes swipeHand {
+            0% { transform: translateX(40px) rotate(-15deg); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateX(-40px) rotate(-15deg); opacity: 0; }
+        }
+
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
@@ -274,6 +319,11 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
     </style>
 </head>
 <body>
+
+<div class="scroll-hint-overlay" id="mobileScrollHint">
+    <div class="scroll-hint-icon">👆</div>
+    <div class="scroll-hint-text">Swipe left on the table for more info</div>
+</div>
 
 <div class="container">
     
@@ -354,6 +404,40 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
 </div>
 
 <script>
+    // State flag to ensure the animation only plays once per page session
+    let hasShownScrollHint = false;
+
+    function triggerMobileScrollHint() {
+        const scrollHint = document.getElementById('mobileScrollHint');
+        const tableContainer = document.querySelector('.table-scroll-wrapper');
+        
+        // Trigger condition: <= 900px width and hasn't been shown yet
+        if (window.innerWidth <= 900 && !hasShownScrollHint) {
+            scrollHint.style.display = 'flex';
+            hasShownScrollHint = true;
+
+            const dismissHint = () => {
+                scrollHint.style.opacity = '0';
+                setTimeout(() => {
+                    scrollHint.style.display = 'none';
+                }, 500); // Wait for CSS transition
+                
+                // Cleanup listeners
+                tableContainer.removeEventListener('scroll', dismissHint);
+                window.removeEventListener('touchstart', dismissHint);
+                window.removeEventListener('click', dismissHint);
+            };
+
+            // Auto dismiss after 4 seconds
+            setTimeout(dismissHint, 4000);
+
+            // Instant dismiss if user interacts
+            tableContainer.addEventListener('scroll', dismissHint, { once: true });
+            window.addEventListener('touchstart', dismissHint, { once: true });
+            window.addEventListener('click', dismissHint, { once: true });
+        }
+    }
+
     async function fetchData(params) {
         try {
             // Point to THIS file
@@ -441,6 +525,9 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         }
 
         // Load Animals
+        animalSelect.innerHTML = '<option value="">Loading...</option>';
+        animalSelect.disabled = true;
+
         const animals = await fetchData(`action=get_animals&pen_id=${penId}`);
         animalSelect.innerHTML = '<option value="">-- All Animals in Pen --</option>';
         animals.forEach(item => {
@@ -448,9 +535,8 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         });
         animalSelect.disabled = false;
 
-        const penText = penSelect.options[penSelect.selectedIndex].text;
-        tagDisplay.textContent = penText;
-        viewModeBadge.textContent = '📊 Pen View (All Animals)';
+        document.getElementById('selectedTagDisplay').textContent = penSelect.options[penSelect.selectedIndex].text;
+        document.getElementById('viewModeBadge').textContent = '📊 Pen View (All Animals)';
 
         tableHeader.innerHTML = `
             <tr>
@@ -467,6 +553,9 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         tableBody.innerHTML = response.html;
         grandTotal.textContent = response.total;
         resultsArea.style.display = 'block';
+
+        // Trigger mobile swipe animation after table populates
+        triggerMobileScrollHint();
     }
 
     async function loadHistory() {
@@ -484,9 +573,8 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
             return;
         }
 
-        const tagText = animalSelect.options[animalSelect.selectedIndex].text;
-        tagDisplay.textContent = tagText;
-        viewModeBadge.textContent = '🩺 Single Animal View';
+        document.getElementById('selectedTagDisplay').textContent = animalSelect.options[animalSelect.selectedIndex].text;
+        document.getElementById('viewModeBadge').textContent = '🩺 Single Animal View';
 
         tableHeader.innerHTML = `
             <tr>
@@ -502,6 +590,9 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS");
         tableBody.innerHTML = response.html;
         grandTotal.textContent = response.total;
         resultsArea.style.display = 'block';
+
+        // Trigger mobile swipe animation after table populates
+        triggerMobileScrollHint();
     }
 </script>
 

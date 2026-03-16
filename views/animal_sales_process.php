@@ -1,5 +1,8 @@
 <?php
 // views/animal_sales_process.php
+header('Location:unauthorized.php');
+exit();
+
 ob_start(); 
 error_reporting(E_ALL);
 ini_set('display_errors', 0); 
@@ -9,6 +12,7 @@ include '../security/checkAccess.php';
 checkAccess('sell_animals');
 $page = "transactions";
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 // =========================================================
 // 1. AJAX HANDLER (Unchanged)

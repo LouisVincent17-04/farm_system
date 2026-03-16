@@ -4,11 +4,8 @@ session_start();
 error_reporting(0);
 ini_set('display_errors', 0);
 
-include '../config/Database.php';
-include '../security/checkRole.php';
+include '../config/Connection.php';
 
-// Ensure Admin Access (Role 3)
-checkRole(3);
 
 // Get Admin Info for Audit Log
 $admin_id = $_SESSION['user']['USER_ID'];

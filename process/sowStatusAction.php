@@ -17,8 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $service_type = $_POST['service_type'] ?? 'Natural';
     $boar_id = !empty($_POST['boar_id']) ? $_POST['boar_id'] : null;
     
-    // Use provided date or default to NOW
-    $service_date = !empty($_POST['service_date']) ? $_POST['service_date'] : date('Y-m-d H:i:s');
+    // FETCH THE EXPLICIT DATE FROM THE FRONTEND FORMS
+    $raw_action_date = !empty($_POST['action_date']) ? $_POST['action_date'] : date('Y-m-d H:i:s');
+    
+    // Ensure HTML datetime-local "T" separator is replaced with space for MySQL
+    $action_date = str_replace('T', ' ', $raw_action_date);
 
     try {
         $conn->beginTransaction();
@@ -50,17 +53,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$prevStatusRow) throw new Exception("No previous status found to revert to.");
 
-            $stmtClose = $conn->prepare("UPDATE sow_status_history SET IS_ACTIVE = 0, STATUS_END_DATE = NOW() WHERE STATUS_ID = ?");
-            $stmtClose->execute([$currentStatusRow['STATUS_ID']]);
+            // Use action_date as the closing timestamp
+            $stmtClose = $conn->prepare("UPDATE sow_status_history SET IS_ACTIVE = 0, STATUS_END_DATE = ? WHERE STATUS_ID = ?");
+            $stmtClose->execute([$action_date, $currentStatusRow['STATUS_ID']]);
 
-            $stmtCancel = $conn->prepare("UPDATE sow_service_history SET IS_ACTIVE = 0, IS_CANCELLED = 1, SERVICE_END_DATE = NOW() WHERE ANIMAL_ID = ? AND IS_ACTIVE = 1");
-            $stmtCancel->execute([$animal_id]);
+            // Use action_date as the cancelling timestamp
+            $stmtCancel = $conn->prepare("UPDATE sow_service_history SET IS_ACTIVE = 0, IS_CANCELLED = 1, SERVICE_END_DATE = ? WHERE ANIMAL_ID = ? AND IS_ACTIVE = 1");
+            $stmtCancel->execute([$action_date, $animal_id]);
 
             $stmtReactivate = $conn->prepare("UPDATE sow_status_history SET IS_ACTIVE = 1, STATUS_END_DATE = NULL WHERE STATUS_ID = ?");
             $stmtReactivate->execute([$prevStatusRow['STATUS_ID']]);
 
             $audit_action = "SOW_STATUS_UNDO";
-            $audit_details = "Reverted Sow $tag_no from '{$currentStatusRow['STATUS_NAME']}' back to '{$prevStatusRow['STATUS_NAME']}'.";
+            $audit_details = "Reverted Sow $tag_no from '{$currentStatusRow['STATUS_NAME']}' back to '{$prevStatusRow['STATUS_NAME']}' at $action_date.";
 
         } 
         // =========================================================
@@ -89,17 +94,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (empty($new_status)) throw new Exception("Invalid transition.");
 
-            // 1. Close Current Status
+            // 1. Close Current Status with the explicit action_date
             $stmt = $conn->prepare("UPDATE sow_status_history SET IS_ACTIVE = 0, STATUS_END_DATE = ? WHERE ANIMAL_ID = ? AND IS_ACTIVE = 1");
-            $stmt->execute([$service_date, $animal_id]); 
+            $stmt->execute([$action_date, $animal_id]); 
 
-            // 2. Close Current Service Record (if any)
+            // 2. Close Current Service Record (if any) with the explicit action_date
             $stmtServ = $conn->prepare("UPDATE sow_service_history SET IS_ACTIVE = 0, SERVICE_END_DATE = ? WHERE ANIMAL_ID = ? AND IS_ACTIVE = 1");
-            $stmtServ->execute([$service_date, $animal_id]);
+            $stmtServ->execute([$action_date, $animal_id]);
 
-            // 3. Insert New Status
+            // 3. Insert New Status using the explicit action_date
             $stmtNew = $conn->prepare("INSERT INTO sow_status_history (ANIMAL_ID, STATUS_NAME, STATUS_START_DATE, IS_ACTIVE, CREATED_BY) VALUES (?, ?, ?, 1, ?)");
-            $stmtNew->execute([$animal_id, $new_status, $service_date, $user_id]);
+            $stmtNew->execute([$animal_id, $new_status, $action_date, $user_id]);
 
             // 4. IF NEW STATUS IS A SERVICE, RECORD DETAILS
             if (strpos($new_status, 'SERVICE') !== false) {
@@ -110,11 +115,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (ANIMAL_ID, SERVICE_NUMBER, SERVICE_TYPE, BOAR_ID, SERVICE_START_DATE, IS_ACTIVE, CREATED_BY) 
                     VALUES (?, ?, ?, ?, ?, 1, ?)
                 ");
-                $stmtServNew->execute([$animal_id, $service_num, $service_type, $boar_id, $service_date, $user_id]);
+                $stmtServNew->execute([$animal_id, $service_num, $service_type, $boar_id, $action_date, $user_id]);
             }
 
             $audit_action = "SOW_STATUS_CHANGE";
-            $audit_details = "Updated Sow $tag_no status: '$current_status' -> '$new_status'. Action: $action_type";
+            $audit_details = "Updated Sow $tag_no status: '$current_status' -> '$new_status' on $action_date. Action: $action_type";
         }
 
         // --- INSERT AUDIT LOG ---
@@ -131,7 +136,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $loc_id = $_GET['location_id'] ?? '';
         $bld_id = $_GET['building_id'] ?? '';
 
-        // Note: Using ../views/animal_sow_status.php to ensure it goes back to the UI
         header("Location: ../views/animal_sow_status.php?animal_id=$animal_id&location_id=$loc_id&building_id=$bld_id");
         exit;
 

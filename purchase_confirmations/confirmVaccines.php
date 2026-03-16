@@ -26,8 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $conn->beginTransaction();
 
         // 1. Validate item exists & fetch Data
-        // UPDATED: Added i.EXPIRATION_DATE
-        $check_sql = "SELECT ITEM_NAME, UNIT_ID, QUANTITY, ITEM_NET_WEIGHT, TOTAL_COST, EXPIRATION_DATE 
+        $check_sql = "SELECT ITEM_NAME, UNIT_ID, QUANTITY, ITEM_NET_WEIGHT, TOTAL_COST, EXPIRATION_DATE, LOCATION_ID 
                       FROM ITEMS 
                       WHERE ITEM_ID = :id AND ITEM_TYPE_ID = :type_id AND STATUS = 0 FOR UPDATE";
         $check_stmt = $conn->prepare($check_sql);
@@ -45,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         $item_name = $item_row['ITEM_NAME'];
         $unit_id = $item_row['UNIT_ID'];
+        $location_id = $item_row['LOCATION_ID'];
         $total_cost = $item_row['TOTAL_COST'] ?? 0;
         
         // Handle Expiration: Use specific date or default to +12 months if NULL
@@ -57,24 +57,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $stock_to_add = $item_row['QUANTITY'] * ($item_row['ITEM_NET_WEIGHT'] ?: 1);
 
         // 2. SYNC INTO VACCINES (Inventory Logic)
-        // UPDATED: Check for matching Name, Unit, AND Expiration Date
-        // We do this manually via SELECT then UPDATE/INSERT to manage distinct expiry batches
+        // UPDATED FIX: Using MySQL NULL-safe equal operator <=>
         $inv_sql = "SELECT SUPPLY_ID FROM VACCINES 
                     WHERE SUPPLY_NAME = :name 
                     AND UNIT_ID = :unit 
                     AND EXPIRATION_DATE = :expiry 
+                    AND LOCATION_ID <=> :location
                     FOR UPDATE";
         
         $inv_stmt = $conn->prepare($inv_sql);
         $inv_stmt->execute([
             ':name' => $item_name,
             ':unit' => $unit_id,
-            ':expiry' => $expiration_date
+            ':expiry' => $expiration_date,
+            ':location' => $location_id
         ]);
         $existing_inv = $inv_stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existing_inv) {
-            // UPDATE existing inventory (Same Batch)
+            // UPDATE existing inventory (Same Batch & Location)
             $update_inv = "UPDATE VACCINES 
                            SET TOTAL_STOCK = TOTAL_STOCK + :qty, 
                                TOTAL_COST = TOTAL_COST + :cost,
@@ -87,17 +88,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
                 ':id' => $existing_inv['SUPPLY_ID']
             ]);
         } else {
-            // INSERT new inventory (New Batch/Expiry)
-            // UPDATED: Added EXPIRATION_DATE to INSERT
-            $insert_inv = "INSERT INTO VACCINES (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, EXPIRATION_DATE, DATE_CREATED, DATE_UPDATED) 
-                           VALUES (:name, :qty, :cost, :unit, :expiry, NOW(), NOW())";
+            // INSERT new inventory (New Batch/Expiry or Location)
+            $insert_inv = "INSERT INTO VACCINES (SUPPLY_NAME, TOTAL_STOCK, TOTAL_COST, UNIT_ID, EXPIRATION_DATE, LOCATION_ID, DATE_CREATED, DATE_UPDATED) 
+                           VALUES (:name, :qty, :cost, :unit, :expiry, :location, NOW(), NOW())";
             $ins_stmt = $conn->prepare($insert_inv);
             $ins_stmt->execute([
                 ':name' => $item_name,
                 ':qty' => $stock_to_add,
                 ':cost' => $total_cost,
                 ':unit' => $unit_id,
-                ':expiry' => $expiration_date
+                ':expiry' => $expiration_date,
+                ':location' => $location_id
             ]);
         }
 
@@ -107,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $update_stmt->execute([':id' => $item_id]);
             
         // --- 4. AUDIT LOGGING ---
-        $logDetails = "Confirmed Vaccine Purchase (ID: $item_id): $item_name. Added Stock: $stock_to_add. Expiry: $expiration_date. Value: $total_cost";
+        $logDetails = "Confirmed Vaccine Purchase (ID: $item_id): $item_name. Added Stock: $stock_to_add. Expiry: $expiration_date. Value: $total_cost. Location ID: " . ($location_id ?: 'None');
 
         $log_sql = "INSERT INTO AUDIT_LOGS 
                     (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 

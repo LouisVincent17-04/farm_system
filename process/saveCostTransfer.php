@@ -6,15 +6,19 @@ header('Content-Type: application/json');
 
 function getFloat($val) { return floatval($val ?: 0); }
 
-// --- HELPER: Get Total Variable Costs (SINGLE SOURCE OF TRUTH) ---
-function getVariableCosts($conn, $animal_id) {
+// --- HELPER: Get Total Costs (Base + Ops) ---
+function getTotalTransferableCosts($conn, $animal_id) {
     if (!$animal_id) return 0.00;
 
-    $stmt = $conn->prepare("SELECT LAST_COST_RESET_DATE FROM animal_records WHERE ANIMAL_ID = ?");
+    // 1. Get Base Cost and Reset Date
+    $stmt = $conn->prepare("SELECT LAST_COST_RESET_DATE, ACQUISITION_COST FROM animal_records WHERE ANIMAL_ID = ?");
     $stmt->execute([$animal_id]);
-    $resetDate = $stmt->fetchColumn(); 
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $resetDate = $row['LAST_COST_RESET_DATE'];
+    $baseCost = getFloat($row['ACQUISITION_COST']);
 
-    // Query ONLY the operational_cost table
+    // 2. Query ONLY the operational_cost table
     $sql = "SELECT COALESCE(SUM(operation_cost), 0) FROM operational_cost WHERE animal_id = ?";
     $params = [$animal_id];
 
@@ -25,7 +29,10 @@ function getVariableCosts($conn, $animal_id) {
 
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
-    return getFloat($stmt->fetchColumn());
+    $variableCost = getFloat($stmt->fetchColumn());
+    
+    // Return combined total
+    return $baseCost + $variableCost;
 }
 
 // --- MAIN PROCESS ---
@@ -34,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // --- AUDIT LOG CONTEXT ---
-$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; 
 $username = $_SESSION['user']['FULL_NAME'] ?? 'System';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
@@ -46,16 +53,16 @@ try {
     $input_sow_cost = getFloat($_POST['sow_cost']);
     $input_boar_cost = getFloat($_POST['boar_cost']);
 
-    // 1. Calculate Available Variable Costs
-    $avail_sow_variable = getVariableCosts($conn, $sow_id);
-    $avail_boar_variable = getVariableCosts($conn, $boar_id);
+    // 1. Calculate Available Total Costs
+    $avail_sow_total = getTotalTransferableCosts($conn, $sow_id);
+    $avail_boar_total = getTotalTransferableCosts($conn, $boar_id);
 
     // 2. Strict Check (With tolerance)
-    if ($input_sow_cost > ($avail_sow_variable + 0.01)) {
-       throw new Exception("STRICT ERROR: Sow Transfer (₱$input_sow_cost) exceeds available operational costs (₱$avail_sow_variable).");
+    if ($input_sow_cost > ($avail_sow_total + 0.01)) {
+       throw new Exception("STRICT ERROR: Sow Transfer (₱$input_sow_cost) exceeds available total costs (₱$avail_sow_total).");
     }
-    if ($input_boar_cost > ($avail_boar_variable + 0.01)) {
-       throw new Exception("STRICT ERROR: Boar Transfer (₱$input_boar_cost) exceeds available operational costs (₱$avail_boar_variable).");
+    if ($input_boar_cost > ($avail_boar_total + 0.01)) {
+       throw new Exception("STRICT ERROR: Boar Transfer (₱$input_boar_cost) exceeds available total costs (₱$avail_boar_total).");
     }
 
     $total_amount = $input_sow_cost + $input_boar_cost;
@@ -71,7 +78,7 @@ try {
     // A. Log Transfer (Historical Record)
     $logStmt = $conn->prepare("INSERT INTO cost_transfers (SOW_ID, BOAR_ID, SOW_COST, BOAR_COST, TOTAL_AMOUNT, PIGLET_COUNT, COST_PER_HEAD, CREATED_BY) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     $logStmt->execute([$sow_id, $boar_id, $input_sow_cost, $input_boar_cost, $total_amount, $count, $cost_per_head, $user_id]);
-    $transfer_id = $conn->lastInsertId(); // Get ID for reference
+    $transfer_id = $conn->lastInsertId();
 
     // B. Distribute to Piglets
     $updateStmt = $conn->prepare("UPDATE animal_records SET ACQUISITION_COST = ACQUISITION_COST + ? WHERE ANIMAL_ID = ?");
@@ -84,18 +91,18 @@ try {
     // --------------------------------------------------------
     $opStmt = $conn->prepare("INSERT INTO operational_cost (animal_id, operation_cost, description, datetime_created) VALUES (?, ?, ?, NOW())");
     
-    $ref = "Ref: TRF-" . $transfer_id; // Unique reference
+    $ref = "Ref: TRF-" . $transfer_id;
 
     // Deduct from Sow
     if ($input_sow_cost > 0) {
-        $neg_sow = $input_sow_cost * -1; // Convert to negative
+        $neg_sow = $input_sow_cost * -1;
         $desc_sow = "Transfer: Cost to Piglets ($ref)";
         $opStmt->execute([$sow_id, $neg_sow, $desc_sow]);
     }
 
     // Deduct from Boar
     if ($input_boar_cost > 0) {
-        $neg_boar = $input_boar_cost * -1; // Convert to negative
+        $neg_boar = $input_boar_cost * -1;
         $desc_boar = "Transfer: Cost to Piglets ($ref)";
         $opStmt->execute([$boar_id, $neg_boar, $desc_boar]);
     }

@@ -8,6 +8,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('vaccine_report');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- 1. GET FILTER INPUTS ---
@@ -20,15 +21,13 @@ try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 2. BUILD SQL QUERY ---
-    // Using the 'vaccines' table structure provided
-    // Left joining 'units' table to get UNIT_NAME (assuming standard normalization)
     $sql = "SELECT 
             v.SUPPLY_ID,
             v.SUPPLY_NAME,
             v.TOTAL_STOCK,
             v.TOTAL_COST,
-            v.DATE_CREATED,
-            DATE_FORMAT(v.DATE_UPDATED, '%Y-%m-%d %H:%i') as DATE_UPDATED,
+            DATE_FORMAT(v.DATE_CREATED, '%m/%d/%Y') as DATE_CREATED_FMT,
+            DATE_FORMAT(v.DATE_UPDATED, '%m/%d/%Y %h:%i %p') as DATE_UPDATED_FMT,
             v.UNIT_ID,
             u.UNIT_NAME
         FROM vaccines v
@@ -118,6 +117,10 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vaccine Inventory Report</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -192,9 +195,9 @@ try {
         .form-input { 
             width: 100%; padding: 10px; background: #0f172a; 
             border: 1px solid #334155; color: white; border-radius: 8px; 
-            font-size: 0.9rem; box-sizing: border-box; 
+            font-size: 0.9rem; box-sizing: border-box; outline: none;
         }
-        .form-input:focus { border-color: #38bdf8; outline: none; }
+        .form-input:focus { border-color: #38bdf8; }
 
         /* Buttons */
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -214,10 +217,19 @@ try {
         .btn-primary { background: #0ea5e9; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
         
-        /* Export Buttons (Updated Colors & Icons) */
+        /* Export Buttons */
         .btn-pdf { background: #3b82f6; color: white; } /* Blue */
         .btn-excel { background: #10b981; color: white; } /* Green */
         .btn-csv { background: #f59e0b; color: #1e293b; } /* Orange */
+
+        .btn-view-ledger {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; background: rgba(14, 165, 233, 0.15); 
+            border: 1px solid rgba(14, 165, 233, 0.4); color: #38bdf8;
+            border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            text-decoration: none; transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-view-ledger:hover { background: rgba(14, 165, 233, 0.3); color: #fff; transform: translateY(-1px); border-color: #0ea5e9; }
 
         /* --- TABLE --- */
         .table-wrap { 
@@ -234,7 +246,7 @@ try {
             text-transform: uppercase; border-bottom: 1px solid #334155; 
             white-space: nowrap; 
         }
-        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: #e2e8f0; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: #e2e8f0; vertical-align: middle; }
         tr:last-child td { border-bottom: none; }
         tr:hover { background: rgba(255,255,255,0.02); }
 
@@ -253,6 +265,7 @@ try {
             .stat-val { font-size: 1.5rem; margin: 0; order: 2; }
             .stat-lbl { order: 1; }
             .filter-grid { grid-template-columns: 1fr; }
+            .date-flex-mobile { flex-direction: column; gap: 10px; }
             .btn { flex: 1; justify-content: center; }
             .action-bar { flex-direction: column; }
             .action-bar .btn { width: 100%; }
@@ -270,7 +283,7 @@ try {
 
     <div class="header">
         <h1 class="title">Vaccine Inventory Report</h1>
-        <p class="subtitle">Monitor vaccine supplies, stock levels, and costs.</p>
+        <p class="subtitle">Monitor vaccine supplies, stock levels, and individual history ledgers.</p>
     </div>
 
     <div class="stats-grid">
@@ -297,9 +310,9 @@ try {
             <div class="filter-grid">
                 <div class="form-group">
                     <label>Last Updated Range</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="date" name="date_from" class="form-input" value="<?= htmlspecialchars($date_from) ?>">
-                        <input type="date" name="date_to" class="form-input" value="<?= htmlspecialchars($date_to) ?>">
+                    <div class="date-flex-mobile" style="display: flex; gap: 5px;">
+                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
                     </div>
                 </div>
                 
@@ -348,11 +361,12 @@ try {
                     <th style="text-align:right;">Avg Cost/Unit</th>
                     <th>Last Updated</th>
                     <th>Status</th>
+                    <th style="text-align:center;">History</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if(empty($vaccines)): ?>
-                    <tr><td colspan="6" style="text-align:center; padding:3rem; color:#64748b;">No vaccine records found.</td></tr>
+                    <tr><td colspan="7" style="text-align:center; padding:3rem; color:#64748b;">No vaccine records found.</td></tr>
                 <?php else: ?>
                     <?php foreach($vaccines as $v): 
                         $badgeClass = 'b-good';
@@ -371,8 +385,13 @@ try {
                         </td>
                         <td style="text-align:right; color:#38bdf8;">₱<?= number_format($v['TOTAL_COST'], 2) ?></td>
                         <td style="text-align:right; color:#64748b;">₱<?= number_format($v['AVG_COST'], 2) ?></td>
-                        <td style="font-size:0.85rem; color:#94a3b8;"><?= $v['DATE_UPDATED'] ?></td>
+                        <td style="font-size:0.85rem; color:#94a3b8;"><?= $v['DATE_UPDATED_FMT'] ?></td>
                         <td><span class="badge <?= $badgeClass ?>"><?= $v['STATUS_LABEL'] ?></span></td>
+                        <td style="text-align:center;">
+                            <a href="viewVaccinesLedger.php?id=<?= $v['SUPPLY_ID']."&curr_page=vac_rep" ?>" class="btn-view-ledger">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Ledger
+                            </a>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -382,6 +401,16 @@ try {
 </div>
 
 <script>
+    // Initialize Flatpickr for Date Inputs
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", // Value submitted to PHP
+            altInput: true,      // Visual input
+            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            allowInput: true
+        });
+    });
+
     const jsPDF = window.jspdf.jsPDF;
     const records = <?php echo json_encode($vaccines); ?>;
     const stats = {
@@ -399,8 +428,9 @@ try {
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const dateStr = new Date().toLocaleString();
-        doc.text(`Generated: ${dateStr}`, 14, 22);
+        let now = new Date();
+        let formattedNow = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
+        doc.text(`Generated: ${formattedNow}`, 14, 22);
         doc.text(`Total Value: PHP ${stats.totalValue} | Total Stock: ${stats.totalStock}`, 14, 28);
 
         const rows = records.map(r => [
@@ -408,7 +438,7 @@ try {
             r.TOTAL_STOCK + ' ' + (r.UNIT_NAME || 'Units'),
             parseFloat(r.TOTAL_COST).toFixed(2),
             parseFloat(r.AVG_COST).toFixed(2),
-            r.DATE_UPDATED,
+            r.DATE_UPDATED_FMT,
             r.STATUS_LABEL
         ]);
 
@@ -431,7 +461,7 @@ try {
             'Unit': r.UNIT_NAME || 'Units',
             'Total Cost': parseFloat(r.TOTAL_COST),
             'Avg Cost': parseFloat(r.AVG_COST),
-            'Last Updated': r.DATE_UPDATED,
+            'Last Updated': r.DATE_UPDATED_FMT,
             'Status': r.STATUS_LABEL
         }));
 
@@ -449,7 +479,7 @@ try {
         records.forEach(r => {
             const row = [
                 r.SUPPLY_NAME, r.TOTAL_STOCK, r.UNIT_NAME || 'Units', 
-                r.TOTAL_COST, r.AVG_COST, r.DATE_UPDATED, r.STATUS_LABEL
+                r.TOTAL_COST, r.AVG_COST, r.DATE_UPDATED_FMT, r.STATUS_LABEL
             ].map(e => `"${e || ''}"`).join(","); 
             csvContent += row + "\n";
         });

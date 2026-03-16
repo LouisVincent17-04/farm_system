@@ -6,6 +6,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('animal_record');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- 1. HANDLE FILTERS ---

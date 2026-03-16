@@ -8,6 +8,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('audit_log_report');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- 1. CONFIGURATION & INPUTS ---
@@ -62,7 +63,7 @@ try {
     // --- 4. FETCH DATA (With Limit & Offset) ---
     $sql = "SELECT 
             LOG_ID, USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS,
-            DATE_FORMAT(LOG_DATE, '%Y-%m-%d %H:%i:%s') as LOG_DATE
+            DATE_FORMAT(LOG_DATE, '%m/%d/%Y %h:%i %p') as LOG_DATE_FMT
         FROM audit_logs
         $where_sql
         ORDER BY LOG_DATE DESC
@@ -78,12 +79,7 @@ try {
     $stmt->execute();
     $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- 5. STATS (For Summary Cards - Optional: Optimized to Count only current page or separate query) ---
-    // For performance on millions of rows, we usually don't calculate "Total Deletions ever" on every page load.
-    // We will just show the count of the *current view* or rely on the filtered total.
-    
-    // --- 6. DROPDOWNS (Cached or Distinct) ---
-    // Ideally, these should be cached, but for now we query distinct.
+    // --- 5. DROPDOWNS (Cached or Distinct) ---
     $users_list = $conn->query("SELECT DISTINCT USERNAME FROM audit_logs WHERE USERNAME IS NOT NULL ORDER BY USERNAME")->fetchAll(PDO::FETCH_COLUMN);
     $actions_list = $conn->query("SELECT DISTINCT ACTION_TYPE FROM audit_logs ORDER BY ACTION_TYPE")->fetchAll(PDO::FETCH_COLUMN);
 
@@ -106,13 +102,16 @@ function getQueryUrl($newPage, $currentParams) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>System Audit Logs</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
-        /* SAME STYLES AS BEFORE + PAGINATION CSS */
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; margin: 0; padding-bottom: 40px; }
         .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
         
@@ -138,8 +137,8 @@ function getQueryUrl($newPage, $currentParams) {
         .filter-box { background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; }
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end; }
         .form-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase; }
-        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; }
-        .form-input:focus { border-color: #94a3b8; outline: none; }
+        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; outline: none; }
+        .form-input:focus { border-color: #94a3b8; }
 
         /* Buttons */
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -148,10 +147,10 @@ function getQueryUrl($newPage, $currentParams) {
         .btn-primary { background: #475569; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
         
-        /* Export Buttons (Updated Colors & Icons) */
-        .btn-pdf { background: #3b82f6; color: white; } /* Blue */
-        .btn-excel { background: #10b981; color: white; } /* Green */
-        .btn-csv { background: #f59e0b; color: white; } /* Orange */
+        /* Export Buttons */
+        .btn-pdf { background: #3b82f6; color: white; } 
+        .btn-excel { background: #10b981; color: white; } 
+        .btn-csv { background: #f59e0b; color: white; } 
 
         /* Table */
         .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; margin-bottom: 1.5rem;}
@@ -181,8 +180,9 @@ function getQueryUrl($newPage, $currentParams) {
         @media (max-width: 768px) {
             .stats-grid { grid-template-columns: 1fr 1fr; }
             .filter-grid { grid-template-columns: 1fr; }
+            .date-flex-mobile { flex-direction: column; gap: 10px; }
             .action-bar { flex-direction: column; }
-            .action-bar .btn { width: 100%; }
+            .action-bar .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
@@ -216,9 +216,9 @@ function getQueryUrl($newPage, $currentParams) {
             <div class="filter-grid">
                 <div class="form-group">
                     <label>Log Date Range</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="date" name="date_from" class="form-input" value="<?= htmlspecialchars($date_from) ?>">
-                        <input type="date" name="date_to" class="form-input" value="<?= htmlspecialchars($date_to) ?>">
+                    <div class="date-flex-mobile" style="display: flex; gap: 5px;">
+                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
                     </div>
                 </div>
                 
@@ -294,7 +294,7 @@ function getQueryUrl($newPage, $currentParams) {
                     ?>
                     <tr>
                         <td style="color:#64748b; font-family:monospace;"><?= $log['LOG_ID'] ?></td>
-                        <td style="white-space:nowrap;"><?= $log['LOG_DATE'] ?></td>
+                        <td style="white-space:nowrap;"><?= $log['LOG_DATE_FMT'] ?></td>
                         <td style="font-weight:bold; color:#fff;">
                             <?= htmlspecialchars($log['USERNAME'] ?? 'System/Guest') ?>
                             <div style="font-weight:normal; font-size:0.75rem; color:#64748b;">ID: <?= $log['USER_ID'] ?? '-' ?></div>
@@ -330,6 +330,16 @@ function getQueryUrl($newPage, $currentParams) {
 </div>
 
 <script>
+    // Initialize Flatpickr for Date Inputs
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", // Value submitted to PHP
+            altInput: true,      // Visual input
+            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            allowInput: true
+        });
+    });
+
     const jsPDF = window.jspdf.jsPDF;
     // Only current page data for client-side export
     const records = <?php echo json_encode($logs); ?>;
@@ -344,12 +354,13 @@ function getQueryUrl($newPage, $currentParams) {
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const dateStr = new Date().toLocaleString();
-        doc.text(`Generated: ${dateStr}`, 14, 22);
+        let now = new Date();
+        let formattedNow = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
+        doc.text(`Generated: ${formattedNow}`, 14, 22);
 
         const rows = records.map(r => [
             r.LOG_ID,
-            r.LOG_DATE,
+            r.LOG_DATE_FMT,
             r.USERNAME || 'Guest',
             r.ACTION_TYPE,
             r.TABLE_NAME,
@@ -373,7 +384,7 @@ function getQueryUrl($newPage, $currentParams) {
     function exportExcel() {
         const excelData = records.map(r => ({
             'Log ID': r.LOG_ID,
-            'Date': r.LOG_DATE,
+            'Date': r.LOG_DATE_FMT,
             'User ID': r.USER_ID,
             'Username': r.USERNAME,
             'Action Type': r.ACTION_TYPE,
@@ -385,7 +396,7 @@ function getQueryUrl($newPage, $currentParams) {
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Audit Logs");
-        XLSX.writeFile(wb, "Audit_Log_Page_<?= $page_num ?>.xlsx");
+        XLSX.writeFile(wb, "Audit_Log_Page_<?= $page_num ?>_" + new Date().toISOString().slice(0,10) + ".xlsx");
     }
 
     // --- CSV Export ---
@@ -395,7 +406,7 @@ function getQueryUrl($newPage, $currentParams) {
         
         records.forEach(r => {
             const row = [
-                r.LOG_ID, r.LOG_DATE, r.USERNAME, r.ACTION_TYPE, 
+                r.LOG_ID, r.LOG_DATE_FMT, r.USERNAME, r.ACTION_TYPE, 
                 r.TABLE_NAME, r.ACTION_DETAILS, r.IP_ADDRESS
             ].map(e => `"${(e || '').toString().replace(/"/g, '""')}"`).join(","); 
             csvContent += row + "\n";
@@ -404,7 +415,7 @@ function getQueryUrl($newPage, $currentParams) {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "Audit_Log_Page_<?= $page_num ?>.csv");
+        link.setAttribute("download", "Audit_Log_Page_<?= $page_num ?>_" + new Date().toISOString().slice(0,10) + ".csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

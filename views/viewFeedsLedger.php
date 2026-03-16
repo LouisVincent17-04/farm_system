@@ -1,83 +1,121 @@
 <?php
-// views/viewFeedLedger.php
-error_reporting(E_ALL);
+// reports/viewFeedLedger.php
+error_reporting(0);
 ini_set('display_errors', 0);
-include '../config/Connection.php';
 
-include '../security/checkAccess.php';
-checkAccess('feeding');
-$page = "transactions";
-include '../common/navbar.php';
+$redirect_url= "";
 
+$feed_id = $_GET['id'] ?? 0;
+$back_button_text = "Back to Feed Report";
+$page = "reports";
 
-$feed_id = $_GET['feed_id'] ?? null;
-
-if (!$feed_id) {
-    header("Location: available_feeds.php");
-    exit;
+if($feed_id != 0) {
+    $redirect_url = "feeds_report.php";
+} else {
+    $feed_id = $_GET['feed_id'] ?? 0;
+    $redirect_url = "available_feeds.php";
+    $back_button_text = "Back to Feed Availability";
+    $page = "transactions";
 }
 
-// --- FILTERS ---
-$limit_val  = $_GET['limit'] ?? 10;
-$limit_sql  = ($limit_val === 'all') ? "" : "LIMIT " . intval($limit_val);
-
-$search_term = $_GET['search'] ?? '';
-$start_date  = $_GET['start_date'] ?? '';
-$end_date    = $_GET['end_date'] ?? '';
+include '../config/Connection.php';
+include '../security/checkAccess.php';
+checkAccess('feeds_feeding_supplies_report');
+include '../common/navbar.php';
+include '../common/chat_support.php';
 
 try {
-    // 1. Fetch Feed Info
-    $stmt = $conn->prepare("
-        SELECT f.*, l.LOCATION_NAME 
-        FROM FEEDS f 
-        LEFT JOIN LOCATIONS l ON f.LOCATION_ID = l.LOCATION_ID 
-        WHERE f.FEED_ID = ?
-    ");
+    if (!$feed_id) throw new Exception("No Feed ID provided.");
+
+    // 1. Get Feed Details
+    $stmt = $conn->prepare("SELECT * FROM feeds WHERE FEED_ID = ?");
     $stmt->execute([$feed_id]);
     $feed = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$feed) throw new Exception("Feed ID not found.");
+    if (!$feed) throw new Exception("Feed not found.");
 
-    // 2. Build Query with Filters
-    $conditions = ["ft.FEED_ID = ?"];
-    $params = [$feed_id];
+    // 2. Build Combined Ledger
+    $ledger = [];
 
-    if (!empty($search_term)) {
-        $conditions[] = "(ft.REMARKS LIKE ? OR ft.BATCH_ID LIKE ? OR a.TAG_NO LIKE ?)";
-        $term = "%$search_term%";
-        $params[] = $term; $params[] = $term; $params[] = $term;
-    }
-
-    if (!empty($start_date)) {
-        $conditions[] = "DATE(ft.TRANSACTION_DATE) >= ?";
-        $params[] = $start_date;
-    }
-
-    if (!empty($end_date)) {
-        $conditions[] = "DATE(ft.TRANSACTION_DATE) <= ?";
-        $params[] = $end_date;
-    }
-
-    $whereClause = implode(" AND ", $conditions);
-
-    $histSql = "
+    // --- A. Fetch Feedings (Usage) ---
+    $f_stmt = $conn->prepare("
         SELECT 
-            ft.TRANSACTION_DATE, 
-            ft.QUANTITY_KG, 
-            ft.TRANSACTION_COST,
-            ft.REMARKS,
-            ft.BATCH_ID,
-            a.TAG_NO
-        FROM FEED_TRANSACTIONS ft
-        LEFT JOIN ANIMAL_RECORDS a ON ft.ANIMAL_ID = a.ANIMAL_ID
-        WHERE $whereClause
-        ORDER BY ft.TRANSACTION_DATE DESC
-        $limit_sql
-    ";
+            ft.TRANSACTION_DATE AS raw_date,
+            DATE_FORMAT(ft.TRANSACTION_DATE, '%m/%d/%Y %h:%i %p') AS txn_date_fmt,
+            'Feeding Usage' AS txn_type,
+            'Deduct' AS effect,
+            ft.QUANTITY_KG AS qty,
+            CONCAT('Fed to: ', COALESCE(ar.TAG_NO, 'Group/Herd')) AS remarks
+        FROM feed_transactions ft
+        LEFT JOIN animal_records ar ON ft.ANIMAL_ID = ar.ANIMAL_ID
+        WHERE ft.FEED_ID = ?
+    ");
+    $f_stmt->execute([$feed_id]);
+    $feedings = $f_stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $stmt = $conn->prepare($histSql);
-    $stmt->execute($params);
-    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // --- B. Fetch Adjustments (Manual updates, audits, etc.) ---
+    $a_stmt = $conn->prepare("
+        SELECT 
+            TRANSACTION_DATE AS raw_date,
+            DATE_FORMAT(TRANSACTION_DATE, '%m/%d/%Y %h:%i %p') AS txn_date_fmt,
+            CONCAT('Adjustment (', INPUT_MODE, ')') AS txn_type,
+            ADJUSTMENT_TYPE AS effect, 
+            QUANTITY AS qty,
+            CONCAT(REASON, IF(REMARKS != '', CONCAT(' - ', REMARKS), '')) AS remarks
+        FROM inventory_adjustments
+        WHERE CATEGORY = 'feed' AND REF_ID = ?
+    ");
+    $a_stmt->execute([$feed_id]);
+    $adjustments = $a_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // --- C. Fetch Confirmed Purchases (Additions) ---
+    // Matches the confirmed items by name to calculate total KG purchased
+    // Also fetches the expiration date for each specific batch
+    $p_stmt = $conn->prepare("
+        SELECT 
+            CREATED_AT AS raw_date,
+            DATE_FORMAT(DATE_OF_PURCHASE, '%m/%d/%Y') AS txn_date_fmt,
+            'Purchase' AS txn_type,
+            'Add' AS effect,
+            (QUANTITY * COALESCE(ITEM_NET_WEIGHT, 1)) AS qty,
+            CONCAT(
+                'Supplier: ', COALESCE(SUPPLIER, 'N/A'), 
+                ' | Ref: ', COALESCE(REFERENCE_NO, 'N/A'),
+                IF(EXPIRATION_DATE IS NOT NULL AND EXPIRATION_DATE != '0000-00-00', CONCAT(' | Exp: ', DATE_FORMAT(EXPIRATION_DATE, '%m/%d/%Y')), '')
+            ) AS remarks
+        FROM items
+        WHERE ITEM_NAME = ? AND STATUS = 1
+    ");
+    $p_stmt->execute([$feed['FEED_NAME']]);
+    $purchases = $p_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Merge everything into a single ledger timeline
+    $ledger = array_merge($feedings, $adjustments, $purchases);
+
+    // 3. Sort Ledger by Date (Newest First)
+    usort($ledger, function($a, $b) {
+        return strtotime($b['raw_date']) - strtotime($a['raw_date']);
+    });
+
+    // 4. Calculate Summaries
+    $total_purchased = 0;
+    $total_used = 0;
+    $net_adjustments = 0;
+
+    foreach($ledger as $l) {
+        if ($l['txn_type'] === 'Purchase') {
+            $total_purchased += $l['qty'];
+        } elseif ($l['txn_type'] === 'Feeding Usage') {
+            $total_used += $l['qty'];
+        } else {
+            // Adjustments
+            if (strtolower($l['effect']) === 'add') {
+                $net_adjustments += $l['qty'];
+            } else {
+                $net_adjustments -= $l['qty'];
+            }
+        }
+    }
 
 } catch (Exception $e) {
     $error = $e->getMessage();
@@ -88,187 +126,167 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Feed Ledger - <?php echo htmlspecialchars($feed['FEED_NAME'] ?? 'Error'); ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed Ledger - <?= htmlspecialchars($feed['FEED_NAME'] ?? 'Error') ?></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
-        /* Shared Styles */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh; color: #e2e8f0;
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; margin: 0; padding-bottom: 40px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        
+        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s; }
+        .back-link:hover { color: white; }
 
-        /* Header */
-        .info-card {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid #475569;
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
+        .feed-header-wrapper { margin-bottom: 2rem; }
+        .feed-title { font-size: 2.2rem; font-weight: 800; color: #f59e0b; margin: 0 0 5px 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .feed-subtitle { color: #94a3b8; margin: 0; font-size: 1rem; }
+        
+        .exp-badge {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.15);
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: inline-flex;
             align-items: center;
-            backdrop-filter: blur(12px);
+            gap: 6px;
         }
-        .info-title h1 { font-size: 2rem; font-weight: 800; color: white; margin-bottom: 5px; }
-        .info-meta { color: #94a3b8; font-size: 0.9rem; }
-        
-        .stock-display {
-            text-align: right;
-            background: rgba(59, 130, 246, 0.1);
-            padding: 15px 25px;
-            border-radius: 12px;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-        .stock-val { font-size: 2.5rem; font-weight: 800; color: white; }
 
-        /* Filter Bar */
-        .filter-bar {
-            display: flex; gap: 15px; margin-bottom: 15px;
-            background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 12px;
-            border: 1px solid #334155; align-items: center; flex-wrap: wrap;
+        /* --- STATS GRID --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
-        .filter-group { display: flex; align-items: center; gap: 8px; }
-        .filter-group label { color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
-        
-        .form-control {
-            background: #1e293b; border: 1px solid #475569; color: white;
-            padding: 8px 12px; border-radius: 6px; font-size: 0.9rem;
-        }
-        .form-control:focus { border-color: #3b82f6; outline: none; }
-
-        .btn-filter {
-            background: #3b82f6; color: white; border: none; padding: 8px 20px;
-            border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;
-        }
-        .btn-filter:hover { background: #2563eb; }
-        
-        .btn-reset {
-            background: transparent; color: #94a3b8; border: 1px solid #475569; 
-            padding: 8px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.9rem;
-        }
-        .btn-reset:hover { color: white; border-color: white; }
-
-        /* Table */
-        .table-wrapper {
-            background: #1e293b;
+        .stat-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
-            border: 1px solid #334155;
-            overflow: hidden;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .ledger-table { width: 100%; border-collapse: collapse; }
-        .ledger-table th { 
-            background: #0f172a; color: #94a3b8; text-align: left; padding: 15px 20px;
-            font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #334155;
-        }
-        .ledger-table td { padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; font-size: 0.95rem; }
-        .ledger-table tr:hover { background: rgba(255,255,255,0.02); }
-
-        .btn-back {
-            display: inline-flex; align-items: center; gap: 8px;
-            color: #94a3b8; text-decoration: none; font-weight: 600; margin-bottom: 1rem;
-        }
-        .btn-back:hover { color: #fff; }
+        .stat-val { font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; }
+        .stat-lbl { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
         
-        .tag-badge { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
-        .batch-badge { background: rgba(139, 92, 246, 0.15); color: #a78bfa; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .c-purchase { color: #c084fc; } /* Purple */
+        .c-usage    { color: #60a5fa; } /* Blue */
+        .c-adjust   { color: #fcd34d; } /* Yellow */
+        .c-stock    { color: #4ade80; } /* Green */
+
+        /* --- TABLE --- */
+        .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: rgba(15, 23, 42, 0.9); color: #94a3b8; text-align: left; padding: 1.25rem 1rem; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #e2e8f0; vertical-align: middle; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .badge { padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
+        .type-purchase { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .type-add { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .type-deduct { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .type-usage { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        .empty-state { text-align: center; padding: 4rem; color: #64748b; font-style: italic; }
+        
+        .qty-add { color: #4ade80; font-weight: bold; }
+        .qty-deduct { color: #f87171; font-weight: bold; }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .feed-title { font-size: 1.8rem; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="available_feeds.php" class="btn-back">← Back to Inventory</a>
+    <a href="<?= $redirect_url ?>" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i> <?= $back_button_text ?>
+    </a>
 
     <?php if(isset($error)): ?>
-        <div style="background:rgba(239,68,68,0.2); color:#f87171; padding:20px; border-radius:12px; text-align:center;">
-            <h3>Error</h3>
-            <p><?= htmlspecialchars($error) ?></p>
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 1.5rem; border-radius: 12px; color: #ef4444; text-align: center;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <h3><?= $error ?></h3>
         </div>
     <?php else: ?>
 
-    <div class="info-card">
-        <div class="info-title">
-            <h1><?= htmlspecialchars($feed['FEED_NAME']) ?></h1>
-            <div class="info-meta">
-                Location: <?= htmlspecialchars($feed['LOCATION_NAME'] ?? 'Unassigned') ?> • 
-                Last Update: <?= date('M d, Y', strtotime($feed['DATE_UPDATED'])) ?>
+        <div class="feed-header-wrapper">
+            <h1 class="feed-title">
+                <?= htmlspecialchars($feed['FEED_NAME']) ?>
+                <?php if(!empty($feed['EXPIRATION_DATE']) && $feed['EXPIRATION_DATE'] != '0000-00-00'): ?>
+                    <span class="exp-badge">
+                        <i class="fa-regular fa-calendar-xmark"></i> Exp: <?= date('m/d/Y', strtotime($feed['EXPIRATION_DATE'])) ?>
+                    </span>
+                <?php endif; ?>
+            </h1>
+            <p class="feed-subtitle">Detailed Volume Lifecycle & Traceability Ledger</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card" style="border-top: 4px solid #a855f7;">
+                <div class="stat-lbl">Total Purchased</div>
+                <div class="stat-val c-purchase"><?= number_format($total_purchased, 2) ?> <span style="font-size: 1rem; color:#94a3b8;">kg</span></div>
+            </div>
+            
+            <div class="stat-card" style="border-top: 4px solid #3b82f6;">
+                <div class="stat-lbl">Total Consumed</div>
+                <div class="stat-val c-usage"><?= number_format($total_used, 2) ?> <span style="font-size: 1rem; color:#94a3b8;">kg</span></div>
+            </div>
+
+            <div class="stat-card" style="border-top: 4px solid #f59e0b;">
+                <div class="stat-lbl">Net Adjustments</div>
+                <div class="stat-val c-adjust"><?= ($net_adjustments > 0 ? '+' : '') . number_format($net_adjustments, 2) ?> <span style="font-size: 1rem; color:#94a3b8;">kg</span></div>
+            </div>
+
+            <div class="stat-card" style="border-top: 4px solid #22c55e; background: rgba(34, 197, 94, 0.05);">
+                <div class="stat-lbl">Current Available Stock</div>
+                <div class="stat-val c-stock"><?= number_format($feed['TOTAL_WEIGHT_KG'], 2) ?> <span style="font-size: 1rem; color:#94a3b8;">kg</span></div>
             </div>
         </div>
-        <div class="stock-display">
-            <div style="font-size:0.8rem; color:#60a5fa; text-transform:uppercase;">Current Stock</div>
-            <div class="stock-val"><?= number_format($feed['TOTAL_WEIGHT_KG'], 2) ?> <span style="font-size:1rem;">kg</span></div>
-        </div>
-    </div>
 
-    <form method="GET" class="filter-bar">
-        <input type="hidden" name="feed_id" value="<?= $feed_id ?>">
-        
-        <div class="filter-group">
-            <label>Show:</label>
-            <select name="limit" class="form-control" onchange="this.form.submit()">
-                <option value="10" <?= $limit_val == '10' ? 'selected' : '' ?>>10 Rows</option>
-                <option value="50" <?= $limit_val == '50' ? 'selected' : '' ?>>50 Rows</option>
-                <option value="100" <?= $limit_val == '100' ? 'selected' : '' ?>>100 Rows</option>
-                <option value="all" <?= $limit_val == 'all' ? 'selected' : '' ?>>All Records</option>
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label>Date Range:</label>
-            <input type="date" name="start_date" class="form-control" value="<?= htmlspecialchars($start_date) ?>">
-            <span style="color:#64748b">-</span>
-            <input type="date" name="end_date" class="form-control" value="<?= htmlspecialchars($end_date) ?>">
-        </div>
-
-        <div class="filter-group" style="flex-grow:1;">
-            <input type="text" name="search" class="form-control" style="width:100%;" placeholder="Search Remarks, Tag No, or Batch ID..." value="<?= htmlspecialchars($search_term) ?>">
-        </div>
-
-        <button type="submit" class="btn-filter">Apply Filters</button>
-        <a href="viewFeedLedger.php?feed_id=<?= $feed_id ?>" class="btn-reset">Reset</a>
-    </form>
-
-    <div class="table-wrapper">
-        <table class="ledger-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Reference / Animal</th>
-                    <th>Description</th>
-                    <th>Qty Used (kg)</th>
-                    <th>Cost Value</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if(count($transactions) > 0): ?>
-                    <?php foreach($transactions as $t): ?>
+        <div class="table-wrap">
+            <table>
+                <thead>
                     <tr>
-                        <td><?= date('M d, Y h:i A', strtotime($t['TRANSACTION_DATE'])) ?></td>
-                        <td>
-                            <?php if($t['TAG_NO']): ?>
-                                <span class="tag-badge"><?= $t['TAG_NO'] ?></span>
-                            <?php else: ?>
-                                <span style="color:#64748b;">N/A</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?= htmlspecialchars($t['REMARKS']) ?>
-                            <?php if($t['BATCH_ID']): ?>
-                                <br><span class="batch-badge"><?= $t['BATCH_ID'] ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="color:#f87171; font-weight:600;">- <?= number_format($t['QUANTITY_KG'], 3) ?></td>
-                        <td style="font-family:monospace;">₱<?= number_format($t['TRANSACTION_COST'], 2) ?></td>
+                        <th>Date & Time</th>
+                        <th>Transaction Type</th>
+                        <th style="text-align:right;">Volume Impact</th>
+                        <th>Reason / Remarks</th>
                     </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr><td colspan="5" style="text-align:center; padding:3rem; color:#64748b;">No consumption history found matching criteria.</td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-
+                </thead>
+                <tbody>
+                    <?php if(empty($ledger)): ?>
+                        <tr><td colspan="4" class="empty-state">No transaction history found for this feed.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($ledger as $row): 
+                            // Determine styles based on Add/Deduct
+                            $isDeduct = (strtolower($row['effect']) == 'deduct');
+                            $qtyClass = $isDeduct ? 'qty-deduct' : 'qty-add';
+                            $prefix = $isDeduct ? '-' : '+';
+                            
+                            // Badge Class Assignment
+                            $badgeClass = 'type-add';
+                            if ($row['txn_type'] == 'Feeding Usage') $badgeClass = 'type-usage';
+                            else if ($row['txn_type'] == 'Purchase') $badgeClass = 'type-purchase';
+                            else if ($isDeduct) $badgeClass = 'type-deduct';
+                        ?>
+                        <tr>
+                            <td style="color:#94a3b8; font-weight: 500;"><?= htmlspecialchars($row['txn_date_fmt']) ?></td>
+                            <td><span class="badge <?= $badgeClass ?>"><?= htmlspecialchars($row['txn_type']) ?></span></td>
+                            <td style="text-align:right;" class="<?= $qtyClass ?>">
+                                <?= $prefix ?> <?= number_format($row['qty'], 2) ?> KG
+                            </td>
+                            <td style="color:#cbd5e1;"><?= htmlspecialchars($row['remarks']) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     <?php endif; ?>
 </div>
 

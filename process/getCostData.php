@@ -13,9 +13,6 @@ $action = $_GET['action'] ?? '';
 try {
     if (!isset($conn)) throw new Exception("Database connection failed.");
 
-    // [KEEP YOUR EXISTING GET_BUILDINGS, GET_PENS, SEARCH LOGIC HERE]
-    // (Hidden for brevity, assume they are unchanged)
-    
     // 1. Get Buildings
     if ($action == 'get_buildings') {
         $stmt = $conn->prepare("SELECT BUILDING_ID, BUILDING_NAME FROM buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
@@ -29,80 +26,115 @@ try {
         $stmt->execute([$bld_id]);
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
-    // 3. Get Sows/Boars
+    // 3. Get Sows
     elseif ($action == 'get_sows_in_pen') {
         $pen_id = $_GET['pen_id'];
         $sql = "SELECT ar.ANIMAL_ID, ar.TAG_NO FROM animal_records ar LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID WHERE ar.PEN_ID = ? AND ar.IS_ACTIVE = 1 AND (ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%') ORDER BY ar.TAG_NO ASC";
         $stmt = $conn->prepare($sql); $stmt->execute([$pen_id]); echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
+    // 4. Get Boars
     elseif ($action == 'get_boars_in_pen') {
         $pen_id = $_GET['pen_id'];
         $sql = "SELECT ar.ANIMAL_ID, ar.TAG_NO FROM animal_records ar LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID WHERE ar.PEN_ID = ? AND ar.IS_ACTIVE = 1 AND (ac.STAGE_NAME LIKE '%Boar%') ORDER BY ar.TAG_NO ASC";
         $stmt = $conn->prepare($sql); $stmt->execute([$pen_id]); echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
-    // 4. Search
-    elseif ($action == 'search_sow') {
-        $term = $_GET['term'] . "%";
-        $sql = "SELECT ar.ANIMAL_ID, ar.TAG_NO, ar.CURRENT_STATUS as STATUS FROM animal_records ar LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID WHERE ar.TAG_NO LIKE ? AND ar.IS_ACTIVE = 1 AND (ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%') LIMIT 10";
-        $stmt = $conn->prepare($sql); $stmt->execute([$term]); echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
-    }
 
     // ------------------------------------------------------------------
-    // 5. Calculate Net Worth (CORRECTED: SINGLE SOURCE OF TRUTH)
+    // 5. Calculate Net Worth Breakdown
     // ------------------------------------------------------------------
     elseif ($action == 'get_sow_net_worth') {
         $id = $_GET['animal_id'];
-        
-        // A. Get Reset Date
+
         $stmt = $conn->prepare("SELECT LAST_COST_RESET_DATE, ACQUISITION_COST FROM animal_records WHERE ANIMAL_ID = ?");
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         $resetDate = $row['LAST_COST_RESET_DATE'];
-        $baseCost  = getFloat($row['ACQUISITION_COST']); 
+        $baseCost  = getFloat($row['ACQUISITION_COST']);
 
-        // B. Query ONLY operational_cost table
-        // We filter strictly by datetime_created > resetDate
-        
-        $sql = "SELECT 
-                    COALESCE(SUM(operation_cost), 0) as total_ops,
-                    COALESCE(SUM(CASE WHEN description LIKE 'Feed:%' OR description LIKE 'Bulk Feed:%' THEN operation_cost ELSE 0 END), 0) as feed_cost,
-                    COALESCE(SUM(CASE WHEN description LIKE 'Treatment:%' THEN operation_cost ELSE 0 END), 0) as med_cost,
-                    COALESCE(SUM(CASE WHEN description LIKE 'Vaccine:%' OR description LIKE 'Vaccination:%' THEN operation_cost ELSE 0 END), 0) as vac_cost,
-                    COALESCE(SUM(CASE WHEN description LIKE 'Vitamin:%' THEN operation_cost ELSE 0 END), 0) as vit_cost,
-                    COALESCE(SUM(CASE WHEN description LIKE 'Checkup:%' THEN operation_cost ELSE 0 END), 0) as checkup_cost,
-                    COALESCE(SUM(CASE WHEN description LIKE 'Rollover:%' THEN operation_cost ELSE 0 END), 0) as rollover_cost
-                FROM operational_cost 
-                WHERE animal_id = ?";
-        
-        $params = [$id];
+        // ------------------------------------------------------------------
+        // Operational costs: NO reset date filter.
+        // ALL operations are included regardless of when they happened.
+        // The transferred_cost is what determines how much has already
+        // been given away — cutting ops by date was double-penalizing.
+        // ------------------------------------------------------------------
+        $sql_ops = "
+            SELECT
+                COALESCE(SUM(CASE WHEN
+                    description LIKE 'Feed:%'         OR
+                    description LIKE 'Bulk Feed:%'    OR
+                    description LIKE 'Treatment:%'    OR
+                    description LIKE 'Vaccine:%'      OR
+                    description LIKE 'Vaccination:%'  OR
+                    description LIKE 'Vitamin:%'      OR
+                    description LIKE 'Checkup%'
+                THEN ABS(operation_cost) ELSE 0 END), 0) AS total_ops,
 
-        if ($resetDate) {
-            $sql .= " AND datetime_created > ?";
-            $params[] = $resetDate;
-        }
+                COALESCE(SUM(CASE WHEN
+                    description LIKE 'Feed:%' OR
+                    description LIKE 'Bulk Feed:%'
+                THEN ABS(operation_cost) ELSE 0 END), 0) AS feed_cost,
 
-        $stmt = $conn->prepare($sql);
-        $stmt->execute($params);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                COALESCE(SUM(CASE WHEN
+                    description LIKE 'Treatment:%'
+                THEN ABS(operation_cost) ELSE 0 END), 0) AS med_cost,
 
-        // Map results
-        $total_ops = getFloat($result['total_ops']);
-        
-        // Final Total = ONLY the sum from operational_cost
-        // (We return baseCost separately just for UI display, but don't add it to transferable total unless you specifically want to)
-        $total = $total_ops;
+                COALESCE(SUM(CASE WHEN
+                    description LIKE 'Vaccine:%' OR
+                    description LIKE 'Vaccination:%'
+                THEN ABS(operation_cost) ELSE 0 END), 0) AS vac_cost,
+
+                COALESCE(SUM(CASE WHEN
+                    description LIKE 'Vitamin:%'
+                THEN ABS(operation_cost) ELSE 0 END), 0) AS vit_cost,
+
+                COALESCE(SUM(CASE WHEN
+                    description LIKE 'Checkup%'
+                THEN ABS(operation_cost) ELSE 0 END), 0) AS checkup_cost
+
+            FROM operational_cost
+            WHERE animal_id = ?
+        ";
+
+        $stmt_ops = $conn->prepare($sql_ops);
+        $stmt_ops->execute([$id]);
+        $result_ops = $stmt_ops->fetch(PDO::FETCH_ASSOC);
+        $total_ops  = getFloat($result_ops['total_ops']);
+
+        // ------------------------------------------------------------------
+        // Transferred costs: ALL transfers regardless of reset date.
+        // This is the true measure of what has already been distributed.
+        // ------------------------------------------------------------------
+        $sql_trans = "
+            SELECT COALESCE(SUM(
+                CASE WHEN SOW_ID  = ? THEN ABS(SOW_COST)
+                     WHEN BOAR_ID = ? THEN ABS(BOAR_COST)
+                     ELSE 0 END
+            ), 0)
+            FROM cost_transfers
+            WHERE (SOW_ID = ? OR BOAR_ID = ?)
+        ";
+
+        $stmt_trans = $conn->prepare($sql_trans);
+        $stmt_trans->execute([$id, $id, $id, $id]);
+        $transferred_cost = getFloat($stmt_trans->fetchColumn());
+
+        // Final Math: everything the animal has accumulated minus what's been transferred
+        $total_available = ($baseCost + $total_ops) - $transferred_cost;
 
         echo json_encode([
-            'total'   => $total,
-            'base'    => $baseCost,
-            'feed'    => getFloat($result['feed_cost']),
-            'meds'    => getFloat($result['med_cost']),
-            'vac'     => getFloat($result['vac_cost']),
-            'vit'     => getFloat($result['vit_cost']),
-            'checkup' => getFloat($result['checkup_cost']),
-            'ops'     => getFloat($result['rollover_cost'])
+            'success'          => true,
+            'total'            => $total_available,
+            'acquisition_cost' => $baseCost,
+            'operation_cost'   => $total_ops,
+            'transferred_cost' => $transferred_cost,
+            'feed'             => getFloat($result_ops['feed_cost']),
+            'meds'             => getFloat($result_ops['med_cost']),
+            'vac'              => getFloat($result_ops['vac_cost']),
+            'vit'              => getFloat($result_ops['vit_cost']),
+            'checkup'          => getFloat($result_ops['checkup_cost'])
         ]);
+        exit;
     }
 
     // 6. Get Piglets

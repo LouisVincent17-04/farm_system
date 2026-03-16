@@ -10,6 +10,7 @@ include '../security/checkAccess.php';
 checkAccess('pen');
 
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // Check for status messages

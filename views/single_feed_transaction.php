@@ -9,17 +9,17 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('feeding');
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // 1. Transaction History
+    // 1. Transaction History (Updated DATE_FORMAT)
     $transactions_sql = "
         SELECT 
             ft.FT_ID,
             ft.TRANSACTION_DATE,
-            DATE_FORMAT(ft.TRANSACTION_DATE, '%d-%b-%y %h:%i %p') AS FORMATTED_DATE,
+            DATE_FORMAT(ft.TRANSACTION_DATE, '%m/%d/%Y %h:%i %p') AS FORMATTED_DATE,
             ft.QUANTITY_KG,
             ft.REMARKS,
             a.TAG_NO,
@@ -53,6 +53,11 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Feeding Transactions</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         /* --- CORE STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -68,14 +73,14 @@ try {
         .back-link:hover { color: white; }
 
         /* HEADER */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; }
         .header-info p { color: #cbd5e1; }
 
-        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
         /* BUTTONS */
-        .btn-base { display: flex; align-items: center; gap: 8px; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-base { display: flex; align-items: center; gap: 8px; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); white-space: nowrap; }
         
         .add-btn { background: linear-gradient(135deg, #2563eb, #9333ea); color: white; }
         .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: translateY(-2px); }
@@ -95,13 +100,14 @@ try {
 
         /* SEARCH & TABLE */
         .search-container { position: relative; margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 14px 14px 14px 45px; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
+        .search-input { width: 100%; padding: 14px 14px 14px 45px; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; backdrop-filter: blur(10px); outline: none; transition: border-color 0.2s; }
+        .search-input:focus { border-color: #3b82f6; }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
         
         .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 12px; border: 1px solid #475569; overflow-x: auto; }
         .table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        .table th { padding: 1rem 1.5rem; text-align: left; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; background: rgba(15, 23, 42, 0.5); }
-        .table td { padding: 1rem 1.5rem; vertical-align: middle; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .table th { padding: 1rem 1.5rem; text-align: left; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; background: rgba(15, 23, 42, 0.5); white-space: nowrap; }
+        .table td { padding: 1rem 1.5rem; vertical-align: middle; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap; }
         .table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
 
         .tag-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
@@ -111,9 +117,10 @@ try {
         /* MODAL */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 12px; width: 95%; max-width: 600px; border: 1px solid #475569; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .modal-content { background: #1e293b; border-radius: 12px; width: 95%; max-width: 600px; border: 1px solid #475569; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column; max-height: 90vh; }
         .modal-header { padding: 20px; border-bottom: 1px solid #334155; }
-        .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+        .modal-header h2 { margin: 0; font-size: 1.4rem; color: #fff; }
+        .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
         .modal-footer { padding: 20px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; }
 
         /* FORM ELEMENTS */
@@ -121,16 +128,15 @@ try {
         .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
         
         .form-group label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 8px; font-weight: 500; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; transition: border-color 0.2s; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .form-group input, .form-group select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; transition: border-color 0.2s; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
         
         /* Radio Group */
         .radio-group { display: flex; gap: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid #334155; }
         .radio-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #e2e8f0; font-weight: 500; }
         .radio-label input { width: auto; accent-color: #2563eb; }
 
-        input[type="datetime-local"] { color-scheme: dark; }
-        select[disabled], input[disabled] { opacity: 0.6; cursor: not-allowed; background: #1e293b; }
+        select[disabled], input[disabled], input[readonly] { opacity: 0.6; cursor: not-allowed; background: #1e293b; color: #94a3b8; }
         .hidden { display: none !important; }
 
         /* Summary Box */
@@ -143,17 +149,19 @@ try {
         .loading { display: inline-block; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%; border-top-color: transparent; animation: spin 0.8s linear infinite; margin-left: 5px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .btn-cancel { padding: 10px 20px; background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 6px; cursor: pointer; }
-        .btn-save { padding: 10px 20px; background: #2563eb; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-cancel { padding: 10px 20px; background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
+        .btn-save { padding: 10px 20px; background: #2563eb; border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        .btn-save:hover { background: #1d4ed8; }
         .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <a href="single_feed_management.php" class="back-link">
+        <a href="transactions.php" class="back-link">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back  
+            Back to Transactions  
         </a>
 
         <div class="header">
@@ -180,6 +188,7 @@ try {
         </div>
 
         <div class="search-container">
+            <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             <input type="text" class="search-input" id="searchInput" placeholder="Search logs by tag, pen, or feed..." onkeyup="filterTable()">
         </div>
 
@@ -196,16 +205,22 @@ try {
                     </tr>
                 </thead>
                 <tbody id="transaction-table">
-                    <?php foreach($transactions_data as $row): ?>
-                    <tr>
-                        <td style="color:#94a3b8;"><?php echo $row['FORMATTED_DATE']; ?></td>
-                        <td><span class="pen-badge"><?php echo htmlspecialchars($row['PEN_NAME']); ?></span></td>
-                        <td><span class="tag-badge"><?php echo htmlspecialchars($row['TAG_NO']); ?></span></td>
-                        <td style="font-weight: 500; color: #fff;"><?php echo htmlspecialchars($row['FEED_NAME']); ?></td>
-                        <td class="amount"><?php echo number_format($row['QUANTITY_KG'], 2); ?></td>
-                        <td style="font-size:0.9rem; color:#cbd5e1;"><?php echo htmlspecialchars($row['REMARKS'] ?? '-'); ?></td>
-                    </tr>
-                    <?php endforeach; ?>
+                    <?php if(empty($transactions_data)): ?>
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding:3rem; color:#64748b;">No feeding transactions recorded yet.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach($transactions_data as $row): ?>
+                        <tr>
+                            <td style="color:#94a3b8;"><?php echo $row['FORMATTED_DATE']; ?></td>
+                            <td><span class="pen-badge"><?php echo htmlspecialchars($row['PEN_NAME']); ?></span></td>
+                            <td><span class="tag-badge"><?php echo htmlspecialchars($row['TAG_NO']); ?></span></td>
+                            <td style="font-weight: 500; color: #fff;"><?php echo htmlspecialchars($row['FEED_NAME']); ?></td>
+                            <td class="amount"><?php echo number_format($row['QUANTITY_KG'], 2); ?></td>
+                            <td style="font-size:0.9rem; color:#cbd5e1;"><?php echo htmlspecialchars($row['REMARKS'] ?? '-'); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
             <div id="empty-state" style="text-align:center; padding:3rem; display:none; color:#94a3b8;">
@@ -275,7 +290,7 @@ try {
                                 <input type="number" id="qty_per_head" step="0.01" min="0.01" placeholder="e.g. 0.5" oninput="calculateTotal()">
                             </div>
                             <div class="form-group"> <label>Date & Time</label>
-                                <input type="datetime-local" id="transaction_date" required>
+                                <input type="text" id="transaction_date" class="form-input date-picker" placeholder="Select Date & Time" required>
                             </div>
                         </div>
                     </div>
@@ -292,8 +307,8 @@ try {
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button class="btn-save" id="btn-save" onclick="saveTransaction()">Confirm Feeding</button>
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="button" class="btn-save" id="btn-save" onclick="saveTransaction()">Confirm Feeding</button>
             </div>
         </div>
     </div>
@@ -302,6 +317,19 @@ try {
         const allFeeds = <?php echo json_encode($feeds); ?>;
         let currentAnimalCount = 0;
         let feedMode = 'bulk';
+        let fpTransactionDate;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Flatpickr for Date and Time
+            fpTransactionDate = flatpickr("#transaction_date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i", // Backend expected format
+                altInput: true,
+                altFormat: "m/d/Y h:i K", // mm/dd/yyyy display format with AM/PM
+                allowInput: true
+            });
+            filterTable();
+        });
 
         function toggleMode() {
             feedMode = document.querySelector('input[name="feed_mode"]:checked').value;
@@ -515,23 +543,33 @@ try {
 
         function openAddModal() {
             document.getElementById('modal').classList.add('show');
-            const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('transaction_date').value = now.toISOString().slice(0,16);
+            document.getElementById('bulk-feed-form').reset();
+            
+            // Clear input on load so it starts completely blank
+            fpTransactionDate.clear();
         }
-        function closeModal() { document.getElementById('modal').classList.remove('show'); }
+        
+        function closeModal() { 
+            document.getElementById('modal').classList.remove('show'); 
+        }
         
         function filterTable() {
             const term = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('tbody tr');
+            const rows = document.querySelectorAll('#transaction-table tr');
+            
+            // Fix for empty state logic conflict with PHP default row
+            if (rows.length === 1 && rows[0].children.length === 1) {
+                document.getElementById('empty-state').style.display = 'none';
+                return;
+            }
+
             let visible = 0;
             rows.forEach(r => {
                 if(r.textContent.toLowerCase().includes(term)) { r.style.display=''; visible++; }
                 else { r.style.display='none'; }
             });
-            document.getElementById('empty-state').style.display = visible===0 ? 'block':'none';
+            document.getElementById('empty-state').style.display = (visible === 0) ? 'block' : 'none';
         }
-
-        document.addEventListener('DOMContentLoaded', filterTable);
     </script>
 </body>
 </html>

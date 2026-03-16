@@ -1,5 +1,5 @@
 <?php
-// getBuildingsByLocation.php
+// process/getBuildingsByLocation.php
 header('Content-Type: application/json');
 
 include '../config/Connection.php';

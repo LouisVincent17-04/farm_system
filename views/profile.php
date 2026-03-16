@@ -4,7 +4,8 @@ ob_start(); // Start output buffering
 $page 	= 'profile';
 include '../config/Connection.php';
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
+include '../common/upcoming_birth_modal.php';
 // Redirect to login if user not logged in
 if(!isset($_SESSION['user'])){
     header("Location: ../views/login.php");

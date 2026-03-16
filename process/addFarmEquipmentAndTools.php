@@ -1,4 +1,5 @@
 <?php
+// addFarmEquipmentAndTools.php - Handles adding new farm equipment and tools purchases to the inventory system.
 session_start(); // 1. Start Session
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -19,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 1. Retrieve Basic Info
-        $item_name = $_POST['item_name'];
+        $item_name = trim($_POST['item_name']);
         $item_type_id = 4; // Farm Equipment & Tools
         $item_quantity = floatval($_POST['item_quantity'] ?? 0);
         $item_net_weight = floatval($_POST['item_net_weight'] ?? 0);
@@ -33,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
         $building_id = !empty($_POST['building_id']) ? $_POST['building_id'] : null;
         $pen_id      = !empty($_POST['pen_id']) ? $_POST['pen_id'] : null;
+
+        // NEW: Capture Supplier and Reference Number
+        $supplier = !empty(trim($_POST['supplier'] ?? '')) ? trim($_POST['supplier']) : 'General Supplier';
+        $reference_no = !empty(trim($_POST['reference_no'] ?? '')) ? trim($_POST['reference_no']) : null;
 
         // 3. Handle zero/null values for weight/quantity
         $item_net_weight = ($item_net_weight <= 0) ? null : $item_net_weight;
@@ -52,15 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         // 5. INSERT ITEM
-        // Note: Removed TO_DATE(). MySQL handles 'YYYY-MM-DD' strings automatically.
         $sql = "INSERT INTO ITEMS (
                     ITEM_NAME, ITEM_TYPE_ID, QUANTITY, ITEM_NET_WEIGHT, UNIT_ID, UNIT_COST, 
                     ITEM_CATEGORY, DATE_OF_PURCHASE, ITEM_DESCRIPTION, LOCATION_ID, 
-                    BUILDING_ID, PEN_ID, TOTAL_COST, STATUS
+                    BUILDING_ID, PEN_ID, TOTAL_COST, STATUS, SUPPLIER, REFERENCE_NO
                 ) VALUES (
                     :item_name, :item_type_id, :item_quantity, :item_net_weight, :unit_id, :unit_cost, 
                     :item_category, :date_of_purchase, :item_description, :location_id, 
-                    :building_id, :pen_id, :total_cost, 0
+                    :building_id, :pen_id, :total_cost, 0, :supplier, :reference_no
                 )";
         
         $stmt = $conn->prepare($sql);
@@ -78,7 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':location_id'      => $location_id,
             ':building_id'      => $building_id,
             ':pen_id'           => $pen_id,
-            ':total_cost'       => $total_cost
+            ':total_cost'       => $total_cost,
+            ':supplier'         => $supplier,
+            ':reference_no'     => $reference_no
         ];
         
         // Execute Insert
@@ -92,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // 7. INSERT AUDIT LOG
-            $logDetails = "Added new Equipment: $item_name (Qty: $item_quantity, Cost: $total_cost). New ID: $new_item_id";
+            $logDetails = "Added new Equipment: $item_name (Supplier: $supplier, Qty: $item_quantity, Cost: $total_cost). New ID: $new_item_id";
             
             $log_sql = "INSERT INTO AUDIT_LOGS 
                         (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 

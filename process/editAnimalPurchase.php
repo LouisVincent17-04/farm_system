@@ -1,4 +1,5 @@
 <?php
+// editAnimalPurchase.php
 session_start();
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -30,19 +31,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $item_name = trim($_POST['item_name']);
         $item_type_id = 13; // Animals
         $item_quantity = floatval($_POST['item_quantity'] ?? 0);
-        
-        // --- UPDATED: Retrieve Weight ---
         $weight = floatval($_POST['weight'] ?? 0);
-        // --------------------------------
-
         $unit_id = $_POST['unit_id'];
         $unit_cost = floatval($_POST['unit_cost'] ?? 0);
-        $date_of_purchase = $_POST['date_of_purchase']; // MySQL handles YYYY-MM-DD string directly
+        $date_of_purchase = $_POST['date_of_purchase']; 
         $item_description = $_POST['item_description'] ?? null;
         
         $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
         $building_id = !empty($_POST['building_id']) ? $_POST['building_id'] : null;
         $pen_id = !empty($_POST['pen_id']) ? $_POST['pen_id'] : null;
+
+        // --- NEW: Retrieve Supplier and Reference No ---
+        $supplier = !empty(trim($_POST['supplier'] ?? '')) ? trim($_POST['supplier']) : 'General Supplier';
+        $reference_no = !empty(trim($_POST['reference_no'] ?? '')) ? trim($_POST['reference_no']) : null;
+        // -----------------------------------------------
         
         // Handle zero values for quantity
         $item_quantity = ($item_quantity <= 0) ? null : $item_quantity;
@@ -51,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $total_cost = $item_quantity * $unit_cost;
 
         // 2. Get Original Data (For Audit Log Comparison)
-        $original_sql = "SELECT ITEM_NAME, QUANTITY, UNIT_COST, TOTAL_COST, ITEM_NET_WEIGHT 
+        $original_sql = "SELECT ITEM_NAME, QUANTITY, UNIT_COST, TOTAL_COST, ITEM_NET_WEIGHT, SUPPLIER, REFERENCE_NO 
                          FROM ITEMS WHERE ITEM_ID = :item_id";
         $original_stmt = $conn->prepare($original_sql);
         $original_stmt->execute([':item_id' => $item_id]);
@@ -62,9 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $original_qty = $original_row['QUANTITY'] ?? '0';
         $original_cost = $original_row['TOTAL_COST'] ?? '0';
         $original_weight = $original_row['ITEM_NET_WEIGHT'] ?? '0';
+        $original_supplier = $original_row['supplier'] ?? 'N/A';
         
-        // 3. UPDATE Query (Updated ITEM_NET_WEIGHT)
-        // Note: Removed TO_DATE() and replaced SYSDATE with NOW()
+        // 3. UPDATE Query (Now includes supplier and reference_no)
         $sql = "UPDATE ITEMS SET 
                 ITEM_NAME = :item_name, 
                 ITEM_TYPE_ID = :item_type_id, 
@@ -78,6 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
                 BUILDING_ID = :building_id,
                 PEN_ID = :pen_id,
                 TOTAL_COST = :total_cost,
+                supplier = :supplier,
+                reference_no = :reference_no,
                 DATE_UPDATED = NOW() 
                 WHERE ITEM_ID = :item_id";
         
@@ -96,6 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             ':building_id'      => $building_id,
             ':pen_id'           => $pen_id,
             ':total_cost'       => $total_cost,
+            ':supplier'         => $supplier,
+            ':reference_no' => $reference_no,
             ':item_id'          => $item_id
         ];
 
@@ -112,6 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         if ($original_weight != $weight) {
             $logDetails .= "Weight: $original_weight -> $weight. ";
+        }
+        if ($original_supplier != $supplier) {
+            $logDetails .= "Supplier: $original_supplier -> $supplier. ";
         }
         
         $log_sql = "INSERT INTO AUDIT_LOGS 

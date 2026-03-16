@@ -88,6 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             'message' => '✅ Item deleted successfully.'
         ]);
 
+        header('Location: ../views/purch_animals.php'); 
+        exit();
+
         // If you strictly need the redirect for form submissions:
         // header('Location: ../views/purch_animals.php');
         // exit();
@@ -110,6 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             'success' => false,
             'message' => '❌ Error: ' . $error_msg
         ]);
+
+        
 
     } catch (Exception $e) {
         // Rollback generic exceptions

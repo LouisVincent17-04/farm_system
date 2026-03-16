@@ -55,7 +55,7 @@ if ($request === 'fetch_batches') {
 if ($request === 'submit_adjustment') {
     $cat = $_POST['category'];
     $id = $_POST['batch_id'];
-    $mode = $_POST['input_mode']; // 'amount' or 'balance'
+    $mode = $_POST['input_mode']; // 'quantity' or 'balance'
     $inputVal = floatval($_POST['input_value']);
     $reason = $_POST['reason'];
     $remarks = trim($_POST['remarks']);
@@ -84,8 +84,8 @@ if ($request === 'submit_adjustment') {
         $expiry = $row['EXPIRATION_DATE'];
 
         // 2. Calculate Actual Deduction based on Mode
-        if ($mode === 'amount') {
-            // User entered amount to remove
+        if ($mode === 'quantity') {
+            // User entered amount to remove (or add, if negative)
             $qtyToDeduct = $inputVal;
             $newStock = $currentStock - $qtyToDeduct;
         } else {
@@ -94,39 +94,54 @@ if ($request === 'submit_adjustment') {
             $qtyToDeduct = $currentStock - $newStock;
         }
 
-        // Validation
-        if ($newStock < 0 || $qtyToDeduct < 0) {
-            throw new Exception("Invalid adjustment. Stock cannot be negative or increase in this module.");
+        // 3. Validation & Type Formatting
+        if ($newStock < 0) {
+            throw new Exception("Invalid adjustment. Stock cannot drop below zero.");
+        }
+        if ($qtyToDeduct < 0 && $reason !== 'Correction') {
+            throw new Exception("You cannot increase stock unless the reason is set to 'Audit Correction'.");
+        }
+        if ($qtyToDeduct == 0) {
+            throw new Exception("No changes made. The inputted value results in the exact same stock amount.");
         }
 
-        // 3. Update Database
+        // Determine if we are adding or deducting for the logs
+        $adjustmentType = ($qtyToDeduct < 0) ? 'Add' : 'Deduct';
+        $absoluteQty = abs($qtyToDeduct); // Store positive number in db, type determines Add/Deduct
+
+        // 4. Update Database Stock
         $update = $conn->prepare("UPDATE $tbl SET $stockCol = :newStock, DATE_UPDATED = NOW() WHERE $pk = :id");
         $update->execute([':newStock' => $newStock, ':id' => $id]);
 
-        // 4. Record Log
+        // 5. Record Log in `inventory_adjustments`
         $logSql = "INSERT INTO inventory_adjustments 
                    (TRANSACTION_DATE, CATEGORY, REF_ID, ITEM_NAME, BATCH_EXPIRY, ADJUSTMENT_TYPE, INPUT_MODE, QUANTITY, PREVIOUS_STOCK, NEW_STOCK, REASON, REMARKS, CREATED_BY) 
                    VALUES 
-                   (:date, :cat, :ref, :name, :exp, 'Deduct', :mode, :qty, :prev, :new, :reason, :rem, :uid)";
+                   (:date, :cat, :ref, :name, :exp, :adj_type, :mode, :qty, :prev, :new, :reason, :rem, :uid)";
         
         $log = $conn->prepare($logSql);
         $log->execute([
             ':date' => $date, ':cat' => $cat, ':ref' => $id, ':name' => $itemName, ':exp' => $expiry,
-            ':mode' => $mode, ':qty' => $qtyToDeduct, ':prev' => $currentStock, ':new' => $newStock,
-            ':reason' => $reason, ':rem' => $remarks, ':uid' => $user_id
+            ':adj_type' => $adjustmentType, ':mode' => $mode, ':qty' => $absoluteQty, 
+            ':prev' => $currentStock, ':new' => $newStock, ':reason' => $reason, 
+            ':rem' => $remarks, ':uid' => $user_id
         ]);
 
-        // 5. Audit Log
-        $auditDetails = "Disposal: $itemName (Exp: $expiry). Input Mode: $mode. Removed: $qtyToDeduct. Left: $newStock. Reason: $reason";
+        // 6. Audit Log (General System Log)
+        $auditAction = ($adjustmentType === 'Add') ? 'INVENTORY_ADDITION' : 'INVENTORY_DISPOSAL';
+        $auditDetails = "Adjustment ($adjustmentType): $itemName (Exp: $expiry). Input Mode: $mode. Modified By: $absoluteQty. Old: $currentStock -> New: $newStock. Reason: $reason";
+        
         $conn->prepare("INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
-                        VALUES (:uid, :uname, 'INVENTORY_DISPOSAL', :tbl, :details, :ip)")
-             ->execute([':uid'=>$user_id, ':uname'=>$username, ':tbl'=>strtoupper($tbl), ':details'=>$auditDetails, ':ip'=>$ip]);
+                        VALUES (:uid, :uname, :action, :tbl, :details, :ip)")
+             ->execute([':uid'=>$user_id, ':uname'=>$username, ':action'=>$auditAction, ':tbl'=>strtoupper($tbl), ':details'=>$auditDetails, ':ip'=>$ip]);
 
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => "Successfully adjusted. New Stock: $newStock"]);
+        echo json_encode(['success' => true, 'message' => "Successfully adjusted. New Stock is now $newStock"]);
 
     } catch (Exception $e) {
-        $conn->rollBack();
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
     exit;

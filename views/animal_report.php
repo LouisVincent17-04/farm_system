@@ -1,5 +1,5 @@
 <?php
-// reports/animal_report.php
+// views/animal_report.php
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "reports";
@@ -8,7 +8,8 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('animal_report');
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
+include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
 
 // --- 1. GET FILTER INPUTS ---
 $view        = $_GET['view'] ?? 'detailed'; 
@@ -19,11 +20,17 @@ $animal_type = $_GET['animal_type'] ?? '';
 $breed       = $_GET['breed'] ?? '';
 $stage       = $_GET['stage'] ?? ''; 
 $sex         = $_GET['sex'] ?? '';
+$sow_status  = $_GET['sow_status'] ?? ''; // NEW SOW STATUS FILTER
 
 // Mapped filters for drill-down (Location/Building/Pen)
 $filter_loc  = $_GET['f_loc'] ?? '';
 $filter_bld  = $_GET['f_bld'] ?? ''; // Used when drilling down from Building -> Pen
 $filter_pen  = $_GET['f_pen'] ?? '';
+
+// Auto-assign location filter if user is restricted
+if ($USER_LOCATION_ != 1000) {
+    $filter_loc = $USER_LOCATION_;
+}
 
 // --- PAGINATION SETTINGS (Only for Detailed View) ---
 $limit = 50; 
@@ -39,7 +46,7 @@ try {
 
     // Apply Standard Filters
     if ($date_from && $date_to) {
-        $where_sql .= " AND ar.BIRTH_DATE BETWEEN :date_from AND :date_to";
+        $where_sql .= " AND DATE(ar.BIRTH_DATE) BETWEEN :date_from AND :date_to";
         $params[':date_from'] = $date_from;
         $params[':date_to']   = $date_to;
     }
@@ -60,7 +67,17 @@ try {
     if ($stage)       { $where_sql .= " AND ar.CLASS_ID = :stage"; $params[':stage'] = $stage; }
     if ($sex)         { $where_sql .= " AND ar.SEX = :sex"; $params[':sex'] = $sex; }
 
-    // Apply Location/Building Filters (Important for Drill-down)
+    // Apply Sow Status Filter
+    if ($sow_status) {
+        if ($sow_status === 'SERVICE') {
+            $where_sql .= " AND EXISTS (SELECT 1 FROM sow_status_history ssh WHERE ssh.ANIMAL_ID = ar.ANIMAL_ID AND ssh.IS_ACTIVE = 1 AND ssh.STATUS_NAME LIKE 'SERVICE%')";
+        } else {
+            $where_sql .= " AND EXISTS (SELECT 1 FROM sow_status_history ssh WHERE ssh.ANIMAL_ID = ar.ANIMAL_ID AND ssh.IS_ACTIVE = 1 AND ssh.STATUS_NAME = :sow_status)";
+            $params[':sow_status'] = $sow_status;
+        }
+    }
+
+    // Apply Location/Building Filters (Important for Drill-down & User Restrictions)
     if ($filter_loc) { $where_sql .= " AND ar.LOCATION_ID = :floc"; $params[':floc'] = $filter_loc; }
     if ($filter_bld) { $where_sql .= " AND ar.BUILDING_ID = :fbld"; $params[':fbld'] = $filter_bld; }
     if ($filter_pen) { $where_sql .= " AND ar.PEN_ID = :fpen"; $params[':fpen'] = $filter_pen; }
@@ -69,7 +86,7 @@ try {
     $stats_sql = "SELECT 
                     COUNT(*) as total_heads,
                     SUM(ar.ACQUISITION_COST) as total_value,
-                    SUM(ar.CURRENT_ESTIMATED_WEIGHT) as total_weight,
+                    SUM(ar.CURRENT_ACTUAL_WEIGHT) as total_weight,
                     SUM(CASE WHEN ar.SEX = 'M' THEN 1 ELSE 0 END) as male_count,
                     SUM(CASE WHEN ar.SEX = 'F' THEN 1 ELSE 0 END) as female_count
                   FROM ANIMAL_RECORDS ar 
@@ -89,8 +106,23 @@ try {
     $stmt_type->execute($params);
     $type_breakdown = $stmt_type->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // --- 4. FETCH DATA ROWS ---
-    
+    // --- 3.5. FETCH SOW SPECIFIC STATS IF FILTERED BY SOW (CLASS_ID = 8) ---
+    $sow_stats = null;
+    if ($stage == '8' || $sow_status) {
+        $sow_sql = "SELECT 
+                        SUM(CASE WHEN ssh.STATUS_NAME = 'DRY' THEN 1 ELSE 0 END) as dry_count,
+                        SUM(CASE WHEN ssh.STATUS_NAME LIKE 'SERVICE%' THEN 1 ELSE 0 END) as service_count,
+                        SUM(CASE WHEN ssh.STATUS_NAME = 'PREGNANT' THEN 1 ELSE 0 END) as pregnant_count,
+                        SUM(CASE WHEN ssh.STATUS_NAME = 'BIRTHING' THEN 1 ELSE 0 END) as birthing_count
+                    FROM ANIMAL_RECORDS ar 
+                    LEFT JOIN sow_status_history ssh ON ar.ANIMAL_ID = ssh.ANIMAL_ID AND ssh.IS_ACTIVE = 1
+                    $where_sql";
+        $stmt_sow = $conn->prepare($sow_sql);
+        $stmt_sow->execute($params);
+        $sow_stats = $stmt_sow->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // --- 4. FETCH DATA ROWS (WITH INDIVIDUAL COSTS & SOW STATS) ---
     if ($view === 'detailed') {
         // DETAILED VIEW (Paginated)
         $sql = "SELECT 
@@ -98,7 +130,18 @@ try {
                 at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
                 l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME,
                 m.TAG_NO as MOTHER_TAG,
-                DATE_FORMAT(ar.BIRTH_DATE, '%Y-%m-%d') as BIRTH_DATE_FMT
+                DATE_FORMAT(ar.BIRTH_DATE, '%m/%d/%Y') as BIRTH_DATE_FMT,
+                COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed,
+                COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med,
+                COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac,
+                COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit,
+                COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk,
+                COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion
             FROM ANIMAL_RECORDS ar
             LEFT JOIN ANIMAL_TYPE at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
             LEFT JOIN BREEDS b ON ar.BREED_ID = b.BREED_ID
@@ -122,7 +165,18 @@ try {
         // SUMMARY VIEWS (Building or Pen) - Fetch All for Aggregation
         $sql = "SELECT 
                 ar.*, at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
-                l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME
+                l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME,
+                COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed,
+                COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med,
+                COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac,
+                COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit,
+                COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk,
+                COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing,
+                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion
             FROM ANIMAL_RECORDS ar
             LEFT JOIN ANIMAL_TYPE at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
             LEFT JOIN BREEDS b ON ar.BREED_ID = b.BREED_ID
@@ -142,12 +196,10 @@ try {
     $grouped_data = [];
     if ($view !== 'detailed') {
         foreach ($animals as $row) {
-            // Determine grouping key and ID for linking
             if ($view === 'building') {
                 $group_key = $row['BUILDING_NAME'] ?: 'Unassigned Building';
-                $group_id = $row['BUILDING_ID']; // Needed for drill-down link
+                $group_id = $row['BUILDING_ID'];
             } else {
-                // View is 'pen'
                 $group_key = $row['PEN_NAME'] ?: 'Unassigned Pen';
                 $group_id = $row['PEN_ID'];
             }
@@ -178,6 +230,15 @@ try {
     $breeds_list = $conn->query("SELECT * FROM BREEDS ORDER BY BREED_NAME")->fetchAll();
     $stages_list = $conn->query("SELECT * FROM ANIMAL_CLASSIFICATIONS ORDER BY CLASS_ID")->fetchAll();
 
+    // Fetch Locations based on user access
+    if ($USER_LOCATION_ != 1000) {
+        $loc_stmt = $conn->prepare("SELECT * FROM locations WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME");
+        $loc_stmt->execute([$USER_LOCATION_]);
+        $locations = $loc_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // Calculate Total Pages
     $total_pages = ceil($stats['total_heads'] / $limit);
 
@@ -195,10 +256,14 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Advanced Animal Report</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
         /* --- GLOBAL STYLES --- */
@@ -221,10 +286,10 @@ try {
 
         .header { text-align: center; margin-bottom: 2rem; }
         .title { 
-            font-size: 2.2rem; font-weight: 800; 
+            font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; 
             background: linear-gradient(135deg, #22c55e, #16a34a); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.5rem; line-height: 1.2;
         }
         .subtitle { color: #94a3b8; font-size: 1rem; margin: 0; }
         
@@ -233,7 +298,7 @@ try {
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
             gap: 1.5rem; 
-            margin-bottom: 2rem; 
+            margin-bottom: 1.5rem; 
         }
         .stat-card { 
             background: rgba(30, 41, 59, 0.6); 
@@ -246,7 +311,7 @@ try {
         }
         .stat-val { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.25rem; color: #fff; }
         .stat-lbl { color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-        .text-green { color: #4ade80; } .text-gold { color: #fbbf24; } .text-blue { color: #60a5fa; }
+        .text-green { color: #4ade80; } .text-gold { color: #fbbf24; } .text-blue { color: #60a5fa; } .text-slate { color: #cbd5e1; }
 
         .type-list { list-style: none; padding: 0; margin: 0; text-align: left; font-size: 0.85rem; }
         .type-list li { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -254,55 +319,66 @@ try {
         .type-name { color: #cbd5e1; }
         .type-count { color: #fff; font-weight: bold; }
 
-        /* --- FILTER BAR --- */
-        .filter-box { 
-            background: rgba(15, 23, 42, 0.6); 
-            border: 1px solid #334155; 
-            padding: 1.5rem; 
-            border-radius: 16px; 
-            margin-bottom: 2rem; 
+        /* --- SOW LIFECYCLE CARD --- */
+        .sow-stats-container {
+            grid-column: 1 / -1; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 1rem; 
+            background: rgba(236, 72, 153, 0.05);
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
         }
+
+        /* --- FILTER BAR FIXES --- */
+        .filter-box { 
+            background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; padding: 1.5rem; 
+            border-radius: 16px; margin-bottom: 2rem; 
+        }
+        
         .filter-grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
             gap: 1rem; 
             align-items: end; 
         }
         .form-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase; }
         .form-input { 
-            width: 100%; padding: 10px; background: #0f172a; 
-            border: 1px solid #334155; color: white; border-radius: 8px; 
-            font-size: 0.9rem;
-            box-sizing: border-box; 
+            width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; 
+            color: white; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; outline: none;
         }
-        .form-input:focus { border-color: #22c55e; outline: none; }
+        .form-input:focus { border-color: #22c55e; }
         
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        .action-bar { 
-            margin-top: 1.5rem; display: flex; gap: 10px; 
-            justify-content: flex-end; flex-wrap: wrap;
-            border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; 
-        }
-        .btn { 
-            padding: 10px 20px; border: none; border-radius: 8px; 
-            font-weight: 600; cursor: pointer; display: inline-flex; 
-            align-items: center; gap: 8px; text-decoration: none; 
-            font-size: 0.9rem; transition: transform 0.1s; white-space: nowrap;
-        }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top:1rem;}
+        .action-bar { margin-top: 1.5rem; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.9rem; transition: transform 0.1s; white-space: nowrap; }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: #22c55e; color: white; }
         .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
         
-        /* Export Buttons (Updated Colors & Icons) */
-        .btn-pdf { background: #3b82f6; color: white; } /* Blue */
-        .btn-excel { background: #10b981; color: white; } /* Green */
-        .btn-csv { background: #f59e0b; color: white; } /* Orange */
+        /* Export Buttons */
+        .btn-pdf { background: #3b82f6; color: white; }
+        .btn-excel { background: #10b981; color: white; }
+        .btn-csv { background: #f59e0b; color: white; }
+
+        /* Row Action Button */
+        .btn-view-ledger {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; background: rgba(34, 197, 94, 0.15); 
+            border: 1px solid rgba(34, 197, 94, 0.4); color: #4ade80;
+            border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+            text-decoration: none; transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-view-ledger:hover { background: rgba(34, 197, 94, 0.3); color: #fff; transform: translateY(-1px); border-color: #22c55e; }
+
 
         /* --- TABLE & GROUPING --- */
         .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { background: rgba(15, 23, 42, 0.9); color: #94a3b8; text-align: left; padding: 1rem; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; white-space: nowrap; }
-        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
+        th { background: rgba(15, 23, 42, 0.9); color: #94a3b8; text-align: left; padding: 1rem; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid #334155; white-space: nowrap; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; color: #e2e8f0; white-space: nowrap; }
         tr:last-child td { border-bottom: none; }
         
         .group-header-row { background: rgba(34, 197, 94, 0.15); font-weight: bold; color: #4ade80; border-top: 1px solid #334155; }
@@ -315,7 +391,14 @@ try {
         .b-sold { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
         .b-dec { background: rgba(239, 68, 68, 0.15); color: #f87171; }
         .val-money { font-family: monospace; color: #fbbf24; font-weight: bold; }
+        .val-cost { font-family: monospace; color: #f87171; }
+        .val-total { font-family: monospace; color: #4ade80; font-weight: bold; }
         .val-weight { font-family: monospace; color: #60a5fa; font-weight: bold; }
+        
+        /* Repro Status Info */
+        .repro-badge { color: #f9a8d4; font-weight: bold; font-size: 0.85rem; }
+        .repro-stats { display: flex; gap: 6px; font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
+        .repro-stats span { display: inline-block; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
 
         /* --- SUMMARY VIEW CARDS --- */
         .group-card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; margin-bottom: 2rem; overflow: hidden; }
@@ -343,6 +426,67 @@ try {
         }
         .page-link:hover { background: #334155; color: white; }
         .page-link.active { background: #22c55e; color: white; border-color: #22c55e; }
+
+        /* --- MOBILE RESPONSIVE OVERRIDES --- */
+        @media (max-width: 900px) {
+            .container { padding: 1rem; }
+            .header { flex-direction: column; align-items: flex-start; text-align: left;}
+            .filter-grid { grid-template-columns: 1fr; }
+            .action-bar { flex-direction: column; }
+            .action-bar .btn { width: 100%; justify-content: center; }
+            .group-stats-row { grid-template-columns: 1fr; }
+            .sow-stats-container { grid-template-columns: 1fr 1fr; } 
+
+            .table-wrap { border: none; background: transparent; overflow: visible; }
+            table { min-width: 0; display: block; }
+            thead { display: none; }
+            tbody { display: block; width: 100%; }
+            
+            tr { 
+                display: block; 
+                background: rgba(30, 41, 59, 0.6); 
+                border: 1px solid #475569; 
+                border-radius: 12px; 
+                margin-bottom: 1rem; 
+                padding: 1rem; 
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            
+            tr.group-header-row, tr.sub-group-header-row {
+                padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;
+            }
+            tr.group-header-row td, tr.sub-group-header-row td {
+                display: block; text-align: left; border: none; padding: 0;
+            }
+            tr.group-header-row td::before, tr.sub-group-header-row td::before {
+                display: none; 
+            }
+
+            td { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                padding: 0.75rem 0; 
+                border-bottom: 1px dashed rgba(255,255,255,0.1); 
+                text-align: right; 
+            }
+            
+            td[style*="padding-left: 2rem;"] { padding-left: 0 !important; }
+            td:last-child { border-bottom: none; }
+            
+            td::before { 
+                content: attr(data-label); 
+                font-weight: 700; 
+                color: #94a3b8; 
+                font-size: 0.8rem; 
+                text-transform: uppercase; 
+                margin-right: 1rem; 
+                text-align: left;
+                flex-shrink: 0;
+            }
+            
+            .btn-view-ledger { width: 100%; justify-content: center; margin-top: 5px; }
+        }
     </style>
 </head>
 <body>
@@ -350,13 +494,12 @@ try {
 <div class="container">
     
     <a href="reports.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Reports Dashboard
+        <i class="fa-solid fa-arrow-left"></i> Back to Reports Dashboard
     </a>
 
     <div class="header">
         <h1 class="title">Animal Inventory Report</h1>
-        <p class="subtitle">Comprehensive livestock analysis and metrics.</p>
+        <p class="subtitle">Comprehensive livestock analysis and financial metrics.</p>
     </div>
 
     <div class="stats-grid">
@@ -381,19 +524,40 @@ try {
         </div>
 
         <div class="stat-card">
-            <div class="stat-lbl">Total Inventory Value</div>
+            <div class="stat-lbl">Total Acq. Value</div>
             <div class="stat-val text-gold">₱<?= number_format($stats['total_value'], 2) ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-lbl">Females / Males</div>
             <div class="stat-val text-green"><?= $stats['female_count'] ?> / <?= $stats['male_count'] ?></div>
         </div>
+
+        <?php if ($stage == '8' || $sow_status): ?>
+            <div class="sow-stats-container">
+                <div style="text-align: center;">
+                    <div class="stat-lbl" style="color: #f9a8d4;">Dry</div>
+                    <div class="stat-val text-slate"><?= (int)$sow_stats['dry_count'] ?></div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="stat-lbl" style="color: #f9a8d4;">In-Service</div>
+                    <div class="stat-val text-blue"><?= (int)$sow_stats['service_count'] ?></div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="stat-lbl" style="color: #f9a8d4;">Pregnant</div>
+                    <div class="stat-val text-gold"><?= (int)$sow_stats['pregnant_count'] ?></div>
+                </div>
+                <div style="text-align: center;">
+                    <div class="stat-lbl" style="color: #f9a8d4;">Birthing / Farrowing</div>
+                    <div class="stat-val text-green"><?= (int)$sow_stats['birthing_count'] ?></div>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="filter-box">
-        <form method="GET">
-            <?php if($filter_loc): ?><input type="hidden" name="f_loc" value="<?= htmlspecialchars($filter_loc) ?>"><?php endif; ?>
-            <?php if($filter_bld): ?><input type="hidden" name="f_bld" value="<?= htmlspecialchars($filter_bld) ?>"><?php endif; ?>
+        <form method="GET" id="filterForm">
+            <?php if($filter_bld): ?><input type="hidden" name="f_bld" id="hidden_f_bld" value="<?= htmlspecialchars($filter_bld) ?>"><?php endif; ?>
+            <?php if($filter_pen): ?><input type="hidden" name="f_pen" id="hidden_f_pen" value="<?= htmlspecialchars($filter_pen) ?>"><?php endif; ?>
 
             <div class="filter-grid">
                 <div class="form-group">
@@ -408,14 +572,30 @@ try {
                 </div>
 
                 <div class="form-group">
+                    <label>Location</label>
+                    <select name="f_loc" class="form-input" onchange="handleLocationChange()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events: none; opacity: 0.7; background-color: #1e293b;"' : ''; ?>>
+                        <?php if($USER_LOCATION_ == 1000): ?>
+                            <option value="">All Locations</option>
+                        <?php endif; ?>
+                        <?php foreach($locations as $loc): ?>
+                            <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Birth Date Range</label>
                     <div style="display: flex; gap: 5px;">
-                        <input type="date" name="date_from" class="form-input" value="<?= htmlspecialchars($date_from) ?>">
-                        <input type="date" name="date_to" class="form-input" value="<?= htmlspecialchars($date_to) ?>">
+                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
                     </div>
                 </div>
-                
-                <div class="form-group">
+            </div> 
+            
+            <div class="filter-grid" style="margin-top: 15px;">
+                <div class="form-group" style="grid-column: span 1;">
                     <label>Type & Breed</label>
                     <div style="display: flex; gap: 5px;">
                         <select name="animal_type" class="form-input">
@@ -451,30 +631,34 @@ try {
 
                 <div class="form-group">
                     <label>Status</label>
-                    <select name="status" class="form-input">
-                        <option value="">All</option>
-                        <option value="Active" <?= $status=='Active'?'selected':'' ?>>Active Herd</option>
-                        <option value="Sold" <?= $status=='Sold'?'selected':'' ?>>Sold History</option>
-                        <option value="Deceased" <?= $status=='Deceased'?'selected':'' ?>>Deceased/Cull</option>
-                    </select>
-                </div>
-                
-                <div class="btn-group">
-                    <button type="submit" class="btn btn-primary">Apply Filters</button>
-                    <a href="animal_report.php" class="btn btn-outline">Reset</a>
+                    <div style="display: flex; gap: 5px;">
+                        <select name="status" class="form-input">
+                            <option value="">All Animal Status</option>
+                            <option value="Active" <?= $status=='Active'?'selected':'' ?>>Active Herd</option>
+                            <option value="Sold" <?= $status=='Sold'?'selected':'' ?>>Sold History</option>
+                            <option value="Deceased" <?= $status=='Deceased'?'selected':'' ?>>Deceased/Cull</option>
+                        </select>
+                        <select name="sow_status" class="form-input">
+                            <option value="">All Sow Status</option>
+                            <option value="DRY" <?= $sow_status=='DRY'?'selected':'' ?>>Dry</option>
+                            <option value="SERVICE" <?= $sow_status=='SERVICE'?'selected':'' ?>>Serviced</option>
+                            <option value="PREGNANT" <?= $sow_status=='PREGNANT'?'selected':'' ?>>Pregnant</option>
+                            <option value="BIRTHING" <?= $sow_status=='BIRTHING'?'selected':'' ?>>Birthing / Farrowing</option>
+                            <option value="ABORTION" <?= $sow_status=='ABORTION'?'selected':'' ?>>Abortion</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             
+            <div class="btn-group" style="justify-content: flex-start;">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a href="animal_report.php" class="btn btn-outline">Reset Filters</a>
+            </div>
+            
             <div class="action-bar">
-                <button type="button" class="btn btn-pdf" onclick="exportPDF()">
-                    <i class="fa-solid fa-file-pdf"></i> PDF
-                </button>
-                <button type="button" class="btn btn-excel" onclick="exportExcel()">
-                    <i class="fa-solid fa-file-excel"></i> Excel
-                </button>
-                <button type="button" class="btn btn-csv" onclick="exportCSV()">
-                    <i class="fa-solid fa-file-csv"></i> CSV
-                </button>
+                <button type="button" class="btn btn-pdf" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                <button type="button" class="btn btn-excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                <button type="button" class="btn btn-csv" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> CSV</button>
             </div>
         </form>
     </div>
@@ -488,7 +672,7 @@ try {
                     <div class="group-title"><?= htmlspecialchars($group_name) ?></div>
                     
                     <?php if($gdata['id']): ?>
-                        <a href="?view=pen&f_bld=<?= $gdata['id'] ?>&status=<?= $status ?>" class="btn-view-pens">
+                        <a href="?view=pen&f_bld=<?= $gdata['id'] ?>&status=<?= $status ?>&f_loc=<?= $filter_loc ?>&stage=<?= $stage ?>" class="btn-view-pens">
                             View Pens ➔
                         </a>
                     <?php endif; ?>
@@ -501,7 +685,7 @@ try {
                     </div>
                     <div class="group-mini-stat">
                         <div class="mini-val text-gold">₱<?= number_format($gdata['cost'], 2) ?></div>
-                        <div class="mini-lbl">Total Cost Value</div>
+                        <div class="mini-lbl">Total Acq. Cost</div>
                     </div>
                     <div class="group-mini-stat" style="text-align: left; padding: 1rem 1.5rem;">
                         <div class="mini-lbl" style="margin-bottom: 5px;">Classifications</div>
@@ -515,14 +699,14 @@ try {
                         </div>
                     </div>
                 </div>
-                </div>
+            </div>
         <?php endforeach; ?>
 
     <?php elseif ($view === 'pen'): ?>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
              <h3 style="color:#94a3b8; margin:0;">Pen Breakdown</h3>
-             <a href="?view=building&status=<?= $status ?>" class="btn-outline" style="padding:6px 12px; border-radius:6px; text-decoration:none;">← Back to Buildings</a>
+             <a href="?view=building&status=<?= $status ?>&f_loc=<?= $filter_loc ?>&stage=<?= $stage ?>" class="btn-outline" style="padding:6px 12px; border-radius:6px; text-decoration:none;">← Back to Buildings</a>
         </div>
 
         <?php foreach ($grouped_data as $group_name => $gdata): ?>
@@ -539,7 +723,7 @@ try {
                     </div>
                     <div class="group-mini-stat">
                         <div class="mini-val text-gold">₱<?= number_format($gdata['cost'], 2) ?></div>
-                        <div class="mini-lbl">Total Cost</div>
+                        <div class="mini-lbl">Total Acq. Cost</div>
                     </div>
                     <div class="group-mini-stat" style="text-align: left; padding: 1rem 1.5rem;">
                         <div class="mini-lbl" style="margin-bottom: 5px;">Classifications</div>
@@ -560,20 +744,60 @@ try {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Tag No</th><th>Stage</th><th>Breed</th><th>Sex</th><th>Status</th><th>Birth Wt</th><th>Cur. Wt</th><th>Cost</th>
+                                    <th>Tag No</th>
+                                    <th>Stage</th>
+                                    <th>Status</th>
+                                    <th>Repro Info</th>
+                                    <th style="text-align:right;">Wt(kg)</th>
+                                    <th style="text-align:right;">Acq.Cost</th>
+                                    <th style="text-align:right;">Feed</th>
+                                    <th style="text-align:right;">Meds</th>
+                                    <th style="text-align:right;">Vacs</th>
+                                    <th style="text-align:right;">Vits</th>
+                                    <th style="text-align:right;">ChkUp</th>
+                                    <th style="text-align:right;">Total Cost</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($gdata['items'] as $row): ?>
+                                <?php foreach ($gdata['items'] as $row): 
+                                    $statusClass = 'b-active';
+                                    if($row['CURRENT_STATUS'] == 'Sold') $statusClass = 'b-sold';
+                                    if(in_array($row['CURRENT_STATUS'], ['Deceased','Cull','Dead'])) $statusClass = 'b-dec';
+                                    
+                                    // Cost Calculations
+                                    $c_feed = $row['cost_feed'];
+                                    $c_med  = $row['cost_med'];
+                                    $c_vac  = $row['cost_vac'];
+                                    $c_vit  = $row['cost_vit'];
+                                    $c_chk  = $row['cost_chk'];
+                                    $total_cost = $row['ACQUISITION_COST'] + $c_feed + $c_med + $c_vac + $c_vit + $c_chk;
+                                ?>
                                     <tr>
-                                        <td style="font-weight:bold; color:#fff;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
-                                        <td><?= htmlspecialchars($row['STAGE_NAME']) ?></td>
-                                        <td><?= htmlspecialchars($row['BREED_NAME']) ?></td>
-                                        <td><?= $row['SEX'] ?></td>
-                                        <td><?= htmlspecialchars($row['CURRENT_STATUS']) ?></td>
-                                        <td style="text-align:right;"><?= $row['WEIGHT_AT_BIRTH'] ?></td>
-                                        <td style="text-align:right;"><?= $row['CURRENT_ESTIMATED_WEIGHT'] ?></td>
-                                        <td style="text-align:right;" class="text-gold">₱<?= number_format($row['ACQUISITION_COST'], 2) ?></td>
+                                        <td data-label="Tag No" style="font-weight:bold; color:#fff;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
+                                        <td data-label="Stage"><?= htmlspecialchars($row['STAGE_NAME']) ?></td>
+                                        <td data-label="Status"><span class="badge <?= $statusClass ?>"><?= htmlspecialchars($row['CURRENT_STATUS']) ?></span></td>
+                                        <td data-label="Repro Info">
+                                            <?php if($row['curr_sow_status'] === '-' && $row['count_dry'] == 0 && $row['count_service'] == 0): ?>
+                                                <span style="color:#64748b;">N/A</span>
+                                            <?php else: ?>
+                                                <div class="repro-badge"><?= htmlspecialchars($row['curr_sow_status']) ?></div>
+                                                <div class="repro-stats">
+                                                    <span title="Dry">D:<?= $row['count_dry'] ?></span>
+                                                    <span title="Serviced">S:<?= $row['count_service'] ?></span>
+                                                    <span title="Pregnant">P:<?= $row['count_pregnant'] ?></span>
+                                                    <span title="Birthing">B:<?= $row['count_birthing'] ?></span>
+                                                    <span title="Abortion">A:<?= $row['count_abortion'] ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-label="Wt(kg)" style="text-align:right;" class="val-weight"><?= $row['CURRENT_ACTUAL_WEIGHT'] > 0 ? $row['CURRENT_ACTUAL_WEIGHT'] : '-' ?></td>
+                                        <td data-label="Acq.Cost" style="text-align:right;" class="val-money"><?= number_format($row['ACQUISITION_COST'], 2) ?></td>
+                                        <td data-label="Feed" style="text-align:right;" class="val-cost"><?= number_format($c_feed, 2) ?></td>
+                                        <td data-label="Meds" style="text-align:right;" class="val-cost"><?= number_format($c_med, 2) ?></td>
+                                        <td data-label="Vacs" style="text-align:right;" class="val-cost"><?= number_format($c_vac, 2) ?></td>
+                                        <td data-label="Vits" style="text-align:right;" class="val-cost"><?= number_format($c_vit, 2) ?></td>
+                                        <td data-label="ChkUp" style="text-align:right;" class="val-cost"><?= number_format($c_chk, 2) ?></td>
+                                        <td data-label="Total Cost" style="text-align:right;" class="val-total">₱<?= number_format($total_cost, 2) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -594,16 +818,22 @@ try {
                         <th>Breed</th>
                         <th>Sex</th>
                         <th>Status</th>
+                        <th>Repro Info</th>
                         <th>Location</th>
-                        <th>Mother</th>
-                        <th style="text-align:right;">Birth Wt</th>
-                        <th style="text-align:right;">Cur. Wt</th>
-                        <th style="text-align:right;">Cost Value</th>
+                        <th style="text-align:right;">Wt(kg)</th>
+                        <th style="text-align:right;">Acq.Cost</th>
+                        <th style="text-align:right;">Feed</th>
+                        <th style="text-align:right;">Meds</th>
+                        <th style="text-align:right;">Vacs</th>
+                        <th style="text-align:right;">Vits</th>
+                        <th style="text-align:right;">ChkUp</th>
+                        <th style="text-align:right;">Total Cost</th>
+                        <th style="text-align:center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if(empty($animals)): ?>
-                        <tr><td colspan="10" style="text-align:center; padding:3rem; color:#64748b;">No records found matching filters.</td></tr>
+                        <tr><td colspan="16" style="text-align:center; padding:3rem; color:#64748b;">No records found matching filters.</td></tr>
                     <?php else: ?>
                         <?php 
                         $last_building = '';
@@ -613,7 +843,7 @@ try {
                             // Building Header
                             $curr_building = $row['BUILDING_NAME'] ?: 'Unassigned Building';
                             if ($curr_building !== $last_building) {
-                                echo "<tr class='group-header-row'><td colspan='10'>🏢 Building: " . htmlspecialchars($curr_building) . "</td></tr>";
+                                echo "<tr class='group-header-row'><td colspan='16'>🏢 Building: " . htmlspecialchars($curr_building) . "</td></tr>";
                                 $last_building = $curr_building;
                                 $last_pen = ''; 
                             }
@@ -621,28 +851,59 @@ try {
                             // Pen Header
                             $curr_pen = $row['PEN_NAME'] ?: 'Unassigned Pen';
                             if ($curr_pen !== $last_pen) {
-                                echo "<tr class='sub-group-header-row'><td colspan='10'>↳ Pen: " . htmlspecialchars($curr_pen) . "</td></tr>";
+                                echo "<tr class='sub-group-header-row'><td colspan='16'>↳ Pen: " . htmlspecialchars($curr_pen) . "</td></tr>";
                                 $last_pen = $curr_pen;
                             }
 
                             $statusClass = 'b-active';
                             if($row['CURRENT_STATUS'] == 'Sold') $statusClass = 'b-sold';
                             if(in_array($row['CURRENT_STATUS'], ['Deceased','Cull','Dead'])) $statusClass = 'b-dec';
+                            
+                            // Cost Calculations
+                            $c_feed = $row['cost_feed'];
+                            $c_med  = $row['cost_med'];
+                            $c_vac  = $row['cost_vac'];
+                            $c_vit  = $row['cost_vit'];
+                            $c_chk  = $row['cost_chk'];
+                            $total_cost = $row['ACQUISITION_COST'] + $c_feed + $c_med + $c_vac + $c_vit + $c_chk;
                         ?>
                         <tr>
-                            <td style="font-weight:bold; color:#fff; padding-left: 2rem;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
-                            <td>
+                            <td data-label="Tag No" style="font-weight:bold; color:#fff; padding-left: 2rem;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
+                            <td data-label="Classification">
                                 <div><?= htmlspecialchars($row['STAGE_NAME'] ?? 'Unknown') ?></div>
                                 <small style="color:#64748b"><?= htmlspecialchars($row['ANIMAL_TYPE_NAME']) ?></small>
                             </td>
-                            <td><?= htmlspecialchars($row['BREED_NAME']) ?></td>
-                            <td><?= $row['SEX'] ?></td>
-                            <td><span class="badge <?= $statusClass ?>"><?= htmlspecialchars($row['CURRENT_STATUS']) ?></span></td>
-                            <td><?= htmlspecialchars($row['LOCATION_NAME']) ?></td>
-                            <td style="color:#f472b6;"><?= htmlspecialchars($row['MOTHER_TAG'] ?? '-') ?></td>
-                            <td style="text-align:right;"><?= $row['WEIGHT_AT_BIRTH'] > 0 ? $row['WEIGHT_AT_BIRTH'] : '-' ?></td>
-                            <td style="text-align:right;" class="val-weight"><?= $row['CURRENT_ESTIMATED_WEIGHT'] > 0 ? $row['CURRENT_ESTIMATED_WEIGHT'] : '-' ?></td>
-                            <td style="text-align:right;" class="val-money">₱<?= number_format($row['ACQUISITION_COST'], 2) ?></td>
+                            <td data-label="Breed"><?= htmlspecialchars($row['BREED_NAME']) ?></td>
+                            <td data-label="Sex"><?= $row['SEX'] ?></td>
+                            <td data-label="Status"><span class="badge <?= $statusClass ?>"><?= htmlspecialchars($row['CURRENT_STATUS']) ?></span></td>
+                            <td data-label="Repro Info">
+                                <?php if($row['curr_sow_status'] === '-' && $row['count_dry'] == 0 && $row['count_service'] == 0): ?>
+                                    <span style="color:#64748b;">N/A</span>
+                                <?php else: ?>
+                                    <div class="repro-badge"><?= htmlspecialchars($row['curr_sow_status']) ?></div>
+                                    <div class="repro-stats">
+                                        <span title="Dry">D:<?= $row['count_dry'] ?></span>
+                                        <span title="Serviced">S:<?= $row['count_service'] ?></span>
+                                        <span title="Pregnant">P:<?= $row['count_pregnant'] ?></span>
+                                        <span title="Birthing">B:<?= $row['count_birthing'] ?></span>
+                                        <span title="Abortion">A:<?= $row['count_abortion'] ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td data-label="Location"><?= htmlspecialchars($row['LOCATION_NAME']) ?></td>
+                            <td data-label="Wt(kg)" style="text-align:right;" class="val-weight"><?= $row['CURRENT_ACTUAL_WEIGHT'] > 0 ? $row['CURRENT_ACTUAL_WEIGHT'] : '-' ?></td>
+                            <td data-label="Acq.Cost" style="text-align:right;" class="val-money"><?= number_format($row['ACQUISITION_COST'], 2) ?></td>
+                            <td data-label="Feed" style="text-align:right;" class="val-cost"><?= number_format($c_feed, 2) ?></td>
+                            <td data-label="Meds" style="text-align:right;" class="val-cost"><?= number_format($c_med, 2) ?></td>
+                            <td data-label="Vacs" style="text-align:right;" class="val-cost"><?= number_format($c_vac, 2) ?></td>
+                            <td data-label="Vits" style="text-align:right;" class="val-cost"><?= number_format($c_vit, 2) ?></td>
+                            <td data-label="ChkUp" style="text-align:right;" class="val-cost"><?= number_format($c_chk, 2) ?></td>
+                            <td data-label="Total Cost" style="text-align:right;" class="val-total">₱<?= number_format($total_cost, 2) ?></td>
+                            <td data-label="Action" style="text-align:center;">
+                                <a href="viewAnimalLedger.php?id=<?= $row['ANIMAL_ID'] ?>" class="btn-view-ledger">
+                                    <i class="fa-solid fa-clipboard-list"></i> Ledger
+                                </a>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -679,12 +940,30 @@ try {
 </div>
 
 <script>
+    // Initialize Flatpickr
+    document.addEventListener('DOMContentLoaded', () => {
+        flatpickr(".date-picker", {
+            dateFormat: "Y-m-d", // Value submitted to PHP
+            altInput: true,      // Visual input
+            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            allowInput: true
+        });
+    });
+
     const jsPDF = window.jspdf.jsPDF;
     const viewMode = "<?= $view ?>";
     const records = <?php echo json_encode($animals); ?>;
 
+    function handleLocationChange() {
+        const bld = document.getElementById('hidden_f_bld');
+        const pen = document.getElementById('hidden_f_pen');
+        if (bld) bld.disabled = true; 
+        if (pen) pen.disabled = true; 
+        document.getElementById('filterForm').submit();
+    }
+
     function exportPDF() {
-        const doc = new jsPDF('landscape');
+        const doc = new jsPDF('landscape', 'mm', 'a4'); // specify orientation & format
         doc.setFontSize(18);
         doc.setTextColor(34, 197, 94);
         doc.text("Animal Report (" + viewMode.toUpperCase() + ")", 14, 15);
@@ -693,16 +972,32 @@ try {
         doc.setTextColor(100);
         doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
-        const rows = records.map(r => [
-            r.TAG_NO, r.STAGE_NAME || '-', r.BREED_NAME, r.SEX, r.CURRENT_STATUS, 
-            r.LOCATION_NAME, r.MOTHER_TAG || '-', r.CURRENT_ESTIMATED_WEIGHT, r.ACQUISITION_COST
-        ]);
+        const rows = records.map(r => {
+            const acqCost = parseFloat(r.ACQUISITION_COST || 0);
+            const cFeed = parseFloat(r.cost_feed || 0);
+            const cMed  = parseFloat(r.cost_med || 0);
+            const cVac  = parseFloat(r.cost_vac || 0);
+            const cVit  = parseFloat(r.cost_vit || 0);
+            const cChk  = parseFloat(r.cost_chk || 0);
+            const totalCost = acqCost + cFeed + cMed + cVac + cVit + cChk;
+            
+            // Format Sow Info to multi-line string for PDF
+            const sowInfo = (r.curr_sow_status !== '-' || r.count_dry > 0) 
+                ? `${r.curr_sow_status}\nD:${r.count_dry} S:${r.count_service} P:${r.count_pregnant}\nB:${r.count_birthing} A:${r.count_abortion}`
+                : 'N/A';
+
+            return [
+                r.TAG_NO, r.STAGE_NAME || '-', r.SEX, r.CURRENT_STATUS, sowInfo,
+                r.LOCATION_NAME, r.CURRENT_ACTUAL_WEIGHT, 
+                acqCost.toFixed(2), cFeed.toFixed(2), cMed.toFixed(2), cVac.toFixed(2), cVit.toFixed(2), cChk.toFixed(2), totalCost.toFixed(2)
+            ];
+        });
 
         doc.autoTable({
-            head: [['Tag', 'Stage', 'Breed', 'Sex', 'Status', 'Location', 'Mother', 'Wt (kg)', 'Cost (P)']],
+            head: [['Tag', 'Stage', 'Sex', 'Status', 'Repro', 'Location', 'Wt(kg)', 'Acq(P)', 'Feed(P)', 'Meds(P)', 'Vacs(P)', 'Vits(P)', 'ChkUp(P)', 'Total']],
             body: rows,
             startY: 30,
-            styles: { fontSize: 8 },
+            styles: { fontSize: 6, cellPadding: 1.5, overflow: 'linebreak' },
             headStyles: { fillColor: [34, 197, 94] }
         });
 
@@ -710,20 +1005,39 @@ try {
     }
 
     function exportExcel() {
-        const excelData = records.map(r => ({
-            'Tag No': r.TAG_NO,
-            'Type': r.ANIMAL_TYPE_NAME,
-            'Breed': r.BREED_NAME,
-            'Stage': r.STAGE_NAME,
-            'Sex': r.SEX,
-            'Status': r.CURRENT_STATUS,
-            'Location': `${r.LOCATION_NAME} - ${r.PEN_NAME}`,
-            'Mother Tag': r.MOTHER_TAG || '-',
-            'Birth Date': r.BIRTH_DATE,
-            'Birth Wt': r.WEIGHT_AT_BIRTH,
-            'Current Wt': r.CURRENT_ESTIMATED_WEIGHT,
-            'Cost (PHP)': parseFloat(r.ACQUISITION_COST)
-        }));
+        const excelData = records.map(r => {
+            const acqCost = parseFloat(r.ACQUISITION_COST || 0);
+            const cFeed = parseFloat(r.cost_feed || 0);
+            const cMed  = parseFloat(r.cost_med || 0);
+            const cVac  = parseFloat(r.cost_vac || 0);
+            const cVit  = parseFloat(r.cost_vit || 0);
+            const cChk  = parseFloat(r.cost_chk || 0);
+            const totalCost = acqCost + cFeed + cMed + cVac + cVit + cChk;
+
+            return {
+                'Tag No': r.TAG_NO,
+                'Type': r.ANIMAL_TYPE_NAME,
+                'Breed': r.BREED_NAME,
+                'Stage': r.STAGE_NAME,
+                'Sex': r.SEX,
+                'Status': r.CURRENT_STATUS,
+                'Current Sow Status': r.curr_sow_status,
+                'Dry Cycles': r.count_dry,
+                'Service Cycles': r.count_service,
+                'Pregnancies': r.count_pregnant,
+                'Birthings': r.count_birthing,
+                'Abortions': r.count_abortion,
+                'Location': `${r.LOCATION_NAME} - ${r.PEN_NAME}`,
+                'Current Wt': r.CURRENT_ACTUAL_WEIGHT,
+                'Acq Cost (PHP)': acqCost,
+                'Feed (PHP)': cFeed,
+                'Meds (PHP)': cMed,
+                'Vacs (PHP)': cVac,
+                'Vits (PHP)': cVit,
+                'Checkups (PHP)': cChk,
+                'Total Cost (PHP)': totalCost
+            };
+        });
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Inventory");
@@ -732,12 +1046,21 @@ try {
 
     function exportCSV() {
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Tag No,Type,Breed,Stage,Sex,Status,Location,Mother Tag,Birth Date,Current Wt,Cost\n";
+        csvContent += "Tag No,Type,Breed,Stage,Sex,Status,Sow Status,Dry Cycles,Service Cycles,Pregnancies,Birthings,Abortions,Location,Current Wt,Acq Cost,Feed,Meds,Vacs,Vits,Checkups,Total Cost\n";
         records.forEach(r => {
+            const acqCost = parseFloat(r.ACQUISITION_COST || 0);
+            const cFeed = parseFloat(r.cost_feed || 0);
+            const cMed  = parseFloat(r.cost_med || 0);
+            const cVac  = parseFloat(r.cost_vac || 0);
+            const cVit  = parseFloat(r.cost_vit || 0);
+            const cChk  = parseFloat(r.cost_chk || 0);
+            const totalCost = acqCost + cFeed + cMed + cVac + cVit + cChk;
+
             const row = [
                 r.TAG_NO, r.ANIMAL_TYPE_NAME, r.BREED_NAME, r.STAGE_NAME, r.SEX, r.CURRENT_STATUS,
-                `${r.LOCATION_NAME} - ${r.PEN_NAME}`, r.MOTHER_TAG || '-', r.BIRTH_DATE,
-                r.CURRENT_ESTIMATED_WEIGHT, r.ACQUISITION_COST
+                r.curr_sow_status, r.count_dry, r.count_service, r.count_pregnant, r.count_birthing, r.count_abortion,
+                `${r.LOCATION_NAME} - ${r.PEN_NAME}`, r.CURRENT_ACTUAL_WEIGHT,
+                acqCost.toFixed(2), cFeed.toFixed(2), cMed.toFixed(2), cVac.toFixed(2), cVit.toFixed(2), cChk.toFixed(2), totalCost.toFixed(2)
             ].map(e => `"${e}"`).join(",");
             csvContent += row + "\n";
         });

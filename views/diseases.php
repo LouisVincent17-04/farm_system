@@ -10,6 +10,7 @@ include '../security/checkAccess.php';
 checkAccess('diseases');
 // Ensure these paths are correct for your setup
 include '../common/navbar.php'; 
+include '../common/chat_support.php';
 
 
 $message = "";

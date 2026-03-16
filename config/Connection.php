@@ -2,7 +2,7 @@
 // C:\xampp\htdocs\FarmSystem\config\Database.php (or your connection file)
 
 $host = 'localhost';
-$db   = 'farm_system'; // Ensure this matches your actual database name
+$db   = 'farm_system'; // Depending on what farm you chose
 $user = 'root';          // Default XAMPP user
 $pass = 'v1i1n1x1';              // Default XAMPP password
 $charset = 'utf8mb4';

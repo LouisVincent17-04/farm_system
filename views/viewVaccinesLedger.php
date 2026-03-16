@@ -1,99 +1,129 @@
 <?php
-// views/viewVaccineLedger.php
-error_reporting(E_ALL);
+// reports/viewVaccinesLedger.php
+error_reporting(0);
 ini_set('display_errors', 0);
-
-$page = "transactions";
+$page = "reports";
 include '../config/Connection.php';
 
 include '../security/checkAccess.php';
-checkAccess('vaccination');
+checkAccess('vaccine_report');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
+$supply_id = $_GET['id'] ?? 0;
 
-$supply_id = $_GET['id'] ?? null;
-
-if (!$supply_id) {
-    header("Location: available_vaccines.php");
-    exit;
+if(isset($_GET['curr_page']) && $_GET['curr_page'] === 'vac_rep') {
+    $back_link = "vaccine_report.php";
+    $back_text = "Back to Vaccine Report";
+} else {
+    $back_link = "available_vaccines.php";
+    $back_text = "Back to Available Vaccines";
 }
 
-// FILTERS
-$limit_val  = $_GET['limit'] ?? 10;
-$limit_sql  = ($limit_val === 'all') ? "" : "LIMIT " . intval($limit_val);
-$search_term = $_GET['search'] ?? '';
-$start_date  = $_GET['start_date'] ?? '';
-$end_date    = $_GET['end_date'] ?? '';
-
 try {
-    // 1. Fetch Vaccine Info
-    $stmt = $conn->prepare("SELECT * FROM VACCINES WHERE SUPPLY_ID = ?");
+    if (!$supply_id) throw new Exception("No Vaccine ID provided.");
+
+    // 1. Get Vaccine Details
+    $stmt = $conn->prepare("
+        SELECT v.*, u.UNIT_NAME, u.UNIT_ABBR 
+        FROM vaccines v 
+        LEFT JOIN units u ON v.UNIT_ID = u.UNIT_ID 
+        WHERE v.SUPPLY_ID = ?
+    ");
     $stmt->execute([$supply_id]);
-    $item = $stmt->fetch(PDO::FETCH_ASSOC);
+    $vaccine = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$item) throw new Exception("Vaccine ID not found.");
+    if (!$vaccine) throw new Exception("Vaccine not found.");
+    $unit_label = $vaccine['UNIT_ABBR'] ?? 'units';
 
-    // 2. Build Query
-    $dateFilter = "";
-    $searchFilter = "";
-    $params = [];
+    // 2. Build Combined Ledger
+    $ledger = [];
 
-    // Params for Union: Name (Stock In), ID (Stock Out)
-    $params[] = $item['SUPPLY_NAME'];
-    $params[] = $supply_id;
-
-    if (!empty($start_date)) {
-        $dateFilter .= " AND DATE(T_DATE) >= ?";
-        $params[] = $start_date;
-    }
-    if (!empty($end_date)) {
-        $dateFilter .= " AND DATE(T_DATE) <= ?";
-        $params[] = $end_date;
-    }
-    if (!empty($search_term)) {
-        $searchFilter = " AND (T_REF LIKE ? OR T_REMARKS LIKE ?)";
-        $params[] = "%$search_term%";
-        $params[] = "%$search_term%";
-    }
-
-    $sql = "
-        SELECT * FROM (
-            -- STOCK IN (From ITEMS table)
+    // --- A. Fetch Usages (from vaccination_records) ---
+    try {
+        $u_stmt = $conn->prepare("
             SELECT 
-                i.CREATED_AT as T_DATE,
-                'STOCK IN' as T_TYPE,
-                CONCAT('Purchase ID #', i.ITEM_ID) as T_REF,
-                i.QUANTITY as QTY_CHANGE,
-                i.UNIT_COST as COST_PER_UNIT,
-                COALESCE(i.ITEM_DESCRIPTION, 'New Stock Added') as T_REMARKS
-            FROM ITEMS i
-            WHERE i.ITEM_NAME = ? 
-            AND i.ITEM_TYPE_ID = 11 -- Type 11 = Vaccines
+                vr.VACCINATION_DATE AS raw_date,
+                DATE_FORMAT(vr.VACCINATION_DATE, '%m/%d/%Y %h:%i %p') AS txn_date_fmt,
+                'Vaccination' AS txn_type,
+                'Deduct' AS effect,
+                vr.QUANTITY AS qty,
+                CONCAT('Administered to Tag: ', COALESCE(ar.TAG_NO, 'Unknown')) AS remarks
+            FROM vaccination_records vr
+            LEFT JOIN animal_records ar ON vr.ANIMAL_ID = ar.ANIMAL_ID
+            WHERE vr.ITEM_ID = ?
+        ");
+        $u_stmt->execute([$supply_id]);
+        $usages = $u_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $ledger = array_merge($ledger, $usages);
+    } catch (Exception $e) {
+        // Fallback or ignore if table schema differs
+    }
 
-            UNION ALL
-
-            -- STOCK OUT (From VACCINATION_RECORDS)
+    // --- B. Fetch Adjustments (from inventory_adjustments) ---
+    try {
+        $a_stmt = $conn->prepare("
             SELECT 
-                v.VACCINATION_DATE as T_DATE,
-                'USAGE' as T_TYPE,
-                CONCAT('Animal Tag: ', COALESCE(a.TAG_NO, 'N/A')) as T_REF,
-                (v.QUANTITY * -1) as QTY_CHANGE, -- Negative to show deduction
-                0 as COST_PER_UNIT,
-                CONCAT('Vet: ', v.VET_NAME, ' | ', COALESCE(v.REMARKS,'')) as T_REMARKS
-            FROM VACCINATION_RECORDS v
-            LEFT JOIN ANIMAL_RECORDS a ON v.ANIMAL_ID = a.ANIMAL_ID
-            WHERE v.ITEM_ID = ?
-        ) AS History
-        WHERE 1=1 
-        $dateFilter
-        $searchFilter
-        ORDER BY T_DATE DESC
-        $limit_sql
-    ";
+                TRANSACTION_DATE AS raw_date,
+                DATE_FORMAT(TRANSACTION_DATE, '%m/%d/%Y %h:%i %p') AS txn_date_fmt,
+                CONCAT('Adjustment (', INPUT_MODE, ')') AS txn_type,
+                ADJUSTMENT_TYPE AS effect, 
+                QUANTITY AS qty,
+                CONCAT(REASON, IF(REMARKS != '', CONCAT(' - ', REMARKS), '')) AS remarks
+            FROM inventory_adjustments
+            WHERE CATEGORY = 'vaccine' AND REF_ID = ?
+        ");
+        $a_stmt->execute([$supply_id]);
+        $adjustments = $a_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $ledger = array_merge($ledger, $adjustments);
+    } catch (Exception $e) { }
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // --- C. Fetch Confirmed Purchases (Additions) ---
+    try {
+        $p_stmt = $conn->prepare("
+            SELECT 
+                CREATED_AT AS raw_date,
+                DATE_FORMAT(DATE_OF_PURCHASE, '%m/%d/%Y') AS txn_date_fmt,
+                'Purchase' AS txn_type,
+                'Add' AS effect,
+                (QUANTITY * COALESCE(ITEM_NET_WEIGHT, 1)) AS qty,
+                CONCAT(
+                    'Supplier: ', COALESCE(SUPPLIER, 'N/A'), 
+                    ' | Ref: ', COALESCE(REFERENCE_NO, 'N/A'),
+                    IF(EXPIRATION_DATE IS NOT NULL AND EXPIRATION_DATE != '0000-00-00', CONCAT(' | Exp: ', DATE_FORMAT(EXPIRATION_DATE, '%m/%d/%Y')), '')
+                ) AS remarks
+            FROM items
+            WHERE ITEM_NAME = ? AND STATUS = 1
+        ");
+        $p_stmt->execute([$vaccine['SUPPLY_NAME']]);
+        $purchases = $p_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $ledger = array_merge($ledger, $purchases);
+    } catch (Exception $e) { }
+
+    // 3. Sort Ledger by Date (Newest First)
+    usort($ledger, function($a, $b) {
+        return strtotime($b['raw_date']) - strtotime($a['raw_date']);
+    });
+
+    // 4. Calculate Summaries
+    $total_purchased = 0;
+    $total_used = 0;
+    $net_adjustments = 0;
+
+    foreach($ledger as $l) {
+        if ($l['txn_type'] === 'Purchase') {
+            $total_purchased += $l['qty'];
+        } elseif ($l['txn_type'] === 'Vaccination') {
+            $total_used += $l['qty'];
+        } else {
+            // Adjustments
+            if (strtolower($l['effect']) === 'add') {
+                $net_adjustments += $l['qty'];
+            } else {
+                $net_adjustments -= $l['qty'];
+            }
+        }
+    }
 
 } catch (Exception $e) {
     $error = $e->getMessage();
@@ -104,161 +134,167 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vaccine Ledger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaccine Ledger - <?= htmlspecialchars($vaccine['SUPPLY_NAME'] ?? 'Error') ?></title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
-        /* Styles adapted for Cyan/Teal Theme */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh; color: #e2e8f0;
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; margin: 0; padding-bottom: 40px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        
+        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s; }
+        .back-link:hover { color: white; }
 
-        .header-card {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid #475569;
-            border-radius: 16px; padding: 2rem; margin-bottom: 2rem;
-            display: flex; justify-content: space-between; align-items: center;
-            backdrop-filter: blur(12px);
-        }
-        .title h1 { font-size: 2rem; font-weight: 800; margin-bottom: 5px; color: white; }
-        
-        .stock-box { 
-            text-align: right; padding: 15px 25px; border-radius: 12px;
-            background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); /* Cyan */
-        }
-        .stock-val { font-size: 2.5rem; font-weight: 800; color: white; }
+        .supply-header-wrapper { margin-bottom: 2rem; }
+        .supply-title { font-size: 2.2rem; font-weight: 800; color: #38bdf8; margin: 0 0 5px 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .supply-subtitle { color: #94a3b8; margin: 0; font-size: 1rem; }
 
-        /* Filter Bar */
-        .filter-bar {
-            display: flex; gap: 15px; margin-bottom: 15px;
-            background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 12px;
-            border: 1px solid #334155; align-items: center; flex-wrap: wrap;
+        .exp-badge {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.15);
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-        .filter-group { display: flex; align-items: center; gap: 8px; }
-        .filter-group label { color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
-        
-        .form-control {
-            background: #1e293b; border: 1px solid #475569; color: white;
-            padding: 8px 12px; border-radius: 6px; font-size: 0.9rem;
-        }
-        .form-control:focus { border-color: #06b6d4; outline: none; }
-        
-        .btn-filter {
-            background: #06b6d4; color: white; border: none; padding: 8px 20px;
-            border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;
-        }
-        .btn-filter:hover { background: #0891b2; }
-        
-        .btn-reset {
-            background: transparent; color: #94a3b8; border: 1px solid #475569; 
-            padding: 8px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.9rem;
-        }
-        .btn-reset:hover { color: white; border-color: white; }
 
-        /* Table */
-        .table-wrapper { background: #1e293b; border-radius: 16px; border: 1px solid #334155; overflow: hidden; }
-        .ledger-table { width: 100%; border-collapse: collapse; }
-        .ledger-table th { background: #0f172a; color: #22d3ee; padding: 15px; text-align: left; font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #334155; }
-        .ledger-table td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; }
-        .ledger-table tr:hover { background: rgba(255,255,255,0.02); }
+        /* --- STATS GRID --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .stat-val { font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; }
+        .stat-lbl { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
         
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-        .badge-in { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-        .badge-out { background: rgba(248, 113, 113, 0.15); color: #f87171; }
-        
-        .qty-pos { color: #34d399; font-weight: bold; }
-        .qty-neg { color: #f87171; font-weight: bold; }
+        .c-purchase { color: #c084fc; } /* Purple */
+        .c-usage    { color: #38bdf8; } /* Sky Blue */
+        .c-adjust   { color: #fcd34d; } /* Yellow */
+        .c-stock    { color: #4ade80; } /* Green */
 
-        .btn-back { display: inline-flex; align-items: center; gap: 8px; color: #94a3b8; text-decoration: none; margin-bottom: 1rem; }
-        .btn-back:hover { color: white; }
+        /* --- TABLE --- */
+        .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: rgba(15, 23, 42, 0.9); color: #94a3b8; text-align: left; padding: 1.25rem 1rem; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #e2e8f0; vertical-align: middle; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .badge { padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
+        .type-purchase { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .type-add { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .type-deduct { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .type-usage { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); } /* Sky Blue for Vaccines */
+
+        .empty-state { text-align: center; padding: 4rem; color: #64748b; font-style: italic; }
+        
+        .qty-add { color: #4ade80; font-weight: bold; }
+        .qty-deduct { color: #f87171; font-weight: bold; }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .supply-title { font-size: 1.8rem; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="available_vaccines.php" class="btn-back">← Back to Vaccines</a>
+    <a href="<?= $back_link ?>" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i> <?= $back_text ?>
+    </a>
 
     <?php if(isset($error)): ?>
-        <div style="background:rgba(239,68,68,0.2); color:#f87171; padding:20px; border-radius:12px; text-align:center;">
-            <h3>Error</h3>
-            <p><?= htmlspecialchars($error) ?></p>
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 1.5rem; border-radius: 12px; color: #ef4444; text-align: center;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <h3><?= $error ?></h3>
         </div>
     <?php else: ?>
 
-    <div class="header-card">
-        <div class="title">
-            <h1><?= htmlspecialchars($item['SUPPLY_NAME']) ?></h1>
-            <div style="color: #94a3b8;">ID: VAC-<?= str_pad($item['SUPPLY_ID'], 3, '0', STR_PAD_LEFT) ?></div>
-        </div>
-        <div class="stock-box">
-            <div style="color: #22d3ee; font-size: 0.8rem; text-transform: uppercase;">Current Stock</div>
-            <div class="stock-val"><?= number_format($item['TOTAL_STOCK'], 2) ?></div>
-        </div>
-    </div>
-
-    <form method="GET" class="filter-bar">
-        <input type="hidden" name="id" value="<?= $supply_id ?>">
-        
-        <div style="display:flex; align-items:center; gap:10px;">
-            <label style="color:#94a3b8; font-size:0.9rem;">Show:</label>
-            <select name="limit" class="form-control" onchange="this.form.submit()">
-                <option value="10" <?= $limit_val == '10' ? 'selected' : '' ?>>10</option>
-                <option value="50" <?= $limit_val == '50' ? 'selected' : '' ?>>50</option>
-                <option value="all" <?= $limit_val == 'all' ? 'selected' : '' ?>>All</option>
-            </select>
-        </div>
-
-        <div style="display:flex; align-items:center; gap:10px;">
-            <label style="color:#94a3b8;">Date:</label>
-            <input type="date" name="start_date" class="form-control" value="<?= htmlspecialchars($start_date) ?>">
-            <span style="color:#64748b">-</span>
-            <input type="date" name="end_date" class="form-control" value="<?= htmlspecialchars($end_date) ?>">
-        </div>
-
-        <div style="flex-grow:1;">
-            <input type="text" name="search" class="form-control" style="width:100%;" placeholder="Search reference, vet, or tag..." value="<?= htmlspecialchars($search_term) ?>">
-        </div>
-
-        <button type="submit" class="btn-filter">Apply</button>
-        <a href="viewVaccineLedger.php?id=<?= $supply_id ?>" class="btn-reset">Reset</a>
-    </form>
-
-    <div class="table-wrapper">
-        <table class="ledger-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Reference</th>
-                    <th>Description</th>
-                    <th>Qty Change</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if(count($transactions) > 0): ?>
-                    <?php foreach($transactions as $t): 
-                        $qty = floatval($t['QTY_CHANGE']);
-                        $isPos = $qty >= 0;
-                    ?>
-                    <tr>
-                        <td><?= date('M d, Y h:i A', strtotime($t['T_DATE'])) ?></td>
-                        <td><span class="badge <?= $isPos ? 'badge-in' : 'badge-out' ?>"><?= $t['T_TYPE'] ?></span></td>
-                        <td style="font-weight:600; color:#e2e8f0;"><?= htmlspecialchars($t['T_REF']) ?></td>
-                        <td style="color:#94a3b8;"><?= htmlspecialchars($t['T_REMARKS']) ?></td>
-                        <td class="<?= $isPos ? 'qty-pos' : 'qty-neg' ?>">
-                            <?= $isPos ? '+' : '' ?><?= number_format($qty, 2) ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr><td colspan="5" style="text-align:center; padding:3rem; color:#64748b;">No records found.</td></tr>
+        <div class="supply-header-wrapper">
+            <h1 class="supply-title">
+                <?= htmlspecialchars($vaccine['SUPPLY_NAME']) ?>
+                <?php if(!empty($vaccine['EXPIRATION_DATE']) && $vaccine['EXPIRATION_DATE'] != '0000-00-00'): ?>
+                    <span class="exp-badge">
+                        <i class="fa-regular fa-calendar-xmark"></i> Exp: <?= date('m/d/Y', strtotime($vaccine['EXPIRATION_DATE'])) ?>
+                    </span>
                 <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+            </h1>
+            <p class="supply-subtitle">Detailed Volume Lifecycle & Traceability Ledger</p>
+        </div>
 
+        <div class="stats-grid">
+            <div class="stat-card" style="border-top: 4px solid #a855f7;">
+                <div class="stat-lbl">Total Purchased</div>
+                <div class="stat-val c-purchase"><?= number_format($total_purchased, 2) ?> <span style="font-size: 1rem; color:#94a3b8;"><?= htmlspecialchars($unit_label) ?></span></div>
+            </div>
+            
+            <div class="stat-card" style="border-top: 4px solid #38bdf8;">
+                <div class="stat-lbl">Total Consumed</div>
+                <div class="stat-val c-usage"><?= number_format($total_used, 2) ?> <span style="font-size: 1rem; color:#94a3b8;"><?= htmlspecialchars($unit_label) ?></span></div>
+            </div>
+
+            <div class="stat-card" style="border-top: 4px solid #f59e0b;">
+                <div class="stat-lbl">Net Adjustments</div>
+                <div class="stat-val c-adjust"><?= ($net_adjustments > 0 ? '+' : '') . number_format($net_adjustments, 2) ?> <span style="font-size: 1rem; color:#94a3b8;"><?= htmlspecialchars($unit_label) ?></span></div>
+            </div>
+
+            <div class="stat-card" style="border-top: 4px solid #22c55e; background: rgba(34, 197, 94, 0.05);">
+                <div class="stat-lbl">Current Available Stock</div>
+                <div class="stat-val c-stock"><?= number_format($vaccine['TOTAL_STOCK'], 2) ?> <span style="font-size: 1rem; color:#94a3b8;"><?= htmlspecialchars($unit_label) ?></span></div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Transaction Type</th>
+                        <th style="text-align:right;">Volume Impact</th>
+                        <th>Reason / Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($ledger)): ?>
+                        <tr><td colspan="4" class="empty-state">No transaction history found for this vaccine.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($ledger as $row): 
+                            // Determine styles based on Add/Deduct
+                            $isDeduct = (strtolower($row['effect']) == 'deduct');
+                            $qtyClass = $isDeduct ? 'qty-deduct' : 'qty-add';
+                            $prefix = $isDeduct ? '-' : '+';
+                            
+                            // Badge Class Assignment
+                            $badgeClass = 'type-add';
+                            if ($row['txn_type'] == 'Vaccination') $badgeClass = 'type-usage';
+                            else if ($row['txn_type'] == 'Purchase') $badgeClass = 'type-purchase';
+                            else if ($isDeduct) $badgeClass = 'type-deduct';
+                        ?>
+                        <tr>
+                            <td style="color:#94a3b8; font-weight: 500;"><?= htmlspecialchars($row['txn_date_fmt']) ?></td>
+                            <td><span class="badge <?= $badgeClass ?>"><?= htmlspecialchars($row['txn_type']) ?></span></td>
+                            <td style="text-align:right;" class="<?= $qtyClass ?>">
+                                <?= $prefix ?> <?= number_format($row['qty'], 2) ?> <?= htmlspecialchars($unit_label) ?>
+                            </td>
+                            <td style="color:#cbd5e1;"><?= htmlspecialchars($row['remarks']) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     <?php endif; ?>
 </div>
 

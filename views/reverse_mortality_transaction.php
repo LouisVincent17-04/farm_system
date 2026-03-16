@@ -6,36 +6,42 @@ $page = "transactions";
 
 include '../config/Connection.php';
 include '../security/checkAccess.php';
-// checkAccess('admin_access'); // Uncomment if needed
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
-$last_trans = null;
+$batch_records = [];
+$latest_date = null;
 $message = "";
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // 1. Fetch the VERY latest mortality transaction
-    $sql = "SELECT 
-                s.sale_id,
-                s.sale_date,
-                s.notes,
-                a.TAG_NO,
-                l.LOCATION_NAME,
-                b.BUILDING_NAME,
-                p.PEN_NAME
-            FROM animal_sales s
-            LEFT JOIN animal_records a ON s.animal_id = a.ANIMAL_ID
-            LEFT JOIN locations l ON a.LOCATION_ID = l.LOCATION_ID
-            LEFT JOIN buildings b ON a.BUILDING_ID = b.BUILDING_ID
-            LEFT JOIN pens p ON a.PEN_ID = p.PEN_ID
-            WHERE s.transaction_type = 0
-            ORDER BY s.sale_id DESC 
-            LIMIT 1";
+    // 1. Get the timestamp of the latest mortality transaction (transaction_type = 0)
+    $time_stmt = $conn->query("SELECT sale_date FROM animal_sales WHERE transaction_type = 0 ORDER BY sale_date DESC LIMIT 1");
+    $latest_date = $time_stmt->fetchColumn();
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute();
-    $last_trans = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($latest_date) {
+        // 2. Fetch ALL mortality records matching that exact timestamp
+        $sql = "SELECT 
+                    s.sale_id,
+                    s.sale_date,
+                    s.notes,
+                    a.TAG_NO,
+                    l.LOCATION_NAME,
+                    b.BUILDING_NAME,
+                    p.PEN_NAME
+                FROM animal_sales s
+                LEFT JOIN animal_records a ON s.animal_id = a.ANIMAL_ID
+                LEFT JOIN locations l ON a.LOCATION_ID = l.LOCATION_ID
+                LEFT JOIN buildings b ON a.BUILDING_ID = b.BUILDING_ID
+                LEFT JOIN pens p ON a.PEN_ID = p.PEN_ID
+                WHERE s.sale_date = :latest_date AND s.transaction_type = 0
+                ORDER BY a.TAG_NO ASC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([':latest_date' => $latest_date]);
+        $batch_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
 } catch (Exception $e) {
     $message = $e->getMessage();
@@ -46,11 +52,11 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Reverse Mortality</title>
+    <title>Admin - Reverse Batch Mortality</title>
     <style>
         :root { --dark: #0f172a; --dark-light: #1e293b; --red: #ef4444; --gray: #94a3b8; }
         body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-        .container { max-width: 800px; margin: 3rem auto; padding: 0 1rem; }
+        .container { max-width: 900px; margin: 3rem auto; padding: 0 1rem; }
 
         .card { background: var(--dark-light); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 16px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
         
@@ -58,25 +64,30 @@ try {
         .header h1 { color: #cbd5e1; margin: 0 0 0.5rem 0; font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .header p { color: #64748b; }
 
-        .trans-info { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 1px dashed #475569; }
-        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .info-row:last-child { border-bottom: none; }
-        .label { color: #94a3b8; font-size: 0.9rem; }
-        .value { color: white; font-weight: 600; font-family: monospace; font-size: 1rem; }
+        /* Batch Table Styles */
+        .batch-container { background: rgba(15, 23, 42, 0.6); border-radius: 12px; border: 1px solid #334155; margin-bottom: 2rem; overflow: hidden; }
+        .batch-header { padding: 1rem; background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        
+        .table-wrap { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 1rem; font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; background: #0f172a; position: sticky; top: 0; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .tag-badge { background: #334155; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-family: monospace; }
         
         .btn-reverse {
             width: 100%; padding: 1.2rem;
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white; border: none; border-radius: 12px;
             font-weight: 800; font-size: 1.1rem; cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .btn-reverse:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4); }
         .btn-reverse:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; }
         .alert-warning { background: rgba(255, 255, 255, 0.05); color: #e2e8f0; border: 1px solid #475569; }
         
         .empty-state { text-align: center; padding: 3rem; color: #64748b; }
@@ -89,50 +100,60 @@ try {
         <div class="header">
             <h1>
                 <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                Reverse Mortality
+                Reverse Batch Mortality
             </h1>
-            <p>Undo the most recent reported mortality event.</p>
+            <p>Undo a recent batch mortality report and resurrect the animals.</p>
         </div>
 
-        <?php if ($last_trans): ?>
+        <?php if (!empty($batch_records)): ?>
             <div class="alert alert-warning">
-                ⚠️ <strong>Confirmation:</strong> This will restore the animal to 'Active' status.
+                ⚠️ <strong>Batch Action:</strong> Reversing this will mark <strong><?= count($batch_records) ?></strong> animals as 'Active' again.
             </div>
 
-            <div class="trans-info">
-                <h3 style="margin-top:0; color:#cbd5e1; font-size:0.9rem; text-transform:uppercase; margin-bottom:15px;">Target Record</h3>
-                
-                <div class="info-row">
-                    <span class="label">Record ID</span>
-                    <span class="value" style="color:#93c5fd;">#<?= htmlspecialchars($last_trans['sale_id']) ?></span>
+            <div class="batch-container">
+                <div class="batch-header">
+                    <span style="font-size: 0.85rem; font-weight: 600;">
+                        🕒 <?= date('M d, Y h:i A', strtotime($latest_date)) ?>
+                    </span>
+                    <span style="font-size: 0.85rem; color: #94a3b8;">
+                        Total Heads: <?= count($batch_records) ?>
+                    </span>
                 </div>
-                <div class="info-row">
-                    <span class="label">Date Reported</span>
-                    <span class="value"><?= date('M d, Y h:i A', strtotime($last_trans['sale_date'])) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Animal Tag</span>
-                    <span class="value"><?= htmlspecialchars($last_trans['TAG_NO']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Last Location</span>
-                    <span class="value"><?= htmlspecialchars($last_trans['LOCATION_NAME'] . ' > ' . $last_trans['PEN_NAME']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Cause/Notes</span>
-                    <span class="value" style="font-size:0.85rem; font-style:italic; color:#f87171;"><?= htmlspecialchars($last_trans['notes']) ?></span>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Animal Tag</th>
+                                <th>Location Data</th>
+                                <th>Cause / Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($batch_records as $row): ?>
+                            <tr>
+                                <td><span class="tag-badge"><?= htmlspecialchars($row['TAG_NO']) ?></span></td>
+                                <td style="color: #cbd5e1; font-size: 0.85rem;">
+                                    <?= htmlspecialchars($row['LOCATION_NAME'] . ' > ' . $row['PEN_NAME']) ?>
+                                </td>
+                                <td style="font-style: italic; color: #f87171;">
+                                    <?= htmlspecialchars($row['notes']) ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <button id="btn-reverse" class="btn-reverse" onclick="confirmReversal()">
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                Confirm Reversal
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Reverse Entire Batch
             </button>
 
         <?php else: ?>
             <div class="empty-state">
                 <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin:0 auto 1rem; display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <h3>No History Found</h3>
+                <h3>No Recent History Found</h3>
                 <p>There are no mortality records available to reverse.</p>
             </div>
         <?php endif; ?>
@@ -145,14 +166,15 @@ try {
 
 <script>
     function confirmReversal() {
-        if(!confirm("🔴 CONFIRM: This animal will be marked as ALIVE/ACTIVE again.\n\nProceed?")) {
+        const count = <?= count($batch_records) ?>;
+        if(!confirm(`🔴 CRITICAL ACTION\n\nYou are about to restore ${count} animals to 'Active' status.\n\nDo you wish to proceed?`)) {
             return;
         }
 
         const btn = document.getElementById('btn-reverse');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = "Processing...";
+        btn.innerHTML = "Processing Reversal...";
 
         fetch('../process/reverseMortalityTransaction.php', {
             method: 'POST'
@@ -160,7 +182,7 @@ try {
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                alert("✅ " + data.message);
+                alert("✅ Success: " + data.message);
                 window.location.reload(); 
             } else {
                 alert("❌ Error: " + data.message);

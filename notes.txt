@@ -227,3 +227,152 @@ where 0 is Mortality and 1 is Sales ✅
    - The New FCR Managament is By Pen but there will be days configurations ✅
 
 =================================================================================================
+
+Add Inventory Adjustment Transactions to Ledger ✅
+    - Feeds ✅
+    - Medicines  ✅
+    - Vaccines  ✅
+    - Vitamins  ✅
+Add Ledgers to Reports  ✅
+    - Feeds ✅
+    - Medicines  ✅
+    - Vaccines  ✅
+    - Vitamins  ✅
+
+=================================================================================================
+- Purchasing New Animal (Weight) Does not reflect to the Animal Records
+- Modify the Group Feeding where you can choose the buildings ✅
+- Super admin users should assign farm employees to a location... Refer to the 'locations' table... ✅
+    Users that are assigned in that location can only access transactions within that location only..✅
+    ✅ purch_admin_records.php
+    ✅ purch_animals.php
+    ✅ purch_breeding_reproduction.php
+    ✅ purch_farm_equipment.php
+    ✅ purch_housing_facilities.php
+    ✅ purch_maintenance_parts.php
+    ✅ purch_medicines.php
+    ✅ purch_others.php
+    ✅ purch_sanitation_waste_m.php
+    ✅ purch_utilities_consumables.php
+    ✅ purch_vaccines.php
+    ✅ purch_vitamins_supplements.php
+    ✅ group_animal_sales.php
+    ✅ group_checkup.php
+    ✅ group_feed_transaction.php
+    ✅ group_medication.php
+    ✅ group_mortality.php
+    ✅ group_vaccination.php
+    ✅ group_vitamins.php
+    ✅ animal_cost_transfers.php
+    ✅ animal_operations.php
+    ✅ animal_records.php
+    ✅ admin_records_report.php
+
+- Change all date formats into MM-DD-YYYY
+    ✅ animal_record.php
+    ✅ employees.php
+    ✅ inventory_adjustment.php
+    ✅ edit_animal_bio.php
+    ✅ events_scheduler.php
+    ✅ animal_sow_status.php
+    ✅ animal_sow_cards.php
+    ✅ animal_report.php
+    ✅ active_users_report.php
+    ✅ medicine_report.php
+    ✅ feeds_report.php
+    ✅ housing_report.php
+    ✅ equipment_report.php
+    ✅ sanitation_report.php
+    ✅ breeding_report.php
+    ✅ admin_records_report.php
+    ✅ maintenance_report.php
+    ✅ utilities_report.php
+    ✅ vitamins_report.php
+    ✅ vaccine_report.php
+    ✅ others_report.php
+    ✅ audit_log_report.php
+    ✅ animal_sales_reports.php
+    ✅ feeds_usage_report.php
+    ✅ vaccines_usage_report.php
+    ✅ vitamins_usage_report.php
+    ✅ medicine_usage_report.php
+    ✅ purch_animals.php
+    ✅ purch_medicines.php
+    ✅ purch_vitamins_supplements.php
+    ✅ purch_vaccines.php
+    ✅ purch_feeds_feeding.php
+    ✅ purch_housing_facilities.php
+    ✅ purch_farm_equipment_tools.php
+    ✅ purch_sanitation_waste_m.php
+    ✅ purch_breeding_reproduction.php
+    ✅ purch_admin_records.php
+    ✅ purch_maintenance_parts.php
+    ✅ purch_utilities_consumables.php
+    ✅ single_feed_transaction.php
+    ✅ group_feed_transaction.php
+    ✅ group_medication.php
+    ✅ group_vitamins.php
+    ✅ group_checkup.php
+    ✅ group_vaccination.php
+    ✅ group_animal_sales.php
+    ✅ group_mortality.php
+    ✅ accounts.php
+    ✅ audit_logs.php
+    ✅
+    ✅
+    ✅
+    ✅
+    ✅
+- in animal_sow_status, filter the boars (the location is already  given) Drop down the building and the pen and it shows the boar ✅
+- Select a date of completed PREGNANCY in animal_sow_status ✅
+- In Animal Cost Transfer, the SOW acquisition cost must be included ✅
+- Include in the Animal Operation the Transferring of cost transaction ✅
+- Include in the viewAnimalLedger the Transferring of cost transaction ✅
+- Modify the viewAnimalLedger because the query of all transactions except feeding  ✅
+- The expiry should not be less than the purchase date ✅
+- Alter the items table and add supplier and reference number column ✅
+- Add a supplier page where it contains all the suppliers name may it be an individual or company ✅
+- Add a reference number to all purchases (reference number should be manually inputted in the purchase pages) ✅
+- Add a supplier and reference number input to all purchases...  ✅
+- Add a weaning weight in animal_records ✅
+- Add an editable weaning weight, editable birth weight, editable current weight in animal_weights.php ✅
+- Add this weaning weight including to the animal reports and also in the animal records ✅
+- Add date time to all stages in animal sow status ✅
+- Remove all Single Transactions from the chatbot
+- Hide Feature if they don't have access rights
+- Notification about the birthing in 114 should have a link that if we click the link, it will go to animal_sow_status.php?location_id=13&building_id=11&animal_id=68 (Sample Data) ✅
+- Add how many times the SOW got dry, serviced, pregnant, birthing, abortion ✅
+- Add a SOW Filter where we can show only those who are dry, pregnant, serviced, birthing, abortion ✅
+- in the animal_report, I should see tag_no, acq_cost, all operation_cost, and lastly total_cost ✅
+- add a usage_report where we can export and filter date range and once i select a location, it displays all usage in the feeds, vaccines, ✅
+ vitamins, medicine with (Building > Pen Header)... And when i select a building, it does the same but all in the building with Pen (Header) ✅
+ And I can also select up until to the animal....✅
+ Table  ✅
+ Header ✅
+ |Feed Name| Total Kgs | Total Cost | Date Range |  ✅
+ |Feed Name 2| Total Kgs | Total Cost | Date Range |  ✅
+ ... ✅
+TOTAL                                       N   ✅            
+- add feeds_usage_report, vaccines_usage_report, vitamins_usage_report, and medicine_usage_report ✅
+- in the viewFeedsLedger.php, show how many purchased feeds with that specific feed and then show the adjustments, and show the  ✅
+used... ✅
+- Include the Farrowing date here in the file (Read-only) Also include a filter that will filter the farrowing date (Start and End Date)... ✅
+- Include the existing animals in the destination pen  ✅
+- Include that there is a page for auto weaning and then in the table, you can see that there is a Location Name and then Weaning Days... 
+You can modify the weaning days in that location...Affected pages would be the autoUpdateAnimalClasses.php
+- If i select a birthing date and go to the animal_sow_cards the farrowing date must be the date being  ✅
+set in the birthing date in the animal_sow_status.php ✅
+- Display also the acquisition cost and the total operation cost in the animal transfer for both the sow and the boar below the names
+- In the animal_cost, there will be a transferred cost 
+- add Iron notif after birthing
+- sow card must be printed
+- birthing must have a memo
+- animal_mortality.php should have a acq + operation_cost displayed
+- add a hyperlink in the ___ page where: ✅
+ - group feeding should have a hyperlink of purch_feeds_feeding.php ✅
+ - group vaccination should have a hyperlink of purch_vaccines.php ✅
+ - group vitamins should have a hyperlink of purch_vitamins_supplements.php ✅
+ - group medication should have a hyperlink of purch_medicines.php ✅
+- create a super admin portal, each of them has a passkey... Farm Databases are assigned using the passkey
+ - If you want to access database X and Y, you must have a passkey that is assigned to both of them... 
+ - If you own the farm databases X and Y, you strictly must have one passkey to redirect to a dashboard choosing which farm you want to login

@@ -37,12 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $date_of_purchase = $_POST['date_of_purchase'];
         $item_description = $_POST['item_description'] ?? null;
         
-        // NEW: Retrieve Expiration Date
         $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
         
         $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
         $building_id = !empty($_POST['building_id']) ? $_POST['building_id'] : null;
         $pen_id = !empty($_POST['pen_id']) ? $_POST['pen_id'] : null;
+
+        // NEW: Capture Supplier and Reference No
+        $supplier = !empty(trim($_POST['supplier'] ?? '')) ? trim($_POST['supplier']) : 'General Supplier';
+        $reference_no = !empty(trim($_POST['reference_no'] ?? '')) ? trim($_POST['reference_no']) : null;
 
         $item_net_weight = ($item_net_weight <= 0) ? null : $item_net_weight;
         $item_quantity = ($item_quantity <= 0) ? null : $item_quantity;
@@ -51,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $total_cost = $item_quantity * $unit_cost;
 
         // 3. Get Original Data (For Audit Log Comparison)
-        $original_sql = "SELECT ITEM_NAME, QUANTITY, ITEM_NET_WEIGHT, TOTAL_COST, EXPIRATION_DATE FROM ITEMS WHERE ITEM_ID = :item_id";
+        $original_sql = "SELECT ITEM_NAME, QUANTITY, ITEM_NET_WEIGHT, TOTAL_COST, EXPIRATION_DATE, SUPPLIER FROM ITEMS WHERE ITEM_ID = :item_id";
         $original_stmt = $conn->prepare($original_sql);
         $original_stmt->execute([':item_id' => $item_id]);
         
@@ -61,8 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $original_qty = $original_row['QUANTITY'] ?? 'N/A';
         $original_cost = $original_row['TOTAL_COST'] ?? 'N/A';
         $original_expiry = $original_row['EXPIRATION_DATE'] ?? 'N/A';
+        $original_supplier = $original_row['SUPPLIER'] ?? 'N/A';
 
-        // 4. UPDATE Query (Added EXPIRATION_DATE)
+        // 4. UPDATE Query
         $sql = "UPDATE ITEMS SET 
                 ITEM_NAME = :item_name, 
                 ITEM_TYPE_ID = :item_type_id, 
@@ -78,6 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
                 BUILDING_ID = :building_id,
                 PEN_ID = :pen_id,
                 TOTAL_COST = :total_cost,
+                SUPPLIER = :supplier,
+                REFERENCE_NO = :reference_no,
                 DATE_UPDATED = NOW() 
                 WHERE ITEM_ID = :item_id";
         
@@ -92,22 +98,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             ':unit_cost'        => $unit_cost,
             ':item_category'    => $item_category,
             ':date_of_purchase' => $date_of_purchase,
-            ':expiration_date'  => $expiration_date, // Bind Expiration
+            ':expiration_date'  => $expiration_date,
             ':item_description' => $item_description,
             ':location_id'      => $location_id,
             ':building_id'      => $building_id,
             ':pen_id'           => $pen_id,
             ':total_cost'       => $total_cost,
+            ':supplier'         => $supplier,
+            ':reference_no'     => $reference_no,
             ':item_id'          => $item_id
         ];
 
-        // Execute Update
         if (!$stmt->execute($params)) {
             throw new Exception("Database Update Error.");
         }
 
         // 5. INSERT AUDIT LOG
         $logDetails = "Updated Vitamins/Supplements Purchase (ID: $item_id). Name: $original_name -> $item_name. Qty: $original_qty -> $item_quantity. Expiry: $original_expiry -> " . ($expiration_date ?? 'N/A');
+        if ($original_supplier != $supplier) {
+            $logDetails .= " Supplier: $original_supplier -> $supplier.";
+        }
         
         $log_sql = "INSERT INTO AUDIT_LOGS 
                     (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 

@@ -1,5 +1,5 @@
 <?php
-// getPensByBuilding.php
+// process/getPensByBuilding.php
 header('Content-Type: application/json');
 
 include '../config/Connection.php';

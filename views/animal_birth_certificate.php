@@ -105,7 +105,7 @@ if ($selected_pen) {
         .sex-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
         .sex-M { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
         .sex-F { background: rgba(244, 114, 182, 0.2); color: #f472b6; }
-
+        .sex-U { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
         .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #cbd5e1; }
         .info-label { color: #94a3b8; }
 
@@ -168,37 +168,51 @@ if ($selected_pen) {
     <?php else: ?>
         <h3 style="color:#0ea5e9; margin-bottom:1rem;">Animals in <?= htmlspecialchars($pen_name) ?> (<?= count($animals) ?>)</h3>
         <div class="grid">
-            <?php foreach($animals as $a): ?>
-                <div class="animal-card">
-                    <div class="card-header">
-                        <div class="tag-no"><?= htmlspecialchars($a['TAG_NO']) ?></div>
-                        <span class="sex-badge sex-<?= $a['SEX'] ?>"><?= $a['SEX'] === 'M' ? 'Male' : 'Female' ?></span>
-                    </div>
-                    
-                    <div class="info-row">
-                        <span class="info-label">Type/Breed:</span>
-                        <span><?= htmlspecialchars($a['ANIMAL_TYPE_NAME'] . ' / ' . $a['BREED_NAME']) ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Birth Date:</span>
-                        <span><?= date('M d, Y', strtotime($a['BIRTH_DATE'])) ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Dam (Mother):</span>
-                        <span style="color: #f472b6; font-weight:bold;"><?= $a['MOTHER_TAG'] ?: 'N/A' ?></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Sire (Father):</span>
-                        <span style="color: #60a5fa; font-weight:bold;"><?= $a['FATHER_TAG'] ?: 'N/A' ?></span>
-                    </div>
-
-                    <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #334155;">
-                        <a href="print_certificate.php?id=<?= $a['ANIMAL_ID'] ?>" target="_blank" class="btn-print">
-                            🖨️ Print Certificate
-                        </a>
-                    </div>
+         <?php foreach($animals as $a): ?>
+            <div class="animal-card">
+                <div class="card-header">
+                    <div class="tag-no"><?= htmlspecialchars($a['TAG_NO']) ?></div>
+                    <?php 
+                        // Determine Sex Label and Class
+                        $sex = strtoupper($a['SEX']);
+                        if ($sex === 'M') {
+                            $sexLabel = 'Male';
+                            $sexClass = 'sex-M';
+                        } elseif ($sex === 'F') {
+                            $sexLabel = 'Female';
+                            $sexClass = 'sex-F';
+                        } else {
+                            $sexLabel = 'Unknown';
+                            $sexClass = 'sex-U'; // Grey badge for unknown
+                        }
+                    ?>
+                    <span class="sex-badge <?= $sexClass ?>"><?= $sexLabel ?></span>
                 </div>
-            <?php endforeach; ?>
+                
+                <div class="info-row">
+                    <span class="info-label">Type/Breed:</span>
+                    <span><?= htmlspecialchars($a['ANIMAL_TYPE_NAME'] . ' / ' . $a['BREED_NAME']) ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Birth Date:</span>
+                    <span><?= date('M d, Y', strtotime($a['BIRTH_DATE'])) ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Dam (Mother):</span>
+                    <span style="color: #f472b6; font-weight:bold;"><?= $a['MOTHER_TAG'] ?: 'N/A' ?></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Sire (Father):</span>
+                    <span style="color: #60a5fa; font-weight:bold;"><?= $a['FATHER_TAG'] ?: 'N/A' ?></span>
+                </div>
+
+                <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #334155;">
+                    <a href="print_certificate.php?id=<?= $a['ANIMAL_ID'] ?>" target="_blank" class="btn-print">
+                        🖨️ Print Certificate
+                    </a>
+                </div>
+            </div>
+        <?php endforeach; ?>
         </div>
     <?php endif; ?>
 </div>

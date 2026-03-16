@@ -1,5 +1,6 @@
 <?php
 // views/group_mortality.php
+ob_start(); 
 error_reporting(0);
 ini_set('display_errors', 0);
 include '../config/Connection.php';
@@ -9,13 +10,21 @@ include '../security/checkAccess.php';
 checkAccess('group_mortality'); 
 $page = "transactions";
 include '../common/navbar.php';
+include '../common/chat_support.php';
+include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
 
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // Fetch Locations for dropdown
-    $locs = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch Locations based on user restriction
+    if ($USER_LOCATION_ != 1000) {
+        $stmt = $conn->prepare("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME ASC");
+        $stmt->execute([$USER_LOCATION_]);
+        $locs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $locs = $conn->query("SELECT LOCATION_ID, LOCATION_NAME FROM LOCATIONS ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     // Fetch Buyers for Dropdown (NEW)
     $buyers = $conn->query("SELECT FULL_NAME FROM buyers WHERE IS_ACTIVE = 1 ORDER BY FULL_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -31,6 +40,11 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Group Mortality</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <style>
         /* --- GLOBAL STYLES --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -77,10 +91,10 @@ try {
             width: 100%; padding: 0.75rem;
             background: #0f172a; border: 1px solid #334155;
             border-radius: 8px; color: #fff; font-size: 0.95rem;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s; outline:none;
         }
         /* Specific color focus for Mortality (Dark Red/Gray) */
-        .form-control:focus { border-color: #ef4444; outline: none; }
+        .form-control:focus { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1); }
         .form-control:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* --- RIGHT PANEL: SELECTION & TABLE --- */
@@ -135,9 +149,9 @@ try {
         /* Table Inputs */
         .custom-table select, .custom-table input {
             background: #0f172a; border: 1px solid #475569; color: #fff;
-            padding: 8px 10px; border-radius: 6px; width: 100%; font-size: 0.9rem;
+            padding: 8px 10px; border-radius: 6px; width: 100%; font-size: 0.9rem; outline:none;
         }
-        .custom-table input:focus, .custom-table select:focus { border-color: #ef4444; outline: none; }
+        .custom-table input:focus, .custom-table select:focus { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1); }
         
         .btn-remove {
             background: transparent; border: none; color: #f87171;
@@ -189,7 +203,7 @@ try {
             
             .custom-table td {
                 padding: 8px 0; display: flex; justify-content: space-between; align-items: center;
-                border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; font-size: 0.95rem;
             }
             .custom-table td:last-child { border-bottom: none; justify-content: flex-end; }
             
@@ -221,9 +235,15 @@ try {
                 <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:8px; margin-bottom:1.5rem; border:1px dashed #475569;">
                     <label class="form-label" style="margin-bottom:8px; color:#fca5a5;">STEP 1: Locate Group</label>
                     <div class="form-group" style="margin-bottom:0.5rem;">
-                        <select id="location_id" class="form-control" onchange="loadBuildings(this.value)">
-                            <option value="">Select Location</option>
-                            <?php foreach($locs as $l): echo "<option value='{$l['LOCATION_ID']}'>{$l['LOCATION_NAME']}</option>"; endforeach; ?>
+                        <select id="location_id" class="form-control" onchange="loadBuildings(this.value)" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #0a1020; pointer-events: none; color: #94a3b8;"' : ''; ?>>
+                            <?php if($USER_LOCATION_ == 1000): ?>
+                                <option value="">Select Location</option>
+                            <?php endif; ?>
+                            <?php foreach($locs as $l): ?>
+                                <option value="<?php echo $l['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $l['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($l['LOCATION_NAME']); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom:0.5rem;">
@@ -237,7 +257,7 @@ try {
                 <label class="form-label" style="color:#fca5a5;">STEP 2: Batch Details</label>
                 
                 <div class="form-group">
-                    <label class="form-label">Default Recovered Cost <span style="color:#94a3b8; font-size:0.8em;">(e.g. 0.00)</span></label>
+                    <label class="form-label">Recovered Cost <span style="color:#94a3b8; font-size:0.8em;">(e.g. 0.00)</span></label>
                     <div style="display:flex; gap:8px;">
                         <input type="number" id="default_cost" class="form-control" placeholder="0.00" step="0.01" value="0.00">
                         <button type="button" class="btn-mini" onclick="updateAllCosts()">Apply All</button>
@@ -245,7 +265,7 @@ try {
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Default Reason <span style="color:#f87171">*</span></label>
+                    <label class="form-label">Reason <span style="color:#f87171">*</span></label>
                     <div style="display:flex; gap:8px;">
                         <select id="default_reason" class="form-control">
                             <option value="Deceased">Deceased</option>
@@ -256,7 +276,7 @@ try {
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Default Notes (Details)</label>
+                    <label class="form-label"> Notes (Details)</label>
                     <div style="display:flex; gap:8px;">
                         <input type="text" id="default_notes" class="form-control" placeholder="e.g. Disease Outbreak">
                         <button type="button" class="btn-mini" onclick="updateAllNotes()">Apply All</button>
@@ -276,7 +296,7 @@ try {
 
                 <div class="form-group">
                     <label class="form-label">Date of Death</label>
-                    <input type="datetime-local" id="mortality_date" class="form-control" step="1">
+                    <input type="text" id="mortality_date" class="form-control" placeholder="Select Date & Time">
                 </div>
 
                 <div class="summary-box">
@@ -341,11 +361,26 @@ try {
     // --- STATE MANAGEMENT ---
     let selectedAnimals = new Set(); 
     let currentPenAnimals = []; 
+    let fpMortalityDate;
+    const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
 
     document.addEventListener('DOMContentLoaded', () => {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('mortality_date').value = now.toISOString().slice(0, 19);
+        // Initialize Flatpickr for Date and Time
+        fpMortalityDate = flatpickr("#mortality_date", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i", // Backend expected format
+            altInput: true,
+            altFormat: "m/d/Y h:i K", // mm/dd/yyyy display format with AM/PM
+            allowInput: true
+        });
+        
+        fpMortalityDate.clear(); // Leave the actual input blank by default
+
+        // Auto-load buildings if user is restricted to a location
+        if (USER_LOCATION != 1000) {
+            document.getElementById('location_id').value = USER_LOCATION;
+            loadBuildings(USER_LOCATION);
+        }
     });
 
     // --- 1. CASCADING DROPDOWNS ---
@@ -379,7 +414,6 @@ try {
     }
 
     // --- 2. LOAD GRID ---
-   // --- 2. LOAD GRID ---
     function loadAnimals(penId) {
         const grid = document.getElementById('animal-grid');
         const selectAllWrapper = document.getElementById('select-all-wrapper');
@@ -393,13 +427,10 @@ try {
                 grid.innerHTML = '';
                 currentPenAnimals = []; 
 
-                // --- FIX: DETECT DATA FORMAT ---
                 let rawList = [];
                 if (Array.isArray(data)) {
-                    // Case 1: PHP returns [ {...}, {...} ]
                     rawList = data;
                 } else if (data.animal_record && Array.isArray(data.animal_record)) {
-                    // Case 2: PHP returns { "animal_record": [ {...} ] }
                     rawList = data.animal_record;
                 } else {
                     console.error("Unexpected data format:", data);
@@ -573,6 +604,12 @@ try {
     function submitBatch() {
         if(!confirm("WARNING: This will mark " + selectedAnimals.size + " animals as DECEASED/LOST. Continue?")) return;
 
+        const dateInput = document.getElementById('mortality_date').value;
+        if(!dateInput) {
+            alert("Please select a valid Date of Death.");
+            return;
+        }
+
         const btn = document.getElementById('btn-submit');
         btn.disabled = true; btn.innerText = "Processing...";
 
@@ -592,7 +629,7 @@ try {
 
         const data = {
             records: records,
-            date: document.getElementById('mortality_date').value,
+            date: dateInput,
             customer_name: document.getElementById('customer_name').value 
         };
 

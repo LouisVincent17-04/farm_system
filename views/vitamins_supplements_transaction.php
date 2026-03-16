@@ -1,5 +1,8 @@
 <?php
 // views/vitamins_supplements_transaction.php
+header('Location:unauthorized.php');
+exit();
+
 error_reporting(0);
 ini_set('display_errors', 0);
 include '../config/Connection.php';
@@ -8,6 +11,7 @@ include '../security/checkAccess.php';
 checkAccess('vitamins_supplements');
 $page="transactions";
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 

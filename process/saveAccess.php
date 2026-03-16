@@ -11,17 +11,22 @@ $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_POST['user_id'];
-    $role_id = $_POST['role_id']; // This is the value from the dropdown
+    $role_id = $_POST['role_id']; // Value from the Role dropdown
+    
+    // NEW: Capture Location ID from the Location dropdown. Convert empty string to NULL.
+    $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
+    
     $posted_perms = $_POST['perms'] ?? []; 
 
     try {
         $conn->beginTransaction();
 
         // ---------------------------------------------------------
-        // 1. UPDATE USER ROLE IN `users` TABLE
+        // 1. UPDATE USER ROLE & LOCATION IN `users` TABLE
         // ---------------------------------------------------------
-        $userStmt = $conn->prepare("UPDATE users SET USER_TYPE = ? WHERE USER_ID = ?");
-        $userStmt->execute([$role_id, $user_id]);
+        // UPDATED: Now sets both USER_TYPE and LOCATION_ID
+        $userStmt = $conn->prepare("UPDATE users SET USER_TYPE = ?, LOCATION_ID = ? WHERE USER_ID = ?");
+        $userStmt->execute([$role_id, $location_id, $user_id]);
 
         // ---------------------------------------------------------
         // 2. UPDATE PERMISSIONS IN `access_control` TABLE
@@ -67,9 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ---------------------------------------------------------
         $role_names = [1 => 'New User', 2 => 'Farm User', 3 => 'Admin', 4 => 'Super Admin'];
         $role_name = $role_names[$role_id] ?? 'Unknown Role';
+        $location_text = $location_id ? "Location ID $location_id" : "Global Location";
 
         $audit_action = "ACCESS_UPDATE";
-        $audit_details = "Updated User ID $user_id: Role set to $role_name ($role_id) & permissions saved.";
+        $audit_details = "Updated User ID $user_id: Role set to $role_name ($role_id), Assigned to $location_text & permissions saved.";
 
         $logStmt = $conn->prepare("INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
                                    VALUES (?, ?, ?, 'ACCESS_CONTROL', ?, ?)");
@@ -78,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->commit();
 
         header("Location: ../views/manage_access.php?user_id=$user_id&success=1");
+        exit();
 
     } catch (Exception $e) {
         $conn->rollBack();

@@ -6,32 +6,37 @@ $page = "transactions";
 
 include '../config/Connection.php';
 include '../security/checkAccess.php';
-// checkAccess('admin_access'); // Uncomment if needed
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
-$last_trans = null;
+$batch_records = [];
+$latest_date = null;
 $message = "";
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // 1. Fetch the VERY latest sale transaction
-    $sql = "SELECT 
-                s.sale_id,
-                s.sale_date,
-                s.customer_name,
-                s.final_sale_price,
-                s.weight_at_sale,
-                s.gross_profit,
-                a.TAG_NO
-            FROM animal_sales s
-            LEFT JOIN animal_records a ON s.animal_id = a.ANIMAL_ID
-            ORDER BY s.sale_id DESC 
-            LIMIT 1";
+    // 1. Get the timestamp of the latest sale transaction
+    $time_stmt = $conn->query("SELECT sale_date FROM ANIMAL_SALES ORDER BY sale_date DESC LIMIT 1");
+    $latest_date = $time_stmt->fetchColumn();
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute();
-    $last_trans = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($latest_date) {
+        // 2. Fetch ALL sale records matching that exact timestamp
+        $sql = "SELECT 
+                    s.sale_id,
+                    s.sale_date,
+                    s.customer_name,
+                    s.final_sale_price,
+                    a.TAG_NO
+                FROM ANIMAL_SALES s
+                LEFT JOIN animal_records a ON s.animal_id = a.ANIMAL_ID
+                WHERE s.sale_date = :latest_date
+                ORDER BY a.TAG_NO ASC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([':latest_date' => $latest_date]);
+        $batch_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
 } catch (Exception $e) {
     $message = $e->getMessage();
@@ -42,38 +47,43 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Reverse Sale</title>
+    <title>Admin - Reverse Batch Sales</title>
     <style>
-        :root { --dark: #0f172a; --dark-light: #1e293b; --red: #ef4444; --gold: #fbbf24; }
+        :root { --dark: #0f172a; --dark-light: #1e293b; --red: #ef4444; --gold: #f59e0b; }
         body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-        .container { max-width: 800px; margin: 3rem auto; padding: 0 1rem; }
+        .container { max-width: 900px; margin: 3rem auto; padding: 0 1rem; }
 
-        .card { background: var(--dark-light); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 16px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .card { background: var(--dark-light); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 16px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
         
         .header { text-align: center; margin-bottom: 2rem; }
         .header h1 { color: var(--gold); margin: 0 0 0.5rem 0; font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .header p { color: #94a3b8; }
 
-        .trans-info { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 1px dashed #64748b; }
-        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .info-row:last-child { border-bottom: none; }
-        .label { color: #94a3b8; font-size: 0.9rem; }
-        .value { color: white; font-weight: 600; font-family: monospace; font-size: 1rem; }
+        /* Batch Table Styles */
+        .batch-container { background: rgba(15, 23, 42, 0.6); border-radius: 12px; border: 1px solid #334155; margin-bottom: 2rem; overflow: hidden; }
+        .batch-header { padding: 1rem; background: rgba(245, 158, 11, 0.1); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        
+        .table-wrap { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 1rem; font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; background: #0f172a; position: sticky; top: 0; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .tag-badge { background: #334155; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-family: monospace; }
         
         .btn-reverse {
             width: 100%; padding: 1.2rem;
             background: linear-gradient(135deg, #ef4444, #b91c1c);
             color: white; border: none; border-radius: 12px;
             font-weight: 800; font-size: 1.1rem; cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .btn-reverse:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.4); }
         .btn-reverse:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; }
-        .alert-warning { background: rgba(251, 191, 36, 0.1); color: #fcd34d; border: 1px solid #fbbf24; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; }
+        .alert-warning { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid var(--red); }
         
         .empty-state { text-align: center; padding: 3rem; color: #64748b; }
     </style>
@@ -85,54 +95,68 @@ try {
         <div class="header">
             <h1>
                 <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Reverse Sale
+                Reverse Batch Sales
             </h1>
-            <p>Undo the most recent animal sale transaction.</p>
+            <p>Cancel a recent batch sale and restore the animals to active farm inventory.</p>
         </div>
 
-        <?php if ($last_trans): ?>
+        <?php if (!empty($batch_records)): ?>
             <div class="alert alert-warning">
-                ⚠️ <strong>Confirmation:</strong> This will restore the animal to 'Active' status and delete the sale record.
+                ⚠️ <strong>Warning:</strong> Reversing this will cancel the sale of <strong><?= count($batch_records) ?></strong> animals. They will be marked as 'Active' again.
             </div>
 
-            <div class="trans-info">
-                <h3 style="margin-top:0; color:#cbd5e1; font-size:0.9rem; text-transform:uppercase; margin-bottom:15px;">Target Transaction</h3>
-                
-                <div class="info-row">
-                    <span class="label">Sale ID</span>
-                    <span class="value" style="color:#fbbf24;">#<?= htmlspecialchars($last_trans['sale_id']) ?></span>
+            <div class="batch-container">
+                <div class="batch-header">
+                    <span style="font-size: 0.85rem; font-weight: 600;">
+                        🕒 <?= date('M d, Y h:i A', strtotime($latest_date)) ?>
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--gold);">
+                        Buyer: <?= htmlspecialchars($batch_records[0]['customer_name'] ?? 'Multiple') ?>
+                    </span>
                 </div>
-                <div class="info-row">
-                    <span class="label">Date Sold</span>
-                    <span class="value"><?= date('M d, Y h:i A', strtotime($last_trans['sale_date'])) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Animal Tag</span>
-                    <span class="value"><?= htmlspecialchars($last_trans['TAG_NO']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Customer</span>
-                    <span class="value"><?= htmlspecialchars($last_trans['customer_name']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Total Amount</span>
-                    <span class="value" style="color:#34d399;">₱<?= number_format($last_trans['final_sale_price'], 2) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Recorded Profit</span>
-                    <span class="value" style="color:#a78bfa;">₱<?= number_format($last_trans['gross_profit'], 2) ?></span>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Animal Tag</th>
+                                <th>Buyer Name</th>
+                                <th style="text-align:right;">Sale Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $total_revenue = 0;
+                            foreach ($batch_records as $row): 
+                                $total_revenue += $row['final_sale_price'];
+                            ?>
+                            <tr>
+                                <td><span class="tag-badge"><?= htmlspecialchars($row['TAG_NO']) ?></span></td>
+                                <td style="color: #94a3b8;"><?= htmlspecialchars($row['customer_name']) ?></td>
+                                <td style="text-align:right; font-weight: bold; color: #34d399;">
+                                    ₱<?= number_format($row['final_sale_price'], 2) ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot style="background: rgba(0,0,0,0.2);">
+                            <tr>
+                                <td colspan="2" style="text-align:right; font-weight:bold; color:#94a3b8;">Total Revenue to Deduct:</td>
+                                <td style="text-align:right; font-weight:bold; color:#f472b6; font-size:1.1rem;">₱<?= number_format($total_revenue, 2) ?></td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
 
             <button id="btn-reverse" class="btn-reverse" onclick="confirmReversal()">
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                Confirm Reversal
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Reverse Entire Sale Batch
             </button>
 
         <?php else: ?>
             <div class="empty-state">
                 <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin:0 auto 1rem; display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <h3>No History Found</h3>
+                <h3>No Recent Sales Found</h3>
                 <p>There are no sale records available to reverse.</p>
             </div>
         <?php endif; ?>
@@ -145,14 +169,15 @@ try {
 
 <script>
     function confirmReversal() {
-        if(!confirm("🔴 DANGER: Are you sure you want to delete this sale?\n\nThe animal will be returned to active inventory.")) {
+        const count = <?= count($batch_records) ?>;
+        if(!confirm(`🔴 CRITICAL ACTION\n\nYou are about to cancel the sale for ${count} animals.\n\nThey will be returned to the farm inventory as 'Active'. Do you wish to proceed?`)) {
             return;
         }
 
         const btn = document.getElementById('btn-reverse');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = "Processing...";
+        btn.innerHTML = "Processing Sale Reversal...";
 
         fetch('../process/reverseSaleTransaction.php', {
             method: 'POST'
@@ -160,7 +185,7 @@ try {
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                alert("✅ " + data.message);
+                alert("✅ Success: " + data.message);
                 window.location.reload(); 
             } else {
                 alert("❌ Error: " + data.message);

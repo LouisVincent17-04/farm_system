@@ -8,6 +8,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('farm_equipment_tools_analytics');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }

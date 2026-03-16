@@ -7,7 +7,12 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('analytics_dashboard');
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
 ?>
 
 <!DOCTYPE html>

@@ -86,6 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             'success' => true,
             'message' => '✅ Item deleted successfully.'
         ]);
+
+        header('Location: ../views/purch_farm_equipment_tools.php');
+        exit();
         
     } catch (PDOException $e) {
         // 5. ROLLBACK ON ERROR

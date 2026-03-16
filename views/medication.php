@@ -8,6 +8,7 @@ include '../security/checkAccess.php';
 checkAccess('medication');
 $page="transactions";
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 try {

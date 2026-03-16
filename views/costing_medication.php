@@ -12,6 +12,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('medication_treatment');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // --- AJAX HANDLER ---

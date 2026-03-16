@@ -1,5 +1,9 @@
 <?php
 // views/vaccination.php
+
+header('Location:unauthorized.php');
+exit();
+
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 include '../config/Connection.php';
@@ -8,6 +12,7 @@ include '../security/checkAccess.php';
 checkAccess('vaccination');
 $page = "transactions";
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }

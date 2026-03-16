@@ -7,6 +7,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('fcr_management');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 // Fetch Initial Locations for Dropdown

@@ -8,6 +8,7 @@ include '../security/checkAccess.php';
 checkAccess('feeding');
 $page="transactions";
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }

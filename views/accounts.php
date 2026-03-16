@@ -3,12 +3,11 @@
 $page = "settings";
 include '../config/Connection.php';
 include '../security/checkAccess.php';
-
 // 1. Security Check
 checkAccess('manage_accounts');
 
 include '../common/navbar.php';
-
+include '../common/chat_support.php';
 
 // Filter Logic
 $filter_status = isset($_GET['status']) && $_GET['status'] == 'inactive' ? 0 : 1;
@@ -16,9 +15,9 @@ $filter_status = isset($_GET['status']) && $_GET['status'] == 'inactive' ? 0 : 1
 try {
     if (!isset($conn)) throw new Exception("Database connection failed.");
 
-
+    // Updated DATE_FORMAT to mm/dd/yyyy
     $sql = "SELECT USER_ID, FULL_NAME, EMAIL, USER_TYPE, IS_ACTIVE, 
-            DATE_FORMAT(CREATED_AT, '%Y-%m-%d') AS JOIN_DATE
+            DATE_FORMAT(CREATED_AT, '%m/%d/%Y') AS JOIN_DATE
             FROM USERS 
             WHERE IS_ACTIVE = :status 
             ORDER BY USER_ID DESC";

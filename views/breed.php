@@ -10,6 +10,7 @@ include '../security/checkAccess.php';
 checkAccess('breed');
 
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 // Check for status messages from redirects
 $status = $_GET['status'] ?? '';
@@ -304,7 +305,7 @@ try {
                 <h2>Edit Breed</h2>
             </div>
             <div class="modal-body">
-                <form id="editBreedForm" method="POST" action="../process/updateBreed.php">
+                <form id="editBreedForm" method="POST" action="../process/updateBreeds.php">
                     <input type="hidden" id="edit_breed_id" name="breed_id">
                     <div class="form-group">
                         <label for="edit_breed_name">Breed Name</label>

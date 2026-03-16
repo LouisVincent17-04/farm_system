@@ -8,6 +8,7 @@ include '../config/Connection.php';
 include '../security/checkAccess.php';
 checkAccess('breeding_reproduction_analaytics');
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
 
 try {

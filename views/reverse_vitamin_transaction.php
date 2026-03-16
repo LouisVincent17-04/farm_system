@@ -6,35 +6,43 @@ $page = "transactions";
 
 include '../config/Connection.php';
 include '../security/checkAccess.php';
-// checkAccess('admin_access'); // Uncomment if needed
 include '../common/navbar.php';
+include '../common/chat_support.php';
 
-$last_trans = null;
+$batch_records = [];
+$latest_date = null;
 $message = "";
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    // 1. Fetch the VERY latest vitamin transaction
-    $sql = "SELECT 
-                vt.VST_ID,
-                vt.TRANSACTION_DATE,
-                vt.QUANTITY_USED,
-                vt.TOTAL_COST,
-                vt.DOSAGE,
-                a.TAG_NO,
-                v.SUPPLY_NAME AS VIT_NAME,
-                u.UNIT_ABBR
-            FROM vitamins_supplements_transactions vt
-            LEFT JOIN animal_records a ON vt.ANIMAL_ID = a.ANIMAL_ID
-            LEFT JOIN vitamins_supplements v ON vt.ITEM_ID = v.SUPPLY_ID
-            LEFT JOIN units u ON v.UNIT_ID = u.UNIT_ID
-            ORDER BY vt.VST_ID DESC 
-            LIMIT 1";
+    // 1. Get the timestamp of the latest transaction
+    $time_stmt = $conn->query("SELECT TRANSACTION_DATE FROM vitamins_supplements_transactions ORDER BY TRANSACTION_DATE DESC LIMIT 1");
+    $latest_date = $time_stmt->fetchColumn();
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute();
-    $last_trans = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($latest_date) {
+        // 2. Fetch ALL vitamin records matching that exact timestamp
+        $sql = "SELECT 
+                    vt.VST_ID,
+                    vt.TRANSACTION_DATE,
+                    vt.QUANTITY_USED,
+                    vt.TOTAL_COST,
+                    vt.DOSAGE,
+                    vt.ADMINISTERED_BY,
+                    a.TAG_NO,
+                    v.SUPPLY_NAME AS VIT_NAME,
+                    u.UNIT_ABBR
+                FROM vitamins_supplements_transactions vt
+                LEFT JOIN animal_records a ON vt.ANIMAL_ID = a.ANIMAL_ID
+                LEFT JOIN vitamins_supplements v ON vt.ITEM_ID = v.SUPPLY_ID
+                LEFT JOIN units u ON v.UNIT_ID = u.UNIT_ID
+                WHERE vt.TRANSACTION_DATE = :latest_date
+                ORDER BY a.TAG_NO ASC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([':latest_date' => $latest_date]);
+        $batch_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
 } catch (Exception $e) {
     $message = $e->getMessage();
@@ -45,11 +53,11 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Reverse Vitamin</title>
+    <title>Admin - Reverse Batch Vitamins</title>
     <style>
-        :root { --dark: #0f172a; --dark-light: #1e293b; --red: #ef4444; --cyan: #06b6d4; }
+        :root { --dark: #0f172a; --dark-light: #1e293b; --red: #ef4444; --cyan: #06b6d4; --amber: #f59e0b; }
         body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-        .container { max-width: 800px; margin: 3rem auto; padding: 0 1rem; }
+        .container { max-width: 900px; margin: 3rem auto; padding: 0 1rem; }
 
         .card { background: var(--dark-light); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 16px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
         
@@ -57,26 +65,31 @@ try {
         .header h1 { color: var(--cyan); margin: 0 0 0.5rem 0; font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .header p { color: #94a3b8; }
 
-        .trans-info { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 1px dashed #64748b; }
-        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .info-row:last-child { border-bottom: none; }
-        .label { color: #94a3b8; font-size: 0.9rem; }
-        .value { color: white; font-weight: 600; font-family: monospace; font-size: 1rem; }
+        /* Batch Table Styles */
+        .batch-container { background: rgba(15, 23, 42, 0.6); border-radius: 12px; border: 1px solid #334155; margin-bottom: 2rem; overflow: hidden; }
+        .batch-header { padding: 1rem; background: rgba(6, 182, 212, 0.1); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        
+        .table-wrap { max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 1rem; font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; background: #0f172a; position: sticky; top: 0; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        tr:last-child td { border-bottom: none; }
+
+        .tag-badge { background: #334155; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-family: monospace; }
         
         .btn-reverse {
             width: 100%; padding: 1.2rem;
             background: linear-gradient(135deg, #ef4444, #b91c1c);
             color: white; border: none; border-radius: 12px;
             font-weight: 800; font-size: 1.1rem; cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .btn-reverse:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.4); }
         .btn-reverse:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center; }
-        .alert-warning { background: rgba(6, 182, 212, 0.1); color: #a5f3fc; border: 1px solid #06b6d4; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; }
+        .alert-warning { background: rgba(245, 158, 11, 0.1); color: #fef3c7; border: 1px solid var(--amber); }
         
         .empty-state { text-align: center; padding: 3rem; color: #64748b; }
     </style>
@@ -88,57 +101,60 @@ try {
         <div class="header">
             <h1>
                 <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                Reverse Vitamin
+                Reverse Batch Vitamins
             </h1>
-            <p>Undo the most recent supplement record.</p>
+            <p>Delete the most recent group of supplement records and restore stock.</p>
         </div>
 
-        <?php if ($last_trans): ?>
+        <?php if (!empty($batch_records)): ?>
             <div class="alert alert-warning">
-                ⚠️ <strong>Confirmation:</strong> This will delete the record below and restore stock inventory.
+                ⚠️ <strong>Batch Action:</strong> Reversing this will delete <strong><?= count($batch_records) ?></strong> records and restore all associated inventory.
             </div>
 
-            <div class="trans-info">
-                <h3 style="margin-top:0; color:#cbd5e1; font-size:0.9rem; text-transform:uppercase; margin-bottom:15px;">Target Transaction</h3>
-                
-                <div class="info-row">
-                    <span class="label">Transaction ID</span>
-                    <span class="value" style="color:#06b6d4;">#<?= htmlspecialchars($last_trans['VST_ID']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Date Applied</span>
-                    <span class="value"><?= date('M d, Y h:i A', strtotime($last_trans['TRANSACTION_DATE'])) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Animal Tag</span>
-                    <span class="value"><?= htmlspecialchars($last_trans['TAG_NO']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Supplement</span>
-                    <span class="value"><?= htmlspecialchars($last_trans['VIT_NAME']) ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Quantity / Cost</span>
-                    <span class="value" style="color:#34d399;">
-                        <?= number_format($last_trans['QUANTITY_USED'], 2) ?> <?= $last_trans['UNIT_ABBR'] ?> 
-                        <span style="color:#64748b; font-size:0.8em;">(₱<?= number_format($last_trans['TOTAL_COST'], 2) ?>)</span>
+            <div class="batch-container">
+                <div class="batch-header">
+                    <span style="font-size: 0.85rem; font-weight: 600;">
+                        🕒 <?= date('M d, Y h:i A', strtotime($latest_date)) ?>
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--cyan);">
+                        Administered by: <?= htmlspecialchars($batch_records[0]['ADMINISTERED_BY'] ?? 'Unknown') ?>
                     </span>
                 </div>
-                <div class="info-row">
-                    <span class="label">Dosage Info</span>
-                    <span class="value" style="font-size:0.85rem; font-style:italic;"><?= htmlspecialchars($last_trans['DOSAGE']) ?></span>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Animal Tag</th>
+                                <th>Supplement</th>
+                                <th>Dosage</th>
+                                <th style="text-align:right;">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($batch_records as $row): ?>
+                            <tr>
+                                <td><span class="tag-badge"><?= htmlspecialchars($row['TAG_NO']) ?></span></td>
+                                <td><?= htmlspecialchars($row['VIT_NAME']) ?></td>
+                                <td style="font-style: italic; color: #94a3b8;"><?= htmlspecialchars($row['DOSAGE']) ?></td>
+                                <td style="text-align:right; font-weight: bold; color: #34d399;">
+                                    <?= number_format($row['QUANTITY_USED'], 2) ?> <?= $row['UNIT_ABBR'] ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <button id="btn-reverse" class="btn-reverse" onclick="confirmReversal()">
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                Confirm Reversal
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Reverse Entire Batch
             </button>
 
         <?php else: ?>
             <div class="empty-state">
                 <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin:0 auto 1rem; display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <h3>No History Found</h3>
+                <h3>No Recent Batch Found</h3>
                 <p>There are no vitamin records available to reverse.</p>
             </div>
         <?php endif; ?>
@@ -151,14 +167,15 @@ try {
 
 <script>
     function confirmReversal() {
-        if(!confirm("🔴 DANGER: Are you sure you want to delete this vitamin record?\n\nInventory will be restored.")) {
+        const count = <?= count($batch_records) ?>;
+        if(!confirm(`🔴 CRITICAL ACTION\n\nYou are about to delete ALL ${count} vitamin records in this batch.\n\nStock levels will be increased accordingly. Do you wish to proceed?`)) {
             return;
         }
 
         const btn = document.getElementById('btn-reverse');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = "Processing...";
+        btn.innerHTML = "Processing Batch Reversal...";
 
         fetch('../process/reverseVitaminTransaction.php', {
             method: 'POST'
@@ -166,7 +183,7 @@ try {
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                alert("✅ " + data.message);
+                alert("✅ Success: " + data.message);
                 window.location.reload(); 
             } else {
                 alert("❌ Error: " + data.message);

@@ -9,6 +9,7 @@ checkAccess('veterinary');
 include '../common/navbar.php';
 include '../config/Queries.php';
 include '../functions/getInitialsFunction.php';
+include '../common/chat_support.php';
 
 
 // UPDATED SQL: Retrieve directly from VETERINARIANS table

@@ -20,9 +20,9 @@ try {
             
             UNION
             
-            SELECT BREED_NAME AS label 
-            FROM BREEDS 
-            WHERE BREED_NAME LIKE :term2
+            SELECT ITEM_NAME AS label 
+            FROM ITEMS 
+            WHERE ITEM_TYPE_ID = 13 AND ITEM_NAME LIKE :term2
             
             ORDER BY label ASC
             LIMIT 10";
