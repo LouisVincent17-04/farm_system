@@ -24,9 +24,9 @@ try {
     $mother_id = $_POST['animal_id'];
     $date = $_POST['date_farrowed'];
     $born = (int)$_POST['total_born'];
-    $active = (int)$_POST['active_count'];
-    $dead = (int)$_POST['dead_count'];
-    $mummy = (int)$_POST['mummified_count'];
+    $active = (int)$_POST['active_count'] ?? 0;
+    $dead = (int)$_POST['dead_count'] ?? 0;
+    $mummy = (int)$_POST['mummified_count'] ?? 0;
     
     // 2. Calculate Parity (Count existing records + 1)
     $stmtParity = $conn->prepare("SELECT COUNT(*) FROM sow_birthing_records WHERE ANIMAL_ID = ?");

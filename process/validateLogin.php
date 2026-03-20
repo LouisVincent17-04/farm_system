@@ -3,6 +3,8 @@
 // includes, output, or logic. A late session_start() causes PHP
 // to emit a warning that corrupts the JSON response, making
 // JSON.parse() fail silently in the browser.
+// process/validationLogin.php which is the main login handler of my single sign-on system, is called via AJAX from the login form. If session_start()
+// this should be modified and make this point to the sadmin_farms database instead of the farm-specific databases, since login credentials are stored in a central users table in the sadmin_farms database. The Connection.php file should be updated to connect to the sadmin_farms database for this script, and the SQL query should be adjusted to select from the users table in sadmin_farms instead of the USERS table in the farm-specific databases.
 session_start();
 
 error_reporting(0);

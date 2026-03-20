@@ -1,7 +1,7 @@
 <?php
 // globalxadminportal/verification.php
 session_start();
-if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
+if (!isset($_SESSION['is_global']) || $_SESSION['is_global'] !== 1) { header('Location: login.php'); exit; }
 
 require_once '../config/SadminConnection.php';
 date_default_timezone_set('Asia/Manila');
@@ -14,9 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     try {
         if ($_POST['action'] === 'approve_user') {
-            $uid = (int)$_POST['admin_id'];
+            $uid = (int)$_POST['user_id'];
             
-            $stmt = $conn->prepare("UPDATE admin_users SET status = 1 WHERE admin_id = ?");
+            $stmt = $conn->prepare("UPDATE users SET status = 1 WHERE user_id = ?");
             $stmt->execute([$uid]);
             
             echo json_encode(['success' => true, 'message' => 'User approved successfully!']);
@@ -24,10 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         
         if ($_POST['action'] === 'reject_user') {
-            $uid = (int)$_POST['admin_id'];
+            $uid = (int)$_POST['user_id'];
             
             // Rejecting the user sets status to -1
-            $stmt = $conn->prepare("UPDATE admin_users SET status = -1 WHERE admin_id = ?");
+            $stmt = $conn->prepare("UPDATE users SET status = -1 WHERE user_id = ?");
             $stmt->execute([$uid]);
             
             echo json_encode(['success' => true, 'message' => 'User registration rejected.']);
@@ -41,18 +41,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // ========================================================================
 
 $full_name   = $_SESSION['full_name'] ?? 'Admin';
-$is_incharge = $_SESSION['is_incharge'] ?? 0;
+$is_global = $_SESSION['is_global'] ?? 0;
 
 // Redirect regular clients away from this Super Admin page
-if ($is_incharge == 0) {
+if ($is_global == 0) {
     header('Location: my_farms.php');
     exit;
 }
 
 // Fetch pending users
 $pending_users = $conn->query("
-    SELECT admin_id, full_name, email, phone_no, created_at 
-    FROM admin_users 
+    SELECT user_id, full_name, email, phone_no, created_at 
+    FROM users 
     WHERE status = 0 
     ORDER BY created_at ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -226,7 +226,7 @@ $pending_users = $conn->query("
         <div class="nav-user">
             <div class="nav-avatar"><?= strtoupper(substr($full_name, 0, 1)) ?></div>
             <span class="nav-username"><?= htmlspecialchars($full_name) ?></span>
-            <?php if ($is_incharge): ?>
+            <?php if ($is_global): ?>
             <span class="nav-badge">In-Charge</span>
             <?php endif; ?>
         </div>
@@ -279,11 +279,11 @@ $pending_users = $conn->query("
                     </td>
                     <td data-label="Actions" style="text-align: right;">
                         <div class="actions" style="justify-content: flex-end;">
-                            <button class="btn-act approve" onclick="handleAction(<?= $u['admin_id'] ?>, 'approve_user', 'Approve this user account?')" title="Approve">
+                            <button class="btn-act approve" onclick="handleAction(<?= $u['user_id'] ?>, 'approve_user', 'Approve this user account?')" title="Approve">
                                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Approve
                             </button>
-                            <button class="btn-act reject" onclick="handleAction(<?= $u['admin_id'] ?>, 'reject_user', 'Reject and archive this registration?')" title="Reject">
+                            <button class="btn-act reject" onclick="handleAction(<?= $u['user_id'] ?>, 'reject_user', 'Reject and archive this registration?')" title="Reject">
                                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 Reject
                             </button>
@@ -303,7 +303,7 @@ $pending_users = $conn->query("
 
         const fd = new FormData();
         fd.append('action', actionType);
-        fd.append('admin_id', adminId);
+        fd.append('user_id', adminId);
 
         fetch(window.location.href, { method: 'POST', body: fd })
             .then(r => r.json())

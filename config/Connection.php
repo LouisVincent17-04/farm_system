@@ -1,11 +1,25 @@
 <?php
-// C:\xampp\htdocs\FarmSystem\config\Database.php (or your connection file)
+// FarmSystem/config/Connection.php
 
-$host = 'localhost';
-$db   = 'farm_system'; // Depending on what farm you chose
-$user = 'root';          // Default XAMPP user
-$pass = 'v1i1n1x1';              // Default XAMPP password
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+$host    = 'localhost';
+$user    = 'root';
+$pass    = 'v1i1n1x1';
 $charset = 'utf8mb4';
+
+// ── Dynamic DB selection ──────────────────────────────────────────────────────
+// When the owner selects a farm from the portal (my_farms.php), the chosen
+// farm's db_name is stored in $_SESSION['active_farm']['db_name'].
+// If no farm is selected yet, redirect back to the portal to choose one.
+// ─────────────────────────────────────────────────────────────────────────────
+if (!empty($_SESSION['active_farm']['db_name'])) {
+    $db = $_SESSION['active_farm']['db_name'];
+} else {
+    // No active farm in session — send user back to the portal to select one
+    header('Location: /globalxadminportal/my_farms.php');
+    exit;
+}
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [
@@ -15,7 +29,6 @@ $options = [
 ];
 
 try {
-    // This creates a PDO object, which matches the retrieveData function I gave you
     $conn = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
     die("❌ Connection failed: " . $e->getMessage());

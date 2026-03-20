@@ -12,7 +12,11 @@ checkAccess('location');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
-
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
 // Check for status messages
 $status = $_GET['status'] ?? '';
 $msg = $_GET['msg'] ?? '';

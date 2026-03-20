@@ -1,15 +1,14 @@
 <?php
 // globalxadminportal/profile.php
 session_start();
-if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
+if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 
 include '../config/SadminConnection.php';
 
-// Refresh admin data from DB
-$stmt = $conn->prepare("SELECT * FROM admin_users WHERE admin_id = ?");
-$stmt->execute([$_SESSION['admin']]);
+// Refresh user data from DB
+$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+$stmt->execute([$_SESSION['user_id']]);
 $admin = $stmt->fetch(PDO::FETCH_ASSOC);
-
 
 if (!$admin) { session_destroy(); header('Location: login.php'); exit; }
 ?>

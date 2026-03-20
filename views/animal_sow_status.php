@@ -3,6 +3,51 @@
 $page = "farm";
 include '../config/Connection.php';
 
+// =========================================================
+// AJAX HANDLERS FOR BOAR SELECTION
+// =========================================================
+if (isset($_GET['action'])) {
+    @ob_end_clean();
+    header('Content-Type: application/json');
+    $action = $_GET['action'];
+
+    try {
+        // Fetch only pens that have at least one active male
+        if ($action === 'get_boar_pens' && isset($_GET['bld_id'])) {
+            $stmt = $conn->prepare("
+                SELECT DISTINCT p.PEN_ID, p.PEN_NAME,
+                       (SELECT GROUP_CONCAT(TAG_NO SEPARATOR ', ') 
+                        FROM animal_records a2 
+                        WHERE a2.PEN_ID = p.PEN_ID AND a2.SEX = 'M' AND a2.IS_ACTIVE = 1 AND a2.CURRENT_STATUS != 'Sold') as BOAR_LIST
+                FROM PENS p
+                JOIN animal_records a ON p.PEN_ID = a.PEN_ID
+                WHERE p.BUILDING_ID = ? AND a.SEX = 'M' AND a.IS_ACTIVE = 1 AND a.CURRENT_STATUS != 'Sold'
+                ORDER BY p.PEN_NAME ASC
+            ");
+            $stmt->execute([$_GET['bld_id']]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            exit;
+        }
+
+        // Fetch the specific boars inside the selected pen
+        if ($action === 'get_boars_in_pen' && isset($_GET['pen_id'])) {
+            $stmt = $conn->prepare("
+                SELECT ANIMAL_ID, TAG_NO 
+                FROM animal_records 
+                WHERE PEN_ID = ? AND SEX = 'M' AND IS_ACTIVE = 1 AND CURRENT_STATUS != 'Sold'
+                ORDER BY TAG_NO ASC
+            ");
+            $stmt->execute([$_GET['pen_id']]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            exit;
+        }
+    } catch (Exception $e) {
+        echo json_encode(['error' => $e->getMessage()]);
+        exit;
+    }
+}
+// =========================================================
+
 include '../security/checkAccess.php';
 checkAccess('sow_status');
 include '../common/navbar.php';
@@ -57,7 +102,6 @@ try {
             $current_status_id = $active_status_row['STATUS_ID'] ?? null;
             $sow_card_done = $active_status_row['SOW_CARD_CREATED'] ?? 0;
 
-            // --- STATUS LOGIC ---
             switch($current_status) {
                 case 'DRY':
                     $actions = ['Start Service 1'];
@@ -314,6 +358,8 @@ try {
     <?php endif; ?>
 </div>
 
+
+
 <div id="serviceModal" class="modal">
     <div class="modal-content">
         <h2>Record Service Details</h2>
@@ -450,10 +496,18 @@ try {
         pen.disabled = true;
         pen.innerHTML = '<option>Loading...</option>';
         
-        fetchJSON(`../process/getCostData.php?action=get_pens&bld_id=${bld}`).then(data => {
-            pen.innerHTML = '<option value="">-- Pen --</option>';
-            data.forEach(i => pen.innerHTML += `<option value="${i.PEN_ID}">${i.PEN_NAME}</option>`);
-            pen.disabled = false;
+        // --- NEW: AJAX CALL FOR BOAR PENS ONLY ---
+        fetchJSON(`?action=get_boar_pens&bld_id=${bld}`).then(data => {
+            pen.innerHTML = '<option value="">-- Select Pen --</option>';
+            if(data && data.length > 0) {
+                // Populate options AND add the Title attribute so users see the Boar list on hover!
+                data.forEach(i => {
+                    pen.innerHTML += `<option value="${i.PEN_ID}" title="Boars inside: ${i.BOAR_LIST}">${i.PEN_NAME} (${i.BOAR_LIST})</option>`;
+                });
+                pen.disabled = false;
+            } else {
+                pen.innerHTML = '<option value="">-- No Boars Found --</option>';
+            }
         });
     }
 
@@ -470,10 +524,12 @@ try {
         boar.disabled = true;
         boar.innerHTML = '<option>Loading...</option>';
         
-        fetchJSON(`../process/getCostData.php?action=get_boars_in_pen&pen_id=${pen}`).then(data => {
+        fetchJSON(`?action=get_boars_in_pen&pen_id=${pen}`).then(data => {
             boar.innerHTML = '<option value="">-- Unknown / External --</option>';
-            data.forEach(i => boar.innerHTML += `<option value="${i.ANIMAL_ID}">${i.TAG_NO}</option>`);
-            boar.disabled = false;
+            if(data && data.length > 0) {
+                data.forEach(i => boar.innerHTML += `<option value="${i.ANIMAL_ID}">${i.TAG_NO}</option>`);
+                boar.disabled = false;
+            }
         });
     }
 
@@ -484,6 +540,14 @@ try {
         if (label.includes('Service')) {
             document.getElementById('modal_action_type').value = val;
             document.getElementById('service_date')._flatpickr.setDate(now); // Set flatpickr to current time
+            
+            // Reset Boar dropdowns when modal opens
+            document.getElementById('boarBld').value = '';
+            document.getElementById('boarPen').innerHTML = '<option value="">-- Pen --</option>';
+            document.getElementById('boarPen').disabled = true;
+            document.getElementById('boarSelect').innerHTML = '<option value="">-- Unknown / External --</option>';
+            document.getElementById('boarSelect').disabled = true;
+
             document.getElementById('serviceModal').classList.add('show');
         } 
         else if (label.includes('Pregnant')) {
@@ -529,7 +593,6 @@ try {
         document.getElementById(id).classList.remove('show');
     }
 
-    // --- NEW: AJAX FORM HANDLER ---
     // Prevents the browser from holding onto the POST request if the user hits Refresh (F5)
     async function submitModalForm(e, form) {
         e.preventDefault();

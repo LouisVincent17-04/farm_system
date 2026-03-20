@@ -46,7 +46,6 @@ if (isset($_GET['action'])) {
         exit;
     }
 
-    // --- NEW: AJAX HANDLER TO REFRESH FEEDS LIVE ---
     if ($_GET['action'] === 'get_feeds') {
         @ob_end_clean();
         header('Content-Type: application/json');
@@ -194,7 +193,6 @@ try {
         
         select[disabled], input[disabled], input[readonly] { opacity: 0.6; cursor: not-allowed; background: #1e293b; color:#94a3b8;}
 
-        /* Resource Shortcut Link */
         .resource-link { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; color: #60a5fa; text-decoration: none; transition: color 0.2s; font-weight: 600; }
         .resource-link:hover { color: #93c5fd; text-decoration: underline; }
         
@@ -211,6 +209,11 @@ try {
         .animal-label { font-size: 0.85rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; background: rgba(255,255,255,0.03); padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
         .animal-label:hover { background: rgba(255,255,255,0.1); }
         .animal-label input[type="checkbox"], .pen-label input[type="checkbox"] { accent-color: #3b82f6; width: 18px; height: 18px; cursor: pointer; }
+
+        /* Toggle Button styling for Method */
+        .method-toggle { display: flex; background: #0f172a; border: 1px solid #334155; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+        .method-btn { flex: 1; padding: 10px; text-align: center; font-size: 0.9rem; font-weight: 600; color: #94a3b8; cursor: pointer; background: transparent; border: none; transition: 0.2s; }
+        .method-btn.active { background: #3b82f6; color: white; }
 
         /* Summary Box */
         .summary-box { background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; text-align: center; margin-top: 15px; display: none; }
@@ -371,8 +374,15 @@ try {
                         </div>
                         
                         <div class="form-row">
-                            <div class="form-group"> <label>Feed per Animal (kg)</label>
-                                <input type="number" id="qty_per_head" step="0.01" min="0.01" placeholder="e.g. 0.5" oninput="calculateTotal()">
+                            <div class="form-group"> 
+                                <label>Distribution Method</label>
+                                <div class="method-toggle">
+                                    <button type="button" class="method-btn active" id="method-per-head" onclick="setMethod('head')">Per Head</button>
+                                    <button type="button" class="method-btn" id="method-total" onclick="setMethod('total')">Total for Group</button>
+                                </div>
+                                <input type="hidden" id="calc_method" value="head">
+                                
+                                <input type="number" id="input_qty" step="0.01" min="0.01" placeholder="e.g. 0.5" oninput="calculateTotal()">
                             </div>
                             <div class="form-group"> <label>Date & Time</label>
                                 <input type="text" id="transaction_date" class="form-input date-picker" placeholder="Select Date & Time" required>
@@ -381,11 +391,11 @@ try {
                     </div>
 
                     <div class="summary-box" id="summary-box">
-                        <div class="summary-title">Total to Deduct</div>
+                        <div class="summary-title">Total to Deduct from Stock</div>
                         <div class="summary-value"><span id="total-deduction">0.00</span> kg</div>
                         <div style="color:#64748b; font-size:0.9rem; margin-top:5px;">
                             Feeding <span id="animal-count-display" style="color:#34d399; font-weight:bold;">0</span> animals 
-                            x <span id="per-head-display">0</span> kg/head
+                            (<span id="per-head-display">0</span> kg/head)
                         </div>
                         <div id="stock-warning" class="stock-warning">⚠️ Insufficient Stock!</div>
                     </div>
@@ -399,7 +409,6 @@ try {
     </div>
 
     <script>
-        // CHANGED FROM const TO let SO WE CAN REFRESH IT
         let allFeeds = <?php echo json_encode($feeds); ?>;
         const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
         let currentAnimalCount = 0;
@@ -416,7 +425,27 @@ try {
             filterTable();
         });
 
-        // --- NEW: REFRESH FEEDS AJAX ---
+        // --- NEW: FEEDING METHOD TOGGLE ---
+        function setMethod(method) {
+            const btnHead = document.getElementById('method-per-head');
+            const btnTotal = document.getElementById('method-total');
+            const inputField = document.getElementById('input_qty');
+            
+            document.getElementById('calc_method').value = method;
+
+            if (method === 'head') {
+                btnHead.classList.add('active');
+                btnTotal.classList.remove('active');
+                inputField.placeholder = "e.g. 0.5 (kg per animal)";
+            } else {
+                btnTotal.classList.add('active');
+                btnHead.classList.remove('active');
+                inputField.placeholder = "e.g. 25 (total kg to split)";
+            }
+            
+            calculateTotal(); // Re-run math
+        }
+
         async function refreshFeedsList() {
             const btn = document.getElementById('refresh-feeds-btn');
             btn.innerHTML = '↻ Loading...';
@@ -571,13 +600,30 @@ try {
             calculateTotal();
         }
 
+        // --- MATH CALCULATOR ---
         function calculateTotal() {
-            const qty = parseFloat(document.getElementById('qty_per_head').value) || 0;
-            const total = currentAnimalCount * qty;
+            const method = document.getElementById('calc_method').value;
+            const rawInput = parseFloat(document.getElementById('input_qty').value) || 0;
+            
+            let totalToDeduct = 0;
+            let qtyPerHead = 0;
+
+            if (currentAnimalCount > 0) {
+                if (method === 'head') {
+                    // Input is per head. Total is input * count
+                    qtyPerHead = rawInput;
+                    totalToDeduct = currentAnimalCount * rawInput;
+                } else {
+                    // Input is total. Per head is input / count
+                    totalToDeduct = rawInput;
+                    qtyPerHead = rawInput / currentAnimalCount;
+                }
+            }
             
             document.getElementById('animal-count-display').textContent = currentAnimalCount;
-            document.getElementById('per-head-display').textContent = qty;
-            document.getElementById('total-deduction').textContent = total.toFixed(2);
+            // Limit decimals on display so it looks clean (e.g. 25kg / 3 animals = 8.33/head)
+            document.getElementById('per-head-display').textContent = qtyPerHead.toFixed(2); 
+            document.getElementById('total-deduction').textContent = totalToDeduct.toFixed(2);
 
             const feed = document.getElementById('feed_id');
             const opt = feed.options[feed.selectedIndex];
@@ -585,13 +631,19 @@ try {
             const btn = document.getElementById('btn-save');
             
             if(opt && opt.dataset.stock) {
-                if(total > parseFloat(opt.dataset.stock)) {
-                    warn.style.display = 'block'; btn.disabled = true;
+                if(totalToDeduct > parseFloat(opt.dataset.stock) || totalToDeduct <= 0) {
+                    if (totalToDeduct > parseFloat(opt.dataset.stock)) {
+                        warn.style.display = 'block'; 
+                        warn.innerText = '⚠️ Insufficient Stock!';
+                    } else {
+                        warn.style.display = 'none';
+                    }
+                    btn.disabled = true;
                 } else {
                     warn.style.display = 'none'; btn.disabled = false;
                 }
             } else {
-                btn.disabled = true; // Disable if no feed selected
+                btn.disabled = true; 
             }
         }
 
@@ -623,14 +675,17 @@ try {
             }
         }
 
+        // --- SUBMITTER ---
         function saveBulkFeed() {
             const animalCbs = document.querySelectorAll('.animal-cb:checked');
             const feedId = document.getElementById('feed_id').value;
-            const qty = document.getElementById('qty_per_head').value;
             const date = document.getElementById('transaction_date').value;
+            
+            // To prevent math errors, we ALWAYS submit the computed 'Per Head' value to the backend
+            const qtyPerHead = parseFloat(document.getElementById('per-head-display').textContent);
 
             if(animalCbs.length === 0) { alert("Please select at least one animal."); return; }
-            if(!feedId || !qty || !date) { alert("Please fill in all feeding details."); return; }
+            if(!feedId || qtyPerHead <= 0 || !date) { alert("Please fill in all feeding details."); return; }
 
             const btn = document.getElementById('btn-save');
             btn.disabled = true; btn.innerHTML = 'Saving...';
@@ -642,7 +697,7 @@ try {
             });
             
             fd.append('feed_id', feedId);
-            fd.append('qty_per_head', qty); 
+            fd.append('qty_per_head', qtyPerHead); 
             fd.append('transaction_date', date);
 
             fetch('../process/addFeedTransaction.php', { method: 'POST', body: fd })
@@ -668,6 +723,9 @@ try {
             document.getElementById('modal').classList.add('show');
             document.getElementById('bulk-feed-form').reset();
             fpTransactionDate.clear(); 
+            
+            // Reset UI state
+            setMethod('head'); 
             
             const locSelect = document.getElementById('location_id');
             

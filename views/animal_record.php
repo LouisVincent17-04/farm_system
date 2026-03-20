@@ -167,6 +167,10 @@ try {
 
         /* Modal Styles */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
+        
+        /* Add higher z-index for sub-modals so they stack correctly! */
+        #selectParentModal, #selectPurchaseModal, #editSelectPurchaseModal { z-index: 1050; }
+
         .modal.show { display: flex; }
         .modal-content { background: #1e293b; border-radius: 16px; width: 100%; max-width: 700px; padding: 0; border: 1px solid #475569; margin: auto; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);}
         .modal-content.large { max-width: 800px; }
@@ -263,9 +267,9 @@ try {
 <body>
     <div class="container">
         
-        <a href="farm_dashboard.php" class="back-link">
+        <a href="admin_dashboard.php" class="back-link">
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Dashboard
+            Back to Admin Dashboard
         </a>
 
         <div class="header">
@@ -357,7 +361,7 @@ try {
                                         <small style="color:#94a3b8"><?php echo htmlspecialchars($data['BREED_NAME']); ?></small>
                                     </div>
                                 </td>
-                                <td data-label="Sex"><?php echo $data['SEX'] == 'M' ? 'Male' : 'Female'; ?></td>
+                                <td data-label="Sex"><?php if($data['SEX'] == 'M') echo  'Male'; elseif($data['SEX'] == 'F') echo 'Female';  else echo 'Unknown'; ?></td>
                                 <td data-label="Age" style="color:#fcd34d; font-weight:600;">
                                     <?php echo $data['DAYS_OLD'] !== null ? $data['DAYS_OLD'] . " days" : "N/A"; ?>
                                 </td>
@@ -429,6 +433,7 @@ try {
                                     <input type="text" id="display_father_tag" placeholder="Select Boar..." readonly style="border-color: #60a5fa;">
                                     <button type="button" class="btn-select" onclick="openSelectParentModal('boar')">🔍</button>
                                 </div>
+                                <small style="color: #94a3b8; display: block; margin-top: 4px;">Will auto-apply to siblings with the same Sow & Birth Date.</small>
                             </div>
                         </div>
                     </div>
@@ -591,6 +596,7 @@ try {
                                     <input type="text" id="edit_display_father" placeholder="Select Boar..." readonly style="border-color: #60a5fa;">
                                     <button type="button" class="btn-select" onclick="openSelectParentModal('boar', 'edit')">🔍</button>
                                 </div>
+                                <small style="color: #94a3b8; display: block; margin-top: 4px;">Will auto-apply to siblings with the same Sow & Birth Date.</small>
                             </div>
                         </div>
                     </div>
@@ -815,12 +821,15 @@ try {
         function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
         function openSelectParentModal(type, mode = 'add') {
+
+            // ONLY SET VARIABLES - DO NOT CLOSE THE EDIT MODAL
             currentParentType = type;
             currentParentMode = mode;
             
             document.getElementById('selectParentModal').classList.add('show');
             document.getElementById('parent-modal-title').textContent = type === 'sow' ? 'Select Mother' : 'Select Father';
             loadAvailableParents(type);
+            
         }
         function closeSelectParentModal() { document.getElementById('selectParentModal').classList.remove('show'); }
 
@@ -998,6 +1007,10 @@ try {
                     document.getElementById('edit_mother_id').value = animal.MOTHER_ID || '';
                     document.getElementById('edit_father_id').value = animal.FATHER_ID || '';
                     
+                    // Show parent tags in inputs
+                    document.getElementById('edit_display_mother').value = animal.MOTHER_TAG || '';
+                    document.getElementById('edit_display_father').value = animal.FATHER_TAG || '';
+                    
                     document.getElementById('edit_animal_type').value = animal.ANIMAL_TYPE_ID;
                     await loadBreeds(animal.ANIMAL_TYPE_ID, 'edit');
                     
@@ -1125,7 +1138,10 @@ try {
         }
 
         document.getElementById('addModal').addEventListener('click', function(e) { if(e.target===this) closeAddModal(); });
+        
+        // RESTORED editModal click listener! It works safely now because of z-index stacking.
         document.getElementById('editModal').addEventListener('click', function(e) { if(e.target===this) closeEditModal(); });
+        
         document.getElementById('selectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeSelectPurchaseModal(); });
         document.getElementById('editSelectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeEditSelectPurchaseModal(); });
         document.getElementById('selectParentModal').addEventListener('click', function(e) { if(e.target===this) closeSelectParentModal(); });

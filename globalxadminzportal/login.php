@@ -3,8 +3,8 @@
 session_start();
 
 // Already logged in — redirect based on role
-if (isset($_SESSION['admin'])) {
-    if ($_SESSION['is_incharge'] == 1) {
+if (isset($_SESSION['user_id'])) {
+    if ($_SESSION['is_global'] == 1) {
         header('Location: farm_page.php');
     } else {
         header('Location: my_farms.php');
@@ -17,7 +17,7 @@ if (isset($_SESSION['admin'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login | FarmPro</title>
+    <title>Admin Login | GATZFarm</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap');
 
@@ -278,7 +278,7 @@ if (isset($_SESSION['admin'])) {
             <p class="brand-desc">Access your centralized dashboard to monitor operations, livestock, and analytics.</p>
         </div>
 
-        <div class="brand-footer">© <?= date('Y') ?> FarmPro SaaS · Restricted Access</div>
+        <div class="brand-footer">© <?= date('Y') ?> GATZFarm SaaS · Restricted Access</div>
         <div class="brand-deco"></div>
     </div>
 
@@ -286,7 +286,7 @@ if (isset($_SESSION['admin'])) {
         
         <div id="section-login" class="form-section active">
             <div class="form-title">Sign In</div>
-            <div class="form-sub">Access your FarmPro dashboard.</div>
+            <div class="form-sub">Access your GATZFarm dashboard.</div>
             
             <div id="login-alert" class="alert"></div>
 
@@ -295,7 +295,7 @@ if (isset($_SESSION['admin'])) {
                     <label class="form-label">Email Address</label>
                     <div class="input-wrap">
                         <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        <input type="email" id="email" class="form-control" placeholder="client@farmpro.com" required autocomplete="username">
+                        <input type="email" id="email" class="form-control" placeholder="client@GATZFarm.com" required autocomplete="username">
                     </div>
                 </div>
 
@@ -335,7 +335,7 @@ if (isset($_SESSION['admin'])) {
                     <label class="form-label">Email Address</label>
                     <div class="input-wrap">
                         <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        <input type="email" id="forgot_email" class="form-control" placeholder="client@farmpro.com" required>
+                        <input type="email" id="forgot_email" class="form-control" placeholder="client@GATZFarm.com" required>
                     </div>
                 </div>
 
@@ -421,8 +421,7 @@ if (isset($_SESSION['admin'])) {
 
             if (data.success) {
                 showAlert('login-alert', 'success', '✅ Authenticated. Redirecting…');
-                if(data.is_incharge === 1) setTimeout(() => window.location.href = 'farm_page.php', 800);
-                else setTimeout(() => window.location.href = 'my_farms.php', 800);
+                setTimeout(() => window.location.href = data.redirect, 800);
             } else {
                 showAlert('login-alert', 'error', '❌ ' + data.message);
                 btn.classList.remove('loading'); btn.disabled = false;

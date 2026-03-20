@@ -1,7 +1,7 @@
 <?php
 // globalxadminportal/farm_page.php
 session_start();
-if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
+if (!isset($_SESSION['is_global']) || $_SESSION['is_global'] !== 1) { header('Location: login.php'); exit; }
 
 require_once '../config/SadminConnection.php';
 
@@ -56,17 +56,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // ── Stats (Excluding Deleted Farms: farm_status != -1) ────────────
 $total_farms  = $conn->query("SELECT COUNT(*) FROM farms WHERE farm_status != -1")->fetchColumn();
 $active_farms = $conn->query("SELECT COUNT(*) FROM farms WHERE farm_status = 1")->fetchColumn();
-$total_users  = $conn->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
-$pending_users= $conn->query("SELECT COUNT(*) FROM admin_users WHERE status = 0")->fetchColumn();
-$approved_users=$conn->query("SELECT COUNT(*) FROM admin_users WHERE status = 1")->fetchColumn();
-$incharge_users=$conn->query("SELECT COUNT(*) FROM admin_users WHERE is_incharge = 1 AND status = 1")->fetchColumn();
+$total_users  = $conn->query("SELECT COUNT(*) FROM users")->fetchColumn();
+$pending_users= $conn->query("SELECT COUNT(*) FROM users WHERE status = 0")->fetchColumn();
+$approved_users=$conn->query("SELECT COUNT(*) FROM users WHERE status = 1")->fetchColumn();
+$incharge_users=$conn->query("SELECT COUNT(*) FROM users WHERE is_global = 1 AND status = 1")->fetchColumn();
 
-$my_farms = $conn->prepare("SELECT COUNT(*) FROM farms WHERE admin_id = ? AND farm_status != -1");
-$my_farms->execute([$_SESSION['admin']]);
+$my_farms = $conn->prepare("SELECT COUNT(*) FROM farms WHERE owner_id = ? AND farm_status != -1");
+$my_farms->execute([$_SESSION['user_id']]);
 $my_farms_count = $my_farms->fetchColumn();
 
 $full_name   = $_SESSION['full_name'] ?? 'Admin';
-$is_incharge = $_SESSION['is_incharge'] ?? 0;
+$is_global = $_SESSION['is_global'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -215,7 +215,7 @@ $is_incharge = $_SESSION['is_incharge'] ?? 0;
             font-size: .8rem; font-weight: 600; color: var(--text);
             max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        <?php if ($is_incharge): ?>
+        <?php if ($is_global): ?>
         .nav-badge {
             font-size: .6rem; font-weight: 700; letter-spacing: .1em;
             text-transform: uppercase; padding: 2px 7px; border-radius: 100px;
@@ -552,7 +552,7 @@ $is_incharge = $_SESSION['is_incharge'] ?? 0;
         <div class="nav-user">
             <div class="nav-avatar"><?= strtoupper(substr($full_name, 0, 1)) ?></div>
             <span class="nav-username"><?= htmlspecialchars($full_name) ?></span>
-            <?php if ($is_incharge): ?>
+            <?php if ($is_global): ?>
             <span class="nav-badge">In-Charge</span>
             <?php endif; ?>
         </div>
@@ -665,7 +665,7 @@ $is_incharge = $_SESSION['is_incharge'] ?? 0;
                 SELECT f.farm_id, f.farm_name, f.farm_status, f.created_at,
                        a.full_name AS admin_name
                 FROM farms f
-                JOIN admin_users a ON a.admin_id = f.admin_id
+                JOIN users a ON a.user_id = f.owner_id
                 WHERE f.farm_status != -1
                 ORDER BY f.created_at DESC
                 LIMIT 50
@@ -775,7 +775,7 @@ $is_incharge = $_SESSION['is_incharge'] ?? 0;
                     SELECT f.farm_id, f.farm_name, f.created_at,
                            a.full_name AS admin_name
                     FROM farms f
-                    JOIN admin_users a ON a.admin_id = f.admin_id
+                    JOIN users a ON a.user_id = f.owner_id
                     WHERE f.farm_status = -1
                     ORDER BY f.created_at DESC
                 ")->fetchAll();

@@ -214,6 +214,29 @@ include '../common/chat_support.php';
                 </div>
             </a>
 
+            <a href="edit_animal_tags.php" class="category-card">
+                <div class="category-header">
+                    <div class="category-icon cyan">🏷️</div>
+                    <div class="category-info">
+                        <h3 class="category-title">Batch Tag Editor</h3>
+                        <p class="category-subtitle">Fast Ear Tag Assignment</p>
+                    </div>
+                </div>
+                <div class="analytics-preview">
+                    <div class="analytics-preview-title">Tag Management</div>
+                    <ul class="metrics-list">
+                        <li>Edit Tags by Litter</li>
+                        <li>Fix Missing or Broken Tags</li>
+                        <li>Auto-Increment Sequences</li>
+                        <li>Mass Re-tagging Operations</li>
+                    </ul>
+                </div>
+                <div class="card-action">
+                    <span>Edit Tags</span>
+                    <span>→</span>
+                </div>
+            </a>
+
             <a href="events_scheduler.php" class="category-card">
                 <div class="category-header">
                     <div class="category-icon rose">📅</div>

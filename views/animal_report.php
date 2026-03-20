@@ -9,7 +9,7 @@ include '../security/checkAccess.php';
 checkAccess('animal_report');
 include '../common/navbar.php';
 include '../common/chat_support.php';
-include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
+include '../functions/getUsersLocation.php'; 
 
 // --- 1. GET FILTER INPUTS ---
 $view        = $_GET['view'] ?? 'detailed'; 
@@ -20,11 +20,11 @@ $animal_type = $_GET['animal_type'] ?? '';
 $breed       = $_GET['breed'] ?? '';
 $stage       = $_GET['stage'] ?? ''; 
 $sex         = $_GET['sex'] ?? '';
-$sow_status  = $_GET['sow_status'] ?? ''; // NEW SOW STATUS FILTER
+$sow_status  = $_GET['sow_status'] ?? ''; 
 
 // Mapped filters for drill-down (Location/Building/Pen)
 $filter_loc  = $_GET['f_loc'] ?? '';
-$filter_bld  = $_GET['f_bld'] ?? ''; // Used when drilling down from Building -> Pen
+$filter_bld  = $_GET['f_bld'] ?? ''; 
 $filter_pen  = $_GET['f_pen'] ?? '';
 
 // Auto-assign location filter if user is restricted
@@ -77,7 +77,7 @@ try {
         }
     }
 
-    // Apply Location/Building Filters (Important for Drill-down & User Restrictions)
+    // Apply Location/Building Filters 
     if ($filter_loc) { $where_sql .= " AND ar.LOCATION_ID = :floc"; $params[':floc'] = $filter_loc; }
     if ($filter_bld) { $where_sql .= " AND ar.BUILDING_ID = :fbld"; $params[':fbld'] = $filter_bld; }
     if ($filter_pen) { $where_sql .= " AND ar.PEN_ID = :fpen"; $params[':fpen'] = $filter_pen; }
@@ -89,7 +89,7 @@ try {
                     SUM(ar.CURRENT_ACTUAL_WEIGHT) as total_weight,
                     SUM(CASE WHEN ar.SEX = 'M' THEN 1 ELSE 0 END) as male_count,
                     SUM(CASE WHEN ar.SEX = 'F' THEN 1 ELSE 0 END) as female_count
-                  FROM ANIMAL_RECORDS ar 
+                  FROM animal_records ar 
                   $where_sql";
     
     $stmt_stats = $conn->prepare($stats_sql);
@@ -98,8 +98,8 @@ try {
 
     // Type Breakdown
     $type_sql = "SELECT at.ANIMAL_TYPE_NAME, COUNT(*) as count
-                 FROM ANIMAL_RECORDS ar
-                 LEFT JOIN ANIMAL_TYPE at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
+                 FROM animal_records ar
+                 LEFT JOIN animal_type at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
                  $where_sql
                  GROUP BY at.ANIMAL_TYPE_NAME";
     $stmt_type = $conn->prepare($type_sql);
@@ -114,7 +114,7 @@ try {
                         SUM(CASE WHEN ssh.STATUS_NAME LIKE 'SERVICE%' THEN 1 ELSE 0 END) as service_count,
                         SUM(CASE WHEN ssh.STATUS_NAME = 'PREGNANT' THEN 1 ELSE 0 END) as pregnant_count,
                         SUM(CASE WHEN ssh.STATUS_NAME = 'BIRTHING' THEN 1 ELSE 0 END) as birthing_count
-                    FROM ANIMAL_RECORDS ar 
+                    FROM animal_records ar 
                     LEFT JOIN sow_status_history ssh ON ar.ANIMAL_ID = ssh.ANIMAL_ID AND ssh.IS_ACTIVE = 1
                     $where_sql";
         $stmt_sow = $conn->prepare($sow_sql);
@@ -122,34 +122,51 @@ try {
         $sow_stats = $stmt_sow->fetch(PDO::FETCH_ASSOC);
     }
 
-    // --- 4. FETCH DATA ROWS (WITH INDIVIDUAL COSTS & SOW STATS) ---
+    // --- 4. DATA SELECTION COLUMNS (Reused for Detailed & Summary) ---
+    $select_columns = "
+        ar.*,
+        at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
+        l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME,
+        m.TAG_NO as MOTHER_TAG,
+        DATE_FORMAT(ar.BIRTH_DATE, '%m/%d/%Y') as BIRTH_DATE_FMT,
+        
+        COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed,
+        COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med,
+        COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac,
+        COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit,
+        COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk,
+        
+        COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status,
+        (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry,
+        (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service,
+        (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant,
+        (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing,
+        (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion,
+        
+        -- NEW SOW SPECIFIC QUERIES BASED ON SCHEMA --
+        COALESCE((SELECT SUM(ACTIVE_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_alive,
+        COALESCE((SELECT SUM(DEAD_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_dead,
+        COALESCE((SELECT SUM(MUMMIFIED_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_mummified,
+        
+        (SELECT b_ar.TAG_NO FROM sow_service_history sh 
+         LEFT JOIN animal_records b_ar ON sh.BOAR_ID = b_ar.ANIMAL_ID 
+         WHERE sh.ANIMAL_ID = ar.ANIMAL_ID ORDER BY sh.SERVICE_START_DATE DESC LIMIT 1) as last_boar_tag,
+         
+        (SELECT DATE_FORMAT(SERVICE_START_DATE, '%m/%d/%Y') FROM sow_service_history 
+         WHERE ANIMAL_ID = ar.ANIMAL_ID ORDER BY SERVICE_START_DATE DESC LIMIT 1) as last_service_date
+    ";
+
+    // --- 4. FETCH DATA ROWS ---
     if ($view === 'detailed') {
-        // DETAILED VIEW (Paginated)
-        $sql = "SELECT 
-                ar.*,
-                at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
-                l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME,
-                m.TAG_NO as MOTHER_TAG,
-                DATE_FORMAT(ar.BIRTH_DATE, '%m/%d/%Y') as BIRTH_DATE_FMT,
-                COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed,
-                COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med,
-                COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac,
-                COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit,
-                COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk,
-                COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion
-            FROM ANIMAL_RECORDS ar
-            LEFT JOIN ANIMAL_TYPE at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
-            LEFT JOIN BREEDS b ON ar.BREED_ID = b.BREED_ID
-            LEFT JOIN ANIMAL_CLASSIFICATIONS ac ON ar.CLASS_ID = ac.CLASS_ID
-            LEFT JOIN LOCATIONS l ON ar.LOCATION_ID = l.LOCATION_ID
-            LEFT JOIN BUILDINGS bld ON ar.BUILDING_ID = bld.BUILDING_ID
-            LEFT JOIN PENS p ON ar.PEN_ID = p.PEN_ID
-            LEFT JOIN ANIMAL_RECORDS m ON ar.MOTHER_ID = m.ANIMAL_ID
+        $sql = "SELECT $select_columns
+            FROM animal_records ar
+            LEFT JOIN animal_type at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
+            LEFT JOIN breeds b ON ar.BREED_ID = b.BREED_ID
+            LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID
+            LEFT JOIN locations l ON ar.LOCATION_ID = l.LOCATION_ID
+            LEFT JOIN buildings bld ON ar.BUILDING_ID = bld.BUILDING_ID
+            LEFT JOIN pens p ON ar.PEN_ID = p.PEN_ID
+            LEFT JOIN animal_records m ON ar.MOTHER_ID = m.ANIMAL_ID
             $where_sql
             ORDER BY l.LOCATION_NAME ASC, bld.BUILDING_NAME ASC, p.PEN_NAME ASC, ar.TAG_NO ASC
             LIMIT :limit OFFSET :offset";
@@ -162,28 +179,14 @@ try {
         $animals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     } else {
-        // SUMMARY VIEWS (Building or Pen) - Fetch All for Aggregation
-        $sql = "SELECT 
-                ar.*, at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME,
-                l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME,
-                COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed,
-                COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med,
-                COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac,
-                COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit,
-                COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk,
-                COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing,
-                (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion
-            FROM ANIMAL_RECORDS ar
-            LEFT JOIN ANIMAL_TYPE at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
-            LEFT JOIN BREEDS b ON ar.BREED_ID = b.BREED_ID
-            LEFT JOIN ANIMAL_CLASSIFICATIONS ac ON ar.CLASS_ID = ac.CLASS_ID
-            LEFT JOIN LOCATIONS l ON ar.LOCATION_ID = l.LOCATION_ID
-            LEFT JOIN BUILDINGS bld ON ar.BUILDING_ID = bld.BUILDING_ID
-            LEFT JOIN PENS p ON ar.PEN_ID = p.PEN_ID
+        $sql = "SELECT $select_columns
+            FROM animal_records ar
+            LEFT JOIN animal_type at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
+            LEFT JOIN breeds b ON ar.BREED_ID = b.BREED_ID
+            LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID
+            LEFT JOIN locations l ON ar.LOCATION_ID = l.LOCATION_ID
+            LEFT JOIN buildings bld ON ar.BUILDING_ID = bld.BUILDING_ID
+            LEFT JOIN pens p ON ar.PEN_ID = p.PEN_ID
             $where_sql
             ORDER BY l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME";
             
@@ -226,9 +229,9 @@ try {
     }
 
     // --- 6. DROPDOWNS ---
-    $types = $conn->query("SELECT * FROM ANIMAL_TYPE ORDER BY ANIMAL_TYPE_NAME")->fetchAll();
-    $breeds_list = $conn->query("SELECT * FROM BREEDS ORDER BY BREED_NAME")->fetchAll();
-    $stages_list = $conn->query("SELECT * FROM ANIMAL_CLASSIFICATIONS ORDER BY CLASS_ID")->fetchAll();
+    $types = $conn->query("SELECT * FROM animal_type ORDER BY ANIMAL_TYPE_NAME")->fetchAll();
+    $breeds_list = $conn->query("SELECT * FROM breeds ORDER BY BREED_NAME")->fetchAll();
+    $stages_list = $conn->query("SELECT * FROM animal_classifications ORDER BY CLASS_ID")->fetchAll();
 
     // Fetch Locations based on user access
     if ($USER_LOCATION_ != 1000) {
@@ -982,19 +985,24 @@ try {
             const totalCost = acqCost + cFeed + cMed + cVac + cVit + cChk;
             
             // Format Sow Info to multi-line string for PDF
-            const sowInfo = (r.curr_sow_status !== '-' || r.count_dry > 0) 
+            const sowCycles = (r.curr_sow_status !== '-' || r.count_dry > 0) 
                 ? `${r.curr_sow_status}\nD:${r.count_dry} S:${r.count_service} P:${r.count_pregnant}\nB:${r.count_birthing} A:${r.count_abortion}`
+                : 'N/A';
+                
+            // Combine the new service and birthing data for PDF (to save space)
+            const sowDetails = (r.SEX === 'F' && r.curr_sow_status !== '-') 
+                ? `Boar: ${r.last_boar_tag || 'N/A'} (${r.last_service_date || 'N/A'})\nBorn: ${r.total_alive}A|${r.total_dead}D|${r.total_mummified}M` 
                 : 'N/A';
 
             return [
-                r.TAG_NO, r.STAGE_NAME || '-', r.SEX, r.CURRENT_STATUS, sowInfo,
+                r.TAG_NO, r.STAGE_NAME || '-', r.SEX, r.BIRTH_DATE_FMT || '-', r.CURRENT_STATUS, sowCycles, sowDetails, // ADDED BIRTH_DATE_FMT & SOW DETAILS
                 r.LOCATION_NAME, r.CURRENT_ACTUAL_WEIGHT, 
                 acqCost.toFixed(2), cFeed.toFixed(2), cMed.toFixed(2), cVac.toFixed(2), cVit.toFixed(2), cChk.toFixed(2), totalCost.toFixed(2)
             ];
         });
 
         doc.autoTable({
-            head: [['Tag', 'Stage', 'Sex', 'Status', 'Repro', 'Location', 'Wt(kg)', 'Acq(P)', 'Feed(P)', 'Meds(P)', 'Vacs(P)', 'Vits(P)', 'ChkUp(P)', 'Total']],
+            head: [['Tag', 'Stage', 'Sex', 'Birthday', 'Status', 'Cycles', 'Sow Details', 'Location', 'Wt(kg)', 'Acq(P)', 'Feed(P)', 'Meds(P)', 'Vacs(P)', 'Vits(P)', 'ChkUp(P)', 'Total']], // UPDATED HEADERS
             body: rows,
             startY: 30,
             styles: { fontSize: 6, cellPadding: 1.5, overflow: 'linebreak' },
@@ -1020,6 +1028,7 @@ try {
                 'Breed': r.BREED_NAME,
                 'Stage': r.STAGE_NAME,
                 'Sex': r.SEX,
+                'Birthday': r.BIRTH_DATE_FMT || '-', // ADDED BIRTHDAY
                 'Status': r.CURRENT_STATUS,
                 'Current Sow Status': r.curr_sow_status,
                 'Dry Cycles': r.count_dry,
@@ -1027,6 +1036,11 @@ try {
                 'Pregnancies': r.count_pregnant,
                 'Birthings': r.count_birthing,
                 'Abortions': r.count_abortion,
+                'Last Boar Used': r.last_boar_tag || 'N/A',      // NEW SOW METRIC
+                'Last Service Date': r.last_service_date || 'N/A', // NEW SOW METRIC
+                'Total Alive Piglets': r.total_alive || 0,       // NEW SOW METRIC
+                'Total Dead Piglets': r.total_dead || 0,         // NEW SOW METRIC
+                'Total Mummified': r.total_mummified || 0,       // NEW SOW METRIC
                 'Location': `${r.LOCATION_NAME} - ${r.PEN_NAME}`,
                 'Current Wt': r.CURRENT_ACTUAL_WEIGHT,
                 'Acq Cost (PHP)': acqCost,
@@ -1046,7 +1060,8 @@ try {
 
     function exportCSV() {
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Tag No,Type,Breed,Stage,Sex,Status,Sow Status,Dry Cycles,Service Cycles,Pregnancies,Birthings,Abortions,Location,Current Wt,Acq Cost,Feed,Meds,Vacs,Vits,Checkups,Total Cost\n";
+        // UPDATED HEADER
+        csvContent += "Tag No,Type,Breed,Stage,Sex,Birthday,Status,Sow Status,Dry Cycles,Service Cycles,Pregnancies,Birthings,Abortions,Last Boar Used,Last Service Date,Total Alive Piglets,Total Dead Piglets,Total Mummified,Location,Current Wt,Acq Cost,Feed,Meds,Vacs,Vits,Checkups,Total Cost\n";
         records.forEach(r => {
             const acqCost = parseFloat(r.ACQUISITION_COST || 0);
             const cFeed = parseFloat(r.cost_feed || 0);
@@ -1057,8 +1072,9 @@ try {
             const totalCost = acqCost + cFeed + cMed + cVac + cVit + cChk;
 
             const row = [
-                r.TAG_NO, r.ANIMAL_TYPE_NAME, r.BREED_NAME, r.STAGE_NAME, r.SEX, r.CURRENT_STATUS,
+                r.TAG_NO, r.ANIMAL_TYPE_NAME, r.BREED_NAME, r.STAGE_NAME, r.SEX, (r.BIRTH_DATE_FMT || '-'), r.CURRENT_STATUS, 
                 r.curr_sow_status, r.count_dry, r.count_service, r.count_pregnant, r.count_birthing, r.count_abortion,
+                (r.last_boar_tag || 'N/A'), (r.last_service_date || 'N/A'), (r.total_alive || 0), (r.total_dead || 0), (r.total_mummified || 0), // NEW SOW METRICS
                 `${r.LOCATION_NAME} - ${r.PEN_NAME}`, r.CURRENT_ACTUAL_WEIGHT,
                 acqCost.toFixed(2), cFeed.toFixed(2), cMed.toFixed(2), cVac.toFixed(2), cVit.toFixed(2), cChk.toFixed(2), totalCost.toFixed(2)
             ].map(e => `"${e}"`).join(",");

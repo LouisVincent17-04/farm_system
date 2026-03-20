@@ -1,7 +1,7 @@
 <?php
 // globalxadminportal/farm_assignments.php
 session_start();
-if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
+if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 
 require_once '../config/SadminConnection.php';
 
@@ -13,7 +13,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'search_admin') {
     header('Content-Type: application/json');
     $term = '%' . trim($_GET['term']) . '%';
     try {
-        $stmt = $conn->prepare("SELECT admin_id, full_name, email, phone_no FROM admin_users WHERE full_name LIKE ? OR email LIKE ? OR phone_no LIKE ? LIMIT 5");
+        $stmt = $conn->prepare("SELECT user_id, full_name, email, phone_no FROM users WHERE full_name LIKE ? OR email LIKE ? OR phone_no LIKE ? LIMIT 5");
         $stmt->execute([$term, $term, $term]);
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     } catch(Exception $e) { echo json_encode([]); }
@@ -37,30 +37,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $conn->beginTransaction();
 
-            $admin_id = null;
+            $user_id = null;
             $new_password_plain = null;
 
             // Check if user already exists
-            $check = $conn->prepare("SELECT admin_id FROM admin_users WHERE email = ?");
+            $check = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
             $check->execute([$email]);
             $existing = $check->fetch(PDO::FETCH_ASSOC);
 
             if ($existing) {
-                $admin_id = $existing['admin_id'];
+                $user_id = $existing['user_id'];
             } else {
                 // Create new user
                 $new_password_plain = substr(str_shuffle('abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'), 0, 8);
                 $hashed = password_hash($new_password_plain, PASSWORD_DEFAULT);
 
-                $stmtNew = $conn->prepare("INSERT INTO admin_users (full_name, email, phone_no, password, status) VALUES (?, ?, ?, ?, 1)");
+                $stmtNew = $conn->prepare("INSERT INTO users (full_name, email, phone_no, password, role, status) VALUES (?, ?, ?, ?, 'employee', 1)");
                 $stmtNew->execute([$name, $email, $phone, $hashed]);
-                $admin_id = $conn->lastInsertId();
+                $user_id = $conn->lastInsertId();
             }
 
             // Assign to Farm
             try {
-                $stmtAssign = $conn->prepare("INSERT INTO assigned_farms (admin_id, farm_id) VALUES (?, ?)");
-                $stmtAssign->execute([$admin_id, $farm_id]);
+                $stmtAssign = $conn->prepare("INSERT INTO assigned_farms (user_id, farm_id) VALUES (?, ?)");
+                $stmtAssign->execute([$user_id, $farm_id]);
             } catch (PDOException $e) {
                 if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
                     throw new Exception("This user is already assigned to this farm.");
@@ -71,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $conn->commit();
 
             echo json_encode([
-                'success' => true, 
-                'message' => 'User assigned successfully!',
+                'success'  => true,
+                'message'  => 'User assigned successfully!',
                 'new_user' => $new_password_plain !== null,
                 'password' => $new_password_plain
             ]);

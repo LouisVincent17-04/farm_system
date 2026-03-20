@@ -12,6 +12,11 @@ checkAccess('breed');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
 // Check for status messages from redirects
 $status = $_GET['status'] ?? '';
 $msg = $_GET['msg'] ?? '';
@@ -21,16 +26,16 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Breeds with associated Animal Type
+    // 1. Fetch Breeds with associated Animal Type and Animal Count
     $sql = "SELECT 
                 b.BREED_ID, 
                 b.BREED_NAME, 
                 b.ANIMAL_TYPE_ID, 
-                t.ANIMAL_TYPE_NAME
+                t.ANIMAL_TYPE_NAME,
+                (SELECT COUNT(a.ANIMAL_ID) FROM animal_records a WHERE a.BREED_ID = b.BREED_ID AND a.IS_ACTIVE = 1 AND a.CURRENT_STATUS != 'Sold') as ANIMAL_COUNT
             FROM BREEDS b
-            LEFT JOIN ANIMAL_TYPE t 
-                ON b.ANIMAL_TYPE_ID = t.ANIMAL_TYPE_ID
-            ORDER BY b.BREED_ID ASC";
+            LEFT JOIN ANIMAL_TYPE t ON b.ANIMAL_TYPE_ID = t.ANIMAL_TYPE_ID
+            ORDER BY b.BREED_NAME ASC";
     
     $stmt = $conn->prepare($sql);
     $stmt->execute();
@@ -76,12 +81,23 @@ try {
         .add-btn { display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
         
-        .search-container { position: relative; margin-bottom: 2rem; }
+        /* Filters & Sort */
+        .filters-wrapper { display: flex; gap: 15px; margin-bottom: 2rem; flex-wrap: wrap; }
+        .search-container { position: relative; flex: 1; min-width: 250px; }
         .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
         .search-input::placeholder { color: #94a3b8; }
         .search-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
         .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
         
+        .sort-select {
+            width: auto; min-width: 220px; padding: 1rem; border-radius: 0.5rem;
+            background: rgba(30, 41, 59, 0.5); border: 1px solid #475569;
+            color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;
+            backdrop-filter: blur(10px); cursor: pointer;
+        }
+        .sort-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .sort-select option { background: #1e293b; color: white; }
+
         /* Table Styles */
         .table-container { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
         .table { width: 100%; border-collapse: collapse; }
@@ -95,6 +111,9 @@ try {
         .breed-details h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
         .animal-type-info { color: #cbd5e1; font-size: 0.875rem; background: rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 12px; }
         
+        .animal-count-badge { font-weight: bold; background: rgba(59, 130, 246, 0.1); color: #60a5fa; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .animal-count-badge.empty { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+
         .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
         .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); }
@@ -137,6 +156,9 @@ try {
             .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
             .header-info h1 { font-size: 1.75rem; }
             .add-btn { width: 100%; justify-content: center; }
+            
+            .filters-wrapper { flex-direction: column; }
+            .sort-select { width: 100%; }
 
             /* Table to Card View Transformation */
             .table thead { display: none; } /* Hide Headers */
@@ -207,11 +229,20 @@ try {
             </div>
         <?php endif; ?>
 
-        <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" placeholder="Search breeds by name or animal type..." onkeyup="filterTable()">
+        <div class="filters-wrapper">
+            <div class="search-container">
+                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" class="search-input" placeholder="Search breeds by name or animal type..." onkeyup="filterTable()">
+            </div>
+            
+            <select class="sort-select" onchange="sortDropdown(this.value)">
+                <option value="name_asc">Sort: Breed Name (A-Z)</option>
+                <option value="name_desc">Sort: Breed Name (Z-A)</option>
+                <option value="count_desc">Sort: Most Animals</option>
+                <option value="count_asc">Sort: Least Animals</option>
+            </select>
         </div>
 
         <div class="table-container">
@@ -221,6 +252,7 @@ try {
                         <th>Breed ID</th>
                         <th>Breed Name</th>
                         <th>Animal Type</th>
+                        <th>Animals</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -228,10 +260,15 @@ try {
                     <?php if (empty($breed_data)): ?>
                         <?php else: ?>
                         <?php foreach($breed_data as $data): ?>
-                        <tr data-id="<?php echo $data['BREED_ID']; ?>" data-animal-type-id="<?php echo $data['ANIMAL_TYPE_ID']; ?>">
+                        <tr data-id="<?php echo $data['BREED_ID']; ?>" 
+                            data-animal-type-id="<?php echo $data['ANIMAL_TYPE_ID']; ?>"
+                            data-name="<?php echo htmlspecialchars(strtolower($data['BREED_NAME'])); ?>"
+                            data-count="<?php echo $data['ANIMAL_COUNT']; ?>">
+                            
                             <td data-label="Breed ID">
                                 <span style="font-family: monospace; color: #94a3b8;">#<?php echo $data['BREED_ID']; ?></span>
                             </td>
+                            
                             <td data-label="Breed Name">
                                 <div class="breed-info">
                                     <div class="breed-details">
@@ -239,9 +276,17 @@ try {
                                     </div>
                                 </div>
                             </td>
+                            
                             <td data-label="Animal Type">
                                  <span class="animal-type-info"><?php echo htmlspecialchars($data['ANIMAL_TYPE_NAME']); ?></span>
                             </td>
+                            
+                            <td data-label="Animals">
+                                <span class="animal-count-badge <?php echo ($data['ANIMAL_COUNT'] == 0) ? 'empty' : ''; ?>">
+                                    <?php echo $data['ANIMAL_COUNT']; ?> animals
+                                </span>
+                            </td>
+
                             <td data-label="Actions">
                                 <div class="actions">
                                     <button class="action-btn edit" onclick="editBreed(this)" title="Edit">
@@ -336,6 +381,26 @@ try {
     </form>
 
     <script>
+        // --- SORTING LOGIC ---
+        function sortDropdown(val) {
+            const tbody = document.getElementById('breed-table');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                const nameA = a.dataset.name;
+                const nameB = b.dataset.name;
+                const countA = parseInt(a.dataset.count) || 0;
+                const countB = parseInt(b.dataset.count) || 0;
+
+                if (val === 'name_asc') return nameA.localeCompare(nameB);
+                if (val === 'name_desc') return nameB.localeCompare(nameA);
+                if (val === 'count_desc') return countB - countA;
+                if (val === 'count_asc') return countA - countB;
+            });
+            
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
         // Open add modal
         function openAddModal() {
             document.getElementById('addBreedForm').reset();
@@ -365,7 +430,6 @@ try {
 
         // Open edit modal
         function editBreed(button) {
-            // Find the closest TR, whether in desktop table or mobile card view
             const row = button.closest('tr');
             
             const breedId = row.getAttribute('data-id');

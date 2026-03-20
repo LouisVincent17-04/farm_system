@@ -12,6 +12,11 @@ checkAccess('pen');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
 
 // Check for status messages
 $status = $_GET['status'] ?? '';
@@ -22,7 +27,7 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Fetch Pens with Building & Location Names
+    // 1. Fetch Pens with Building, Location Names, and Animal Counts
     $sql = "
         SELECT 
             p.PEN_ID, 
@@ -30,11 +35,12 @@ try {
             p.BUILDING_ID, 
             b.BUILDING_NAME,
             l.LOCATION_ID,
-            l.LOCATION_NAME
+            l.LOCATION_NAME,
+            (SELECT COUNT(a.ANIMAL_ID) FROM animal_records a WHERE a.PEN_ID = p.PEN_ID AND a.IS_ACTIVE = 1 AND a.CURRENT_STATUS != 'Sold') as ANIMAL_COUNT
         FROM PENS p
         LEFT JOIN BUILDINGS b ON p.BUILDING_ID = b.BUILDING_ID
         LEFT JOIN LOCATIONS l ON b.LOCATION_ID = l.LOCATION_ID
-        ORDER BY p.PEN_ID ASC
+        ORDER BY p.PEN_NAME ASC
     ";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
@@ -80,12 +86,22 @@ try {
         .add-btn { display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .add-btn:hover { background: linear-gradient(135deg, #059669, #047857); transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
         
-        .search-container { position: relative; margin-bottom: 2rem; }
+        .filters-wrapper { display: flex; gap: 15px; margin-bottom: 2rem; flex-wrap: wrap; }
+        .search-container { position: relative; flex: 1; min-width: 250px; }
         .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
         .search-input::placeholder { color: #94a3b8; }
         .search-input:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
         .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
         
+        .sort-select {
+            width: auto; min-width: 220px; padding: 1rem; border-radius: 0.5rem;
+            background: rgba(30, 41, 59, 0.5); border: 1px solid #475569;
+            color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;
+            backdrop-filter: blur(10px); cursor: pointer;
+        }
+        .sort-select:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+        .sort-select option { background: #1e293b; color: white; }
+
         /* Table Styles */
         .table-container { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
         .table { width: 100%; border-collapse: collapse; }
@@ -98,7 +114,9 @@ try {
         .pen-info { display: flex; align-items: center; gap: 1rem; }
         .pen-details h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
         .pen-building-info { color: #cbd5e1; font-size: 0.875rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; }
-        
+        .animal-count-badge { font-weight: bold; background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .animal-count-badge.empty { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+
         .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
         .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); }
@@ -133,55 +151,20 @@ try {
         .alert-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }
         .alert-error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
 
-        /* --- MOBILE RESPONSIVE CSS --- */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
-            
-            /* Header Stack */
             .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
             .header-info h1 { font-size: 1.75rem; }
             .add-btn { width: 100%; justify-content: center; }
+            .filters-wrapper { flex-direction: column; }
+            .sort-select { width: 100%; }
 
-            /* Card View for Table */
-            .table thead { display: none; } /* Hide Table Headers */
+            .table thead { display: none; }
             .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
-            
-            .table tbody tr {
-                background: rgba(30, 41, 59, 0.6);
-                border: 1px solid #475569;
-                border-radius: 12px;
-                margin-bottom: 1rem;
-                padding: 1rem;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
-
-            .table td {
-                padding: 0.5rem 0;
-                text-align: right;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255,255,255,0.05);
-            }
-
+            .table tbody tr { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; border-radius: 12px; margin-bottom: 1rem; padding: 1rem; }
+            .table td { padding: 0.5rem 0; text-align: right; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
             .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
-
-            /* Data Labels via CSS */
-            .table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: #94a3b8;
-                font-size: 0.85rem;
-                text-transform: uppercase;
-                margin-right: 1rem;
-            }
-
-            /* Fix Alignment inside cards */
-            .pen-info { justify-content: flex-end; }
-            .actions { justify-content: flex-end; }
-
-            /* Modals */
-            .modal-content { width: 95%; max-height: 90vh; overflow-y: auto; }
+            .table td::before { content: attr(data-label); font-weight: 600; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; margin-right: 1rem; }
         }
     </style>
 </head>
@@ -212,11 +195,20 @@ try {
             </button>
         </div>
 
-        <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" placeholder="Search pens by name, building, or location" onkeyup="filterTable()">
+        <div class="filters-wrapper">
+            <div class="search-container">
+                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" class="search-input" placeholder="Search pens by name, building, or location" onkeyup="filterTable()">
+            </div>
+            
+            <select class="sort-select" onchange="sortDropdown(this.value)">
+                <option value="name_asc">Sort: Pen Name (A-Z)</option>
+                <option value="name_desc">Sort: Pen Name (Z-A)</option>
+                <option value="count_desc">Sort: Most Animals</option>
+                <option value="count_asc">Sort: Least Animals</option>
+            </select>
         </div>
 
         <div class="table-container">
@@ -226,6 +218,7 @@ try {
                         <th>Pen ID</th>
                         <th>Pen Name</th>
                         <th>Location > Building</th>
+                        <th>Animals</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -233,7 +226,9 @@ try {
                     <?php foreach($pen_data as $data): ?>
                     <tr data-id="<?php echo $data['PEN_ID']; ?>" 
                         data-building="<?php echo $data['BUILDING_ID']; ?>"
-                        data-location="<?php echo $data['LOCATION_ID']; ?>">
+                        data-location="<?php echo $data['LOCATION_ID']; ?>"
+                        data-name="<?php echo htmlspecialchars(strtolower($data['PEN_NAME'])); ?>"
+                        data-count="<?php echo $data['ANIMAL_COUNT']; ?>">
                         
                         <td data-label="Pen ID">
                             <span style="color:#94a3b8; font-family:monospace;">#<?php echo $data['PEN_ID']; ?></span>
@@ -251,6 +246,12 @@ try {
                             <span class="pen-building-info">
                                 <?php echo htmlspecialchars($data['LOCATION_NAME'] ?? 'N/A'); ?> > 
                                 <?php echo htmlspecialchars($data['BUILDING_NAME'] ?? 'N/A'); ?>
+                            </span>
+                        </td>
+
+                        <td data-label="Animals">
+                            <span class="animal-count-badge <?php echo ($data['ANIMAL_COUNT'] == 0) ? 'empty' : ''; ?>">
+                                <?php echo $data['ANIMAL_COUNT']; ?> active
                             </span>
                         </td>
                         
@@ -331,7 +332,7 @@ try {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group"> 
                         <label for="edit_building_id">Building</label>
                         <select name="building_id" id="edit_building_id" required>
                             <option value="">Select a building</option>
@@ -345,12 +346,32 @@ try {
             </div>
         </div>
     </div>
-
+	
     <form id="deletePenForm" method="POST" action="../process/deletePen.php" style="display: none;">
         <input type="hidden" id="delete_pen_id" name="pen_id">
     </form>
 
     <script>
+        // --- SORTING LOGIC ---
+        function sortDropdown(val) {
+            const tbody = document.getElementById('pen-table');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                const nameA = a.dataset.name;
+                const nameB = b.dataset.name;
+                const countA = parseInt(a.dataset.count) || 0;
+                const countB = parseInt(b.dataset.count) || 0;
+
+                if (val === 'name_asc') return nameA.localeCompare(nameB);
+                if (val === 'name_desc') return nameB.localeCompare(nameA);
+                if (val === 'count_desc') return countB - countA;
+                if (val === 'count_asc') return countA - countB;
+            });
+            
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
         // --- AJAX Function to Load Buildings ---
         function loadBuildings(locationId, targetSelectId) {
             const targetSelect = document.getElementById(targetSelectId);
@@ -518,7 +539,6 @@ try {
 
         // Event listeners for closing modals
         document.getElementById('addModal').addEventListener('click', function(e) { if (e.target === this) closeAddModal(); });
-        document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
 
         document.addEventListener('DOMContentLoaded', function() {
             checkEmptyState();

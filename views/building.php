@@ -5,11 +5,47 @@ ini_set('display_errors', 0);
 
 $page="admin_dashboard";
 include '../config/Connection.php'; 
+
+// =========================================================
+// AJAX HANDLER: Get Building Pens & Stats
+// =========================================================
+if (isset($_GET['action']) && $_GET['action'] === 'get_building_pens') {
+    @ob_end_clean();
+    header('Content-Type: application/json');
+    try {
+        $bldg_id = $_GET['building_id'] ?? 0;
+        
+        // Fetch pens and count how many active animals are in each
+        $sql = "SELECT p.PEN_ID, p.PEN_NAME, 
+                       COUNT(a.ANIMAL_ID) as ANIMAL_COUNT
+                FROM PENS p
+                LEFT JOIN animal_records a ON p.PEN_ID = a.PEN_ID AND a.IS_ACTIVE = 1 AND a.CURRENT_STATUS != 'Sold'
+                WHERE p.BUILDING_ID = ?
+                GROUP BY p.PEN_ID, p.PEN_NAME
+                ORDER BY p.PEN_NAME ASC";
+                
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$bldg_id]);
+        
+        echo json_encode(['success' => true, 'pens' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+// =========================================================
+
 include '../security/checkAccess.php';
 checkAccess('building');
 
 include '../common/navbar.php';
 include '../common/chat_support.php';
+
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
 
 // Check for status messages
 $status = $_GET['status'] ?? '';
@@ -20,11 +56,12 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    // 1. Get Building Data (Joined with Locations)
-    $sql = "SELECT b.BUILDING_ID, b.BUILDING_NAME, b.LOCATION_ID, l.LOCATION_NAME 
+    // 1. Get Building Data (Joined with Locations & Count Pens)
+    $sql = "SELECT b.BUILDING_ID, b.BUILDING_NAME, b.LOCATION_ID, l.LOCATION_NAME,
+                   (SELECT COUNT(p.PEN_ID) FROM PENS p WHERE p.BUILDING_ID = b.BUILDING_ID) as PEN_COUNT
             FROM BUILDINGS b
             LEFT JOIN LOCATIONS l ON b.LOCATION_ID = l.LOCATION_ID
-            ORDER BY b.BUILDING_ID ASC";
+            ORDER BY b.BUILDING_NAME ASC";
     
     $stmt = $conn->prepare($sql);
     $stmt->execute();
@@ -48,7 +85,8 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Building Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Building Management System</title>
     <style>
         /* Base Styles */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -70,11 +108,22 @@ try {
         .add-btn { display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .add-btn:hover { background: linear-gradient(135deg, #059669, #047857); transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
         
-        .search-container { position: relative; margin-bottom: 2rem; }
+        /* Filters & Sort */
+        .filters-wrapper { display: flex; gap: 15px; margin-bottom: 2rem; flex-wrap: wrap; }
+        .search-container { position: relative; flex: 1; min-width: 250px; }
         .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
         .search-input::placeholder { color: #94a3b8; }
         .search-input:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
         .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
+        
+        .sort-select {
+            width: auto; min-width: 220px; padding: 1rem; border-radius: 0.5rem;
+            background: rgba(30, 41, 59, 0.5); border: 1px solid #475569;
+            color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;
+            backdrop-filter: blur(10px); cursor: pointer;
+        }
+        .sort-select:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+        .sort-select option { background: #1e293b; color: white; }
         
         /* Table Styles */
         .table-container { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
@@ -89,19 +138,31 @@ try {
         .building-details h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
         .location-name-display { color: #cbd5e1; font-size: 0.875rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; }
         
+        .pen-count-badge { font-weight: bold; background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .pen-count-badge.empty { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+
         .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
+        .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; display: flex; align-items: center; justify-content: center;}
+        
+        /* Action Button Colors */
+        .action-btn.view { color: #a78bfa; } .action-btn.view:hover { color: #c4b5fd; background: rgba(139, 92, 246, 0.2); }
         .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); }
         .action-btn.delete { color: #f87171; } .action-btn.delete:hover { color: #fca5a5; background: rgba(239, 68, 68, 0.2); }
         
         /* Modal Styles */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; }
         .modal.show { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 28rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 28rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; max-height: 90vh; }
         .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; }
         .modal-header h2 { font-size: 1.5rem; font-weight: bold; }
-        .modal-body { padding: 1.5rem; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
         
+        /* View Pens Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+        .stat-card { background: rgba(15, 23, 42, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 15px 10px; text-align: center; }
+        .stat-card .stat-val { font-size: 1.5rem; font-weight: bold; color: #fff; margin-bottom: 4px; }
+        .stat-card .stat-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
         .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
         .form-group input, .form-group select { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 1rem; }
@@ -132,6 +193,8 @@ try {
             .header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: center; }
             .header-info h1 { font-size: 1.75rem; }
             .add-btn { width: 100%; justify-content: center; }
+            .filters-wrapper { flex-direction: column; }
+            .sort-select { width: 100%; }
 
             /* Card View Transformation */
             .table thead { display: none; } /* Hide Table Headers */
@@ -203,11 +266,20 @@ try {
             </button>
         </div>
 
-        <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" placeholder="Search buildings by name or location" onkeyup="filterTable()">
+        <div class="filters-wrapper">
+            <div class="search-container">
+                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" class="search-input" placeholder="Search buildings by name or location" onkeyup="filterTable()">
+            </div>
+            
+            <select class="sort-select" onchange="sortDropdown(this.value)">
+                <option value="name_asc">Sort: Building Name (A-Z)</option>
+                <option value="name_desc">Sort: Building Name (Z-A)</option>
+                <option value="count_desc">Sort: Most Pens</option>
+                <option value="count_asc">Sort: Least Pens</option>
+            </select>
         </div>
 
         <div class="table-container">
@@ -217,12 +289,16 @@ try {
                         <th>Building ID</th>
                         <th>Building Name</th>
                         <th>Location</th> 
+                        <th>Pens</th> 
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="building-table">
                     <?php foreach($building_data as $data): ?>
-                    <tr data-id="<?php echo $data['BUILDING_ID']; ?>" data-location-id="<?php echo $data['LOCATION_ID']; ?>">
+                    <tr data-id="<?php echo $data['BUILDING_ID']; ?>" 
+                        data-location-id="<?php echo $data['LOCATION_ID']; ?>"
+                        data-name="<?php echo htmlspecialchars(strtolower($data['BUILDING_NAME'])); ?>"
+                        data-count="<?php echo $data['PEN_COUNT']; ?>">
                         
                         <td data-label="Building ID">
                             <span style="font-family: monospace; color: #94a3b8;">#<?php echo $data['BUILDING_ID']; ?></span>
@@ -241,9 +317,21 @@ try {
                                 <?php echo htmlspecialchars($data['LOCATION_NAME'] ?? 'N/A'); ?>
                             </span>
                         </td>
+
+                        <td data-label="Pens">
+                            <span class="pen-count-badge <?php echo ($data['PEN_COUNT'] == 0) ? 'empty' : ''; ?>">
+                                <?php echo $data['PEN_COUNT']; ?> pens
+                            </span>
+                        </td>
                         
                         <td data-label="Actions">
                             <div class="actions">
+                                <button class="action-btn view" onclick="viewBuilding(<?php echo $data['BUILDING_ID']; ?>, '<?php echo htmlspecialchars(addslashes($data['BUILDING_NAME'])); ?>')" title="View Pens">
+                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
                                 <button class="action-btn edit" onclick="editBuilding(this)" title="Edit">
                                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -263,6 +351,47 @@ try {
             <div id="empty-state" class="empty-state" style="<?php echo empty($building_data) ? 'display:block' : 'display:none'; ?>">
                 <h3>No buildings found</h3>
                 <p>Try adjusting your search terms or add a new building.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 id="view_building_name">Building Details</h2>
+            </div>
+            <div class="modal-body">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-val" id="count-total" style="color: #60a5fa;">0</div>
+                        <div class="stat-label">Total Pens</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val" id="count-occupied" style="color: #f87171;">0</div>
+                        <div class="stat-label">Occupied</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val" id="count-empty" style="color: #10b981;">0</div>
+                        <div class="stat-label">Empty</div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid #334155; border-radius: 8px; overflow: hidden;">
+                    <table class="table" style="min-width: 100%;">
+                        <thead style="background: #1e293b;">
+                            <tr>
+                                <th style="padding: 12px; font-size:0.8rem; border-bottom:1px solid #334155;">Pen Name</th>
+                                <th style="padding: 12px; font-size:0.8rem; border-bottom:1px solid #334155;">Status</th>
+                                <th style="padding: 12px; font-size:0.8rem; border-bottom:1px solid #334155;">Animals</th>
+                            </tr>
+                        </thead>
+                        <tbody id="view-pens-list">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeViewModal()" style="width: 100%; border: 1px solid #475569;">Close Window</button>
             </div>
         </div>
     </div>
@@ -331,6 +460,91 @@ try {
     </form>
 
     <script>
+        // --- SORTING LOGIC ---
+        function sortDropdown(val) {
+            const tbody = document.getElementById('building-table');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                const nameA = a.dataset.name;
+                const nameB = b.dataset.name;
+                const countA = parseInt(a.dataset.count) || 0;
+                const countB = parseInt(b.dataset.count) || 0;
+
+                if (val === 'name_asc') return nameA.localeCompare(nameB);
+                if (val === 'name_desc') return nameB.localeCompare(nameA);
+                if (val === 'count_desc') return countB - countA;
+                if (val === 'count_asc') return countA - countB;
+            });
+            
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // --- VIEW PENS LOGIC ---
+        async function viewBuilding(buildingId, buildingName) {
+            document.getElementById('view_building_name').textContent = buildingName + ' - Pen Details';
+            document.getElementById('viewModal').classList.add('show');
+            
+            const tbody = document.getElementById('view-pens-list');
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 2rem; color: #94a3b8;">Loading pens...</td></tr>';
+            
+            // Reset counters
+            document.getElementById('count-total').textContent = '0';
+            document.getElementById('count-occupied').textContent = '0';
+            document.getElementById('count-empty').textContent = '0';
+
+            try {
+                const res = await fetch(`?action=get_building_pens&building_id=${buildingId}`);
+                const data = await res.json();
+                
+                if (!data.success) throw new Error(data.error);
+                
+                const pens = data.pens || [];
+                document.getElementById('count-total').textContent = pens.length;
+                
+                if (pens.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 2rem; color: #94a3b8;">No pens found in this building.</td></tr>';
+                    return;
+                }
+
+                let occupiedCount = 0;
+                let emptyCount = 0;
+                let html = '';
+
+                pens.forEach(p => {
+                    const count = parseInt(p.ANIMAL_COUNT);
+                    let statusBadge = '';
+                    
+                    if (count > 0) {
+                        occupiedCount++;
+                        statusBadge = '<span style="background:rgba(239,68,68,0.1);color:#f87171;padding:4px 8px;border-radius:4px;font-size:0.8rem;border:1px solid rgba(239,68,68,0.2);">Occupied</span>';
+                    } else {
+                        emptyCount++;
+                        statusBadge = '<span style="background:rgba(16,185,129,0.1);color:#10b981;padding:4px 8px;border-radius:4px;font-size:0.8rem;border:1px solid rgba(16,185,129,0.2);">Empty</span>';
+                    }
+
+                    html += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 12px; font-weight:600;">${p.PEN_NAME}</td>
+                            <td style="padding: 12px;">${statusBadge}</td>
+                            <td style="padding: 12px; color:#94a3b8;">${count} active animal(s)</td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('count-occupied').textContent = occupiedCount;
+                document.getElementById('count-empty').textContent = emptyCount;
+                tbody.innerHTML = html;
+
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 2rem; color:#f87171;">Error loading pens: ${e.message}</td></tr>`;
+            }
+        }
+        
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.remove('show');
+        }
+
         // --- MODAL CONTROL FUNCTIONS ---
         function openAddModal() {
             document.getElementById('addBuildingForm').reset();
@@ -448,6 +662,7 @@ try {
         // Close modals when clicking outside
         document.getElementById('addModal').addEventListener('click', function(e) { if (e.target === this) closeAddModal(); });
         document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+        document.getElementById('viewModal').addEventListener('click', function(e) { if (e.target === this) closeViewModal(); });
     </script>
 </body>
 </html>

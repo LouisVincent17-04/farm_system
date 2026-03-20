@@ -15,9 +15,9 @@ try {
     $record_id = $_POST['record_id'];
     $date = $_POST['date_farrowed'];
     $born = $_POST['total_born'];
-    $active = $_POST['active_count'];
-    $dead = $_POST['dead_count'];
-    $mummy = $_POST['mummified_count'];
+    $active = $_POST['active_count'] ?? 0;
+    $dead = $_POST['dead_count'] ?? 0;
+    $mummy = $_POST['mummified_count'] ?? 0;
 
     // 1. Fetch Info for Audit Log (Get Sow Tag & Parity before update)
     $stmtInfo = $conn->prepare("

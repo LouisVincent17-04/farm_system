@@ -29,8 +29,12 @@ if (isset($_GET['action'])) {
             $stmt->execute([$_GET['loc_id']]);
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
+        
+        // FIXED: Fetch Pen and actively count the animals inside it
         if ($action === 'get_pens' && isset($_GET['bldg_id'])) {
-            $stmt = $conn->prepare("SELECT PEN_ID, PEN_NAME FROM pens WHERE BUILDING_ID = ? ORDER BY PEN_NAME");
+            $stmt = $conn->prepare("SELECT p.PEN_ID, p.PEN_NAME, 
+                                    (SELECT COUNT(*) FROM animal_records a WHERE a.PEN_ID = p.PEN_ID AND a.IS_ACTIVE = 1 AND a.CURRENT_STATUS != 'Sold') as ANIMAL_COUNT 
+                                    FROM pens p WHERE p.BUILDING_ID = ? ORDER BY p.PEN_NAME");
             $stmt->execute([$_GET['bldg_id']]);
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
@@ -386,12 +390,21 @@ if ($USER_LOCATION_ != 1000) {
             return;
         }
 
+        // FIXED: Fetch the pens with their live animal counts
         const res = await fetch(`${API_URL}?action=get_pens&bldg_id=${bldId}`);
         const data = await res.json();
         
         penSelect.innerHTML = '<option value="">-- Select --</option>';
         data.forEach(p => {
-            penSelect.innerHTML += `<option value="${p.PEN_ID}">${p.PEN_NAME}</option>`;
+            const count = p.ANIMAL_COUNT !== null ? parseInt(p.ANIMAL_COUNT) : 0;
+            const isGestating = p.PEN_NAME.toLowerCase().includes('gestating');
+
+            // Hide Occupied Gestating Pens from DESTINATION dropdown
+            if (prefix === 'dest' && isGestating && count >= 1) {
+                return; // Skip appending
+            }
+
+            penSelect.innerHTML += `<option value="${p.PEN_ID}">${p.PEN_NAME} (${count} animals)</option>`;
         });
         penSelect.disabled = false;
     }

@@ -11,6 +11,12 @@ checkAccess('buyer');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
+
 
 // --- 1. HANDLE POST REQUESTS (Add/Edit/Delete) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -84,7 +90,7 @@ if (isset($_SESSION['flash_error'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Buyer Management</title>
     <style>
         /* Shared Styles */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; margin:0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; margin:0; padding-bottom: 40px; }
         
         .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
         
@@ -97,21 +103,43 @@ if (isset($_SESSION['flash_error'])) {
         .back-link:hover { color: white; }
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
-        .header h1 { margin: 0; font-size: 1.8rem; }
+        .header h1 { margin: 0; font-size: 1.8rem; color: #0ea5e9; }
         
-        .card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; }
+        /* Filters & Sort */
+        .filters-wrapper { display: flex; gap: 15px; margin-bottom: 2rem; flex-wrap: wrap; }
+        .search-container { position: relative; flex: 1; min-width: 250px; }
+        .search-input { width: 100%; padding: 14px 14px 14px 45px; background: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); box-sizing: border-box; }
+        .search-input::placeholder { color: #94a3b8; }
+        .search-input:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
+        
+        .sort-select {
+            width: auto; min-width: 220px; padding: 14px; border-radius: 0.5rem;
+            background: rgba(30, 41, 59, 0.5); border: 1px solid #334155;
+            color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;
+            backdrop-filter: blur(10px); cursor: pointer;
+        }
+        .sort-select:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
+        .sort-select option { background: #1e293b; color: white; }
+
+        .card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
         
         /* Table Default Styles */
-        .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        .table th { text-align: left; padding: 12px; background: rgba(15, 23, 42, 0.8); color: #94a3b8; border-bottom: 1px solid #334155; }
+        .table { width: 100%; border-collapse: collapse; min-width: 600px;}
+        .table th { text-align: left; padding: 12px; background: rgba(15, 23, 42, 0.8); color: #0ea5e9; border-bottom: 1px solid #334155; text-transform: uppercase; font-size: 0.85rem;}
         .table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
         
-        .btn { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; font-size: 0.9rem; transition: transform 0.1s; }
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; transition: transform 0.1s; }
         .btn:active { transform: scale(0.98); }
         
-        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary { background: #0ea5e9; color: white; transition: background 0.2s;}
+        .btn-primary:hover { background: #0284c7; }
+        
         .btn-edit { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 6px 12px; font-size: 0.85rem; }
+        .btn-edit:hover { background: rgba(59, 130, 246, 0.2); }
+        
         .btn-delete { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px 12px; font-size: 0.85rem; margin-left: 5px; }
+        .btn-delete:hover { background: rgba(239, 68, 68, 0.2); }
         
         /* Alerts */
         .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: bold; text-align: center; }
@@ -121,12 +149,13 @@ if (isset($_SESSION['flash_error'])) {
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 12px; width: 100%; max-width: 400px; padding: 2rem; border: 1px solid #475569; animation: zoomIn 0.2s; position: relative; }
+        .modal-content { background: #1e293b; border-radius: 12px; width: 100%; max-width: 450px; padding: 2rem; border: 1px solid #475569; animation: zoomIn 0.2s; position: relative; }
         @keyframes zoomIn { from {transform:scale(0.9); opacity:0;} to {transform:scale(1); opacity:1;} }
         
         .form-group { margin-bottom: 1rem; }
         .form-label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; }
-        .form-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        .form-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; font-size: 1rem; transition: 0.2s;}
+        .form-input:focus { border-color: #0ea5e9; outline: none; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
 
         /* --- MOBILE RESPONSIVENESS --- */
         @media (max-width: 768px) {
@@ -135,9 +164,12 @@ if (isset($_SESSION['flash_error'])) {
             /* Stack Header */
             .header { flex-direction: column; align-items: stretch; text-align: center; }
             .btn-primary { width: 100%; padding: 12px; font-size: 1rem; }
+            
+            .filters-wrapper { flex-direction: column; }
+            .sort-select { width: 100%; }
 
             /* Table to Card View Transformation */
-            .table thead { display: none; } /* Hide Table Headers */
+            .table thead { display: none; } 
             .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
             
             .table tr {
@@ -188,8 +220,11 @@ if (isset($_SESSION['flash_error'])) {
     </a>
 
     <div class="header">
-        <h1>Buyer List</h1>
-        <button class="btn btn-primary" onclick="openModal()">+ Add New Buyer</button>
+        <h1>Buyer Management</h1>
+        <button class="btn btn-primary" onclick="openModal()">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Add New Buyer
+        </button>
     </div>
 
     <?php if($error_msg): ?>
@@ -199,24 +234,49 @@ if (isset($_SESSION['flash_error'])) {
         <div class="alert alert-success"><?= $success_msg ?></div>
     <?php endif; ?>
 
+    <div class="filters-wrapper">
+        <div class="search-container">
+            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input type="text" class="search-input" placeholder="Search buyers by name, contact, or address..." onkeyup="filterTable()">
+        </div>
+        
+        <select class="sort-select" onchange="sortDropdown(this.value)">
+            <option value="name_asc">Sort: Name (A-Z)</option>
+            <option value="name_desc">Sort: Name (Z-A)</option>
+            <option value="newest">Sort: Newest Added</option>
+            <option value="oldest">Sort: Oldest Added</option>
+        </select>
+    </div>
+
     <div class="card">
         <table class="table">
-            <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th>Action</th></tr></thead>
-            <tbody>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Address</th>
+                    <th style="text-align: center;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="buyer-table-body">
                 <?php if(empty($buyers)): ?>
-                    <tr><td colspan="4" style="text-align:center; padding:2rem; color:#64748b;">No buyers found.</td></tr>
+                    <tr id="empty-state-row"><td colspan="4" style="text-align:center; padding:2rem; color:#64748b;">No buyers found.</td></tr>
                 <?php else: ?>
                     <?php foreach($buyers as $b): ?>
-                    <tr>
+                    <tr class="buyer-row" data-id="<?= $b['BUYER_ID'] ?>" data-name="<?= htmlspecialchars(strtolower($b['FULL_NAME'])) ?>">
                         <td data-label="Name" style="font-weight:bold; color:white;"><?= htmlspecialchars($b['FULL_NAME']) ?></td>
-                        <td data-label="Contact"><?= htmlspecialchars($b['CONTACT_NO']) ?></td>
-                        <td data-label="Address"><?= htmlspecialchars($b['ADDRESS']) ?></td>
-                        <td data-label="Action">
-                            <button class="btn btn-edit" onclick='openModal(<?= json_encode($b) ?>)'>Edit</button>
-                            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure? This action cannot be undone if no history exists.');">
-                                <input type="hidden" name="delete_id" value="<?= $b['BUYER_ID'] ?>">
-                                <button type="submit" class="btn btn-delete">Remove</button>
-                            </form>
+                        <td data-label="Contact"><?= htmlspecialchars($b['CONTACT_NO'] ?? 'N/A') ?></td>
+                        <td data-label="Address" style="color: #cbd5e1;"><?= htmlspecialchars($b['ADDRESS'] ?? 'N/A') ?></td>
+                        <td data-label="Action" style="text-align: center;">
+                            <div style="display: flex; justify-content: center; align-items: center;">
+                                <button class="btn btn-edit" onclick='openModal(<?= json_encode($b, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Edit</button>
+                                <form method="POST" style="display:inline; margin:0;" onsubmit="return confirm('Are you sure? This action cannot be undone if no history exists.');">
+                                    <input type="hidden" name="delete_id" value="<?= $b['BUYER_ID'] ?>">
+                                    <button type="submit" class="btn btn-delete">Remove</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -228,7 +288,7 @@ if (isset($_SESSION['flash_error'])) {
 
 <div id="buyerModal" class="modal">
     <div class="modal-content">
-        <h2 id="modalTitle" style="margin-top:0;">Add Buyer</h2>
+        <h2 id="modalTitle" style="margin-top:0; color:#0ea5e9; font-size: 1.5rem; margin-bottom: 1.5rem;">Add Buyer</h2>
         <form method="POST">
             <input type="hidden" name="buyer_id" id="buyer_id">
             <div class="form-group">
@@ -241,7 +301,7 @@ if (isset($_SESSION['flash_error'])) {
             </div>
             <div class="form-group">
                 <label class="form-label">Address</label>
-                <textarea name="address" id="address" class="form-input" rows="3" placeholder="Barangay, City"></textarea>
+                <textarea name="address" id="address" class="form-input" rows="3" placeholder="Barangay, City, Province"></textarea>
             </div>
             <div style="text-align: right; margin-top: 1.5rem; display: flex; gap: 10px; justify-content: flex-end;">
                 <button type="button" class="btn" style="background:transparent; color:#94a3b8; border:1px solid #475569;" onclick="closeModal()">Cancel</button>
@@ -252,6 +312,7 @@ if (isset($_SESSION['flash_error'])) {
 </div>
 
 <script>
+    // --- MODAL LOGIC ---
     function openModal(data = null) {
         document.getElementById('buyerModal').classList.add('show');
         if(data) {
@@ -266,14 +327,84 @@ if (isset($_SESSION['flash_error'])) {
             document.querySelector('#buyerModal form').reset();
         }
     }
-    function closeModal() { document.getElementById('buyerModal').classList.remove('show'); }
     
-    // Close modal if clicked outside
+    function closeModal() { 
+        document.getElementById('buyerModal').classList.remove('show'); 
+    }
+    
     window.onclick = function(e) {
         if (e.target == document.getElementById('buyerModal')) {
             closeModal();
         }
     }
+
+    // --- SORTING LOGIC ---
+    function sortDropdown(val) {
+        const tbody = document.getElementById('buyer-table-body');
+        const rows = Array.from(tbody.querySelectorAll('.buyer-row'));
+        
+        rows.sort((a, b) => {
+            const nameA = a.dataset.name || '';
+            const nameB = b.dataset.name || '';
+            const idA = parseInt(a.dataset.id) || 0;
+            const idB = parseInt(b.dataset.id) || 0;
+
+            if (val === 'name_asc') return nameA.localeCompare(nameB);
+            if (val === 'name_desc') return nameB.localeCompare(nameA);
+            if (val === 'newest') return idB - idA; // Highest ID first
+            if (val === 'oldest') return idA - idB; // Lowest ID first
+        });
+        
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // --- FILTER LOGIC ---
+    function filterTable() {
+        const term = document.querySelector('.search-input').value.toLowerCase();
+        const rows = document.querySelectorAll('.buyer-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            // Search across entire row text content
+            const textContent = row.textContent.toLowerCase();
+            
+            if (textContent.includes(term)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        checkEmptyState(visibleCount);
+    }
+
+    function checkEmptyState(visibleCount) {
+        const tbody = document.getElementById('buyer-table-body');
+        let emptyRow = document.getElementById('empty-state-row');
+        
+        if (visibleCount === 0) {
+            if (!emptyRow) {
+                emptyRow = document.createElement('tr');
+                emptyRow.id = 'empty-state-row';
+                emptyRow.innerHTML = '<td colspan="4" style="text-align:center; padding: 2rem; color: #94a3b8;">No buyers found matching your search.</td>';
+                tbody.appendChild(emptyRow);
+            }
+            emptyRow.style.display = '';
+        } else {
+            if (emptyRow) emptyRow.style.display = 'none';
+        }
+    }
+
+    // Auto-hide flash messages
+    document.addEventListener('DOMContentLoaded', () => {
+        const alerts = document.querySelectorAll('.alert');
+        if (alerts.length > 0) {
+            setTimeout(() => {
+                alerts.forEach(el => el.style.display = 'none');
+            }, 4000);
+        }
+    });
 </script>
 
 </body>

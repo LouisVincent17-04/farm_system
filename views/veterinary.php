@@ -11,6 +11,11 @@ include '../config/Queries.php';
 include '../functions/getInitialsFunction.php';
 include '../common/chat_support.php';
 
+if($_SESSION['user']['USER_TYPE'] < 3)
+{
+    echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
+    exit();
+}
 
 // UPDATED SQL: Retrieve directly from VETERINARIANS table
 $sql = "SELECT VET_ID, FULL_NAME, CONTACT_INFO FROM VETERINARIANS ORDER BY VET_ID DESC";

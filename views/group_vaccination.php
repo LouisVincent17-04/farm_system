@@ -67,7 +67,7 @@ if (isset($_GET['action'])) {
                 FROM vaccination_records vr
                 JOIN animal_records a ON vr.ANIMAL_ID = a.ANIMAL_ID
                 JOIN locations l      ON a.LOCATION_ID = l.LOCATION_ID
-                LEFT JOIN VACCINES v  ON vr.VACCINE_ID = v.SUPPLY_ID
+                LEFT JOIN VACCINES v  ON vr.ITEM_ID = v.SUPPLY_ID
                 WHERE $where_sql
             ");
             $count_stmt->execute($params);
@@ -82,7 +82,7 @@ if (isset($_GET['action'])) {
                 FROM vaccination_records vr
                 JOIN animal_records a ON vr.ANIMAL_ID = a.ANIMAL_ID
                 JOIN locations l      ON a.LOCATION_ID = l.LOCATION_ID
-                LEFT JOIN VACCINES v  ON vr.VACCINE_ID = v.SUPPLY_ID
+                LEFT JOIN VACCINES v  ON vr.ITEM_ID = v.SUPPLY_ID
                 WHERE $where_sql
                 ORDER BY vr.VACCINATION_DATE DESC, vr.VACCINATION_ID DESC
                 LIMIT $limit OFFSET $offset
