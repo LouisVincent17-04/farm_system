@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/register.php
+// globalxadminzportal/register.php
 session_start();
 if (isset($_SESSION['user_id'])) {
     // Already logged in — redirect based on role

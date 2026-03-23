@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         // 1. Fetch the user's name for the Audit Log
-        $fetch_sql = "SELECT FULL_NAME FROM USERS WHERE USER_ID = :id";
+        $fetch_sql = "SELECT FULL_NAME, EMAIL FROM USERS WHERE USER_ID = :id";
         $fetch_stmt = $conn->prepare($fetch_sql);
         $fetch_stmt->execute([':id' => $id]);
         
@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($user_row) {
             $user_name_to_reactivate = $user_row['FULL_NAME'];
+            $email_to_reactivate = $user_row['EMAIL'];
         } else {
             throw new Exception("User ID not found.");
         }
@@ -75,6 +76,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 4. COMMIT EVERYTHING
         $conn->commit();
+
+
+        // GLOBAL DEACTIVATION ===================================================================================================================
+
+        require_once '../config/SadminConnection.php';
+
+        $stmt = $conn->prepare("UPDATE users SET status = ? WHERE email = ?");
+        $stmt->execute([1, $email_to_reactivate]);
+            
+        // END GLOBAL DEACTIVATION ===================================================================================================================
         
         echo json_encode(['success' => true, 'message' => "✅ User $user_name_to_reactivate reactivated successfully."]);
 

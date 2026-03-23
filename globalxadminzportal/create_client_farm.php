@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/create_client_farm.php
+// globalxadminzportal/create_client_farm.php
 require_once 'checkAuth.php';           // uses $_SESSION['user_id'], not $_SESSION['admin']
 checkRole('superadmin');                // only superadmins can provision new farms
 

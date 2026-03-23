@@ -140,7 +140,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         <li><a href="../views/audit_logs.php"          class="<?php if($page=='audit_logs')      echo 'active'; ?>">Audit Logs</a></li>
                     <?php endif; ?>
                     
-                        <li><a href="<?php echo isset($_SESSION['user']) ? '../views/profile.php' : '../views/login.php'; ?>"
+                        <li><a href="<?php echo isset($_SESSION['user']) ? '../views/profile.php' : '../globalxadminzportal/login.php'; ?>"
                                 class="<?php if($page=='login/register' || $page=='profile') echo 'active'; ?>">
                                 <?php echo isset($_SESSION['user']) ? 'Profile' : 'Login/Register'; ?>
                             </a>

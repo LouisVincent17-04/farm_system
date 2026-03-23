@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/change_password.php
+// globalxadminzportal/change_password.php
 // Used for first-time login forced password change
 session_start();
 if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }

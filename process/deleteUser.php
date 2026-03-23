@@ -53,7 +53,7 @@ try {
     $conn->beginTransaction();
 
     $user_sql = "
-        SELECT FULL_NAME, IS_ACTIVE 
+        SELECT FULL_NAME, EMAIL, IS_ACTIVE 
         FROM USERS 
         WHERE USER_ID = :id 
         FOR UPDATE
@@ -72,7 +72,7 @@ try {
     }
 
     $target_user_name = $user['FULL_NAME'];
-
+    $target_email = $user['EMAIL'];
     $update_sql = "
         UPDATE USERS 
         SET IS_ACTIVE = 0,
@@ -102,8 +102,18 @@ try {
         ':details'  => $details,
         ':ip'       => $ip_address
     ]);
-
+    $local_conn = $conn;
+    
     $conn->commit();
+
+    // GLOBAL DEACTIVATION ===================================================================================================================
+
+    require_once '../config/SadminConnection.php';
+
+    $stmt = $conn->prepare("UPDATE users SET status = ? WHERE email = ?");
+    $stmt->execute([0, $target_email]);
+        
+    // END GLOBAL DEACTIVATION ===================================================================================================================
 
     echo json_encode([
         'success' => true,  // ✅ Changed from 'status' => 'success'
@@ -113,8 +123,9 @@ try {
 
 } catch (Exception $e) {
 
-    if (isset($conn) && $conn->inTransaction()) {
-        $conn->rollBack();
+     $rollback_conn = $local_conn ?? $conn; // Use local if available
+    if (isset($rollback_conn) && $rollback_conn->inTransaction()) {
+        $rollback_conn->rollBack();
     }
 
     echo json_encode([

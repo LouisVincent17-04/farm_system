@@ -25,6 +25,7 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute([':status' => $filter_status]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     
 } catch (Exception $e) {
     $users = [];

@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/checkFarmKey.php
+// globalxadminzportal/checkFarmKey.php
 // Called by register.php via fetch() to validate a farm_code in real time.
 // Returns JSON: { valid: bool, farm_name: string|null, message: string }
 //

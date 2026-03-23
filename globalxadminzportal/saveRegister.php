@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/saveRegister.php
+// globalxadminzportal/saveRegister.php
 // Handles ALL registration paths:
 //   A) superadmin — inserts into sadmin_farms.users, status=0 (pending superadmin approval)
 //   B) owner      — inserts into sadmin_farms.users, status=0 (pending superadmin approval)
@@ -152,6 +152,8 @@ if ($tenantDupCheck->fetch()) {
 // Dual-write: tenant DB first, then central DB
 $tenant_user_id = null;
 
+
+
 try {
     $clean_phone = preg_replace('/[^0-9]/', '', $phone_no);
 
@@ -168,7 +170,7 @@ try {
             user_id,
             dashboard, animal_record, farm_roles, employee_list,
             animal_type, location, building, pen, breed,
-            veterinary, diseases, buyer,
+            veterinary, diseases, buyer, suppliers,
             costing, animal_cost,
             feed_consumption, medication_treatment, vaccinations,
             vitamins_supplements, veterinary_checkups,
@@ -203,7 +205,7 @@ try {
             ?,
             0,0,0,0, 0,0,0,0,0,
             0,0,0, 0,0,
-            0,0,0, 0,0,
+            0,0,0, 0,0, 0,
             0,0,0,0, 0,0,0,0,
             0,0,0,0,
             0,0,0, 0,0,

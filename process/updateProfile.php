@@ -1,7 +1,7 @@
 <?php
 // ../process/updateProfile.php
-error_reporting(0);
-ini_set('display_errors', 0); 
+error_reporting(E_ALL); // Turned on temporarily for debugging, change back to 0 in production
+ini_set('display_errors', 1);
 
 session_start();
 include '../config/Connection.php';
@@ -115,7 +115,17 @@ try {
     $conn->commit();
     $_SESSION['user']['FULL_NAME'] = $fullName;
     $_SESSION['user']['CONTACT_INFO'] = $contactInfo;
-
+// GLOBAL UPDATE ===========================================================================================================
+    require_once '../config/SadminConnection.php';
+        // Update the database
+        $stmt = $conn->prepare("UPDATE users SET full_name = ?, phone_no = ? WHERE email = ?");
+        $stmt->execute([$fullName, $contactInfo, $_SESSION['user']['EMAIL']]);
+        // Update the active session variables so the UI reflects the change immediately
+        $_SESSION['full_name'] = $full_name;
+        $_SESSION['phone_no'] = $contactInfo;
+        $_SESSION['email'] = $_SESSION['user']['EMAIL'];
+   
+// END OF GLOBAL UPDATE ===========================================================================================================
     header("Location: ../views/profile.php?status=success&msg=" . urlencode("Profile updated successfully."));
     exit;
 

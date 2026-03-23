@@ -3,6 +3,9 @@ ob_start();
 $page = 'login/register';
 include '../common/navbar.php';
 
+header('Location: ../globalxadminzportal/login.php');
+exit();
+
 if (isset($_SESSION['user'])) {
     header("Location: ../views/profile.php");
     exit;

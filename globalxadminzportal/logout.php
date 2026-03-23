@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/logout.php
+// globalxadminzportal/logout.php
 session_start();
 session_unset();
 session_destroy();

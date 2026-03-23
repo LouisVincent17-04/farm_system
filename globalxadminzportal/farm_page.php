@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/farm_page.php
+// globalxadminzportal/farm_page.php
 session_start();
 if (!isset($_SESSION['is_global']) || $_SESSION['is_global'] !== 1) { header('Location: login.php'); exit; }
 

@@ -398,8 +398,9 @@ set in the birthing date in the animal_sow_status.php ✅
 - Add a Tag Editing File in the Farm ✅
     - saveTags.php ✅
 - Include in the SOW the information of their birthing like how many alive dead or mummified and also who is the boar and ALL INFORMATION RELATED TO SERVICE, BIRTHING, ETC TO SOW
-- In the create_client_farm.php, auto populate the database name to (For example: Catmon Farms.... DatbaseName: catmon_farms (Spaces are replaced with underscore and everything is lowercase()))
-- Add in the register.php an option (with 16 character farm code)
-    - Checks if the farm code exist in sadmin_farms.admin_users['farm_code']
-    - If farm_code exists, register it
-- The owner will approve the registration (the backend will turn status to 1) or reject (backend turns status to -1)
+- In the create_client_farm.php, auto populate the database name to (For example: Catmon Farms.... DatbaseName: catmon_farms (Spaces are replaced with underscore and everything is lowercase())) ✅
+- Add in the register.php an option (with 16 character farm code) ✅
+    - Checks if the farm code exist in sadmin_farms.admin_users['farm_code'] ✅
+    - If farm_code exists, register it ✅
+- The owner will approve the registration (the backend will turn status to 1) or reject (backend turns status to -1) ✅
+- 

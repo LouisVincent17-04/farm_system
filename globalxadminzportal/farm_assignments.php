@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/farm_assignments.php
+// globalxadminzportal/farm_assignments.php
 session_start();
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 

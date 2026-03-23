@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/login.php
+// globalxadminzportal/login.php
 session_start();
 
 // Already logged in — redirect based on role

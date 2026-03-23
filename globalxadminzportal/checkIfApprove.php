@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/checkIfApprove.php
+// globalxadminzportal/checkIfApprove.php
 // Checks whether a registered user is an approved Super Admin or a verified farm client.
 //
 // Returns JSON — call via fetch or include directly.

@@ -17,6 +17,8 @@ if($_SESSION['user']['USER_TYPE'] == 1){
 else
 {
     checkAccess('dashboard');
+   
+
 }
 
 
@@ -147,6 +149,7 @@ try {
 
         <div class="management-grid">
             
+        <?php if( hasAccess('animal_record') == 1): ?>
             <a href="animal_record_dashboard.php" class="management-card">
                 <div class="card-icon animal_record">🐮</div> 
                 <h3 class="card-title">Animal Record</h3>
@@ -157,7 +160,8 @@ try {
                     <div class="card-action">Manage →</div>
                 </div>
             </a>
-
+        <?php endif; ?>
+        <?php if( hasAccess('employee_list') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="employees.php" class="management-card">
                 <div class="card-icon employee">👷</div>
                 <h3 class="card-title">Employee List</h3>
@@ -167,7 +171,9 @@ try {
                     <div class="card-action">Manage Staff →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('farm_roles') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="farm_roles.php" class="management-card">
                 <div class="card-icon role">📋</div>
                 <h3 class="card-title">Farm Roles</h3>
@@ -177,7 +183,9 @@ try {
                     <div class="card-action">Configure Roles →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('animal_type') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="animal_type.php" class="management-card">
                 <div class="card-icon animal">🐄</div>
                 <h3 class="card-title">Animal Type</h3>
@@ -188,7 +196,9 @@ try {
                     <div class="card-action">Manage →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('location') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="location.php" class="management-card">
                 <div class="card-icon location">📍</div>
                 <h3 class="card-title">Location</h3>
@@ -199,7 +209,9 @@ try {
                     <div class="card-action">View Map →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('building') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="building.php" class="management-card">
                 <div class="card-icon building">🏢</div>
                 <h3 class="card-title">Building</h3>
@@ -210,7 +222,9 @@ try {
                     <div class="card-action">Inspect →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('pen') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="pen.php" class="management-card">
                 <div class="card-icon pen">🏠</div>
                 <h3 class="card-title">Pen</h3>
@@ -221,7 +235,9 @@ try {
                     <div class="card-action">Allocate →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('breed') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="breed.php" class="management-card">
                 <div class="card-icon breed">🧬</div>
                 <h3 class="card-title">Breed</h3>
@@ -232,7 +248,9 @@ try {
                     <div class="card-action">Browse →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('veterinary' || $_SESSION['user']['USER_TYPE'] < 3) == 1): ?>
             <a href="veterinary.php" class="management-card">
                 <div class="card-icon veterinary">👩‍⚕️</div>
                 <h3 class="card-title">Veterinary</h3>
@@ -243,7 +261,9 @@ try {
                     <div class="card-action">Schedule →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('diseases' || $_SESSION['user']['USER_TYPE'] < 3) == 1): ?>
             <a href="diseases.php" class="management-card">
                 <div class="card-icon disease">🦠</div>
                 <h3 class="card-title">Diseases</h3>
@@ -254,7 +274,9 @@ try {
                     <div class="card-action">Monitor →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('buyer') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="buyers.php" class="management-card">
                 <div class="card-icon buyer">🤝</div>
                 <h3 class="card-title">Buyers</h3>
@@ -265,7 +287,9 @@ try {
                     <div class="card-action">Manage →</div>
                 </div>
             </a>
+        <?php endif; ?>
 
+        <?php if( hasAccess('suppliers') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="suppliers.php" class="management-card">
                 <div class="card-icon supplier">📦</div>
                 <h3 class="card-title">Suppliers</h3>
@@ -275,7 +299,7 @@ try {
                     <div class="card-action">Manage →</div>
                 </div>
             </a>
-
+        <?php endif; ?>
         </div>
     </div>
 </body>

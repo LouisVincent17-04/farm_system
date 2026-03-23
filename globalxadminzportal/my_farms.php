@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/my_farms.php
+// globalxadminzportal/my_farms.php
 session_start();
 
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
@@ -676,7 +676,8 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
 
                 // Redirect to the FarmSystem login page
                 setTimeout(() => {
-                    window.location.href = '/FarmSystem/views/login.php';
+                    window.location.href = 'getUserInfoForFarm.php';
+                    
                 }, 800);
 
             } else {

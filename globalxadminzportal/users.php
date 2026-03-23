@@ -1,7 +1,8 @@
 <?php
-// globalxadminportal/users.php
+// globalxadminzportal/users.php
 session_start();
-if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
+
+if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 
 require_once '../config/SadminConnection.php';
 date_default_timezone_set('Asia/Manila');
@@ -14,16 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     try {
         if ($_POST['action'] === 'toggle_status') {
-            $uid = (int)$_POST['admin_id'];
+            $uid = (int)$_POST['user_id'];
             $new_status = (int)$_POST['new_status'];
             
             // Prevent the admin from disabling themselves
-            if ($uid === $_SESSION['admin'] && $new_status !== 1) {
+            if ($uid === $_SESSION['user_id'] && $new_status !== 1) {
                 echo json_encode(['success' => false, 'message' => 'You cannot disable your own account.']);
                 exit;
             }
 
-            $stmt = $conn->prepare("UPDATE admin_users SET status = ? WHERE admin_id = ?");
+            $stmt = $conn->prepare("UPDATE users SET status = ? WHERE user_id = ?");
             $stmt->execute([$new_status, $uid]);
             
             $msg = $new_status === 1 ? 'User account has been enabled.' : 'User account has been disabled.';
@@ -38,20 +39,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // ========================================================================
 
 $full_name   = $_SESSION['full_name'] ?? 'Admin';
-$is_incharge = $_SESSION['is_incharge'] ?? 0;
+$is_global = $_SESSION['is_global'] ?? 0;
 
 // Security: Redirect regular clients away from this Super Admin page
-if ($is_incharge == 0) {
+if ($is_global == 0) {
     header('Location: my_farms.php');
     exit;
 }
 
-// Fetch all users
-$all_users = $conn->query("
-    SELECT admin_id, full_name, email, phone_no, status, is_incharge, created_at 
-    FROM admin_users 
-    ORDER BY created_at DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+// --- SEARCH & SORT LOGIC ---
+$search = $_GET['search'] ?? '';
+$sort = $_GET['sort'] ?? 'newest';
+
+$sql = "SELECT user_id, full_name, email, phone_no, status, is_global, created_at FROM users";
+$params = [];
+
+// --- SEARCH & SORT LOGIC ---
+$search = $_GET['search'] ?? '';
+$sort = $_GET['sort'] ?? 'newest';
+
+$sql = "SELECT user_id, full_name, email, phone_no, status, is_global, created_at FROM users";
+$params = [];
+
+// Apply Search Filter (FIXED: Using unique placeholders)
+if (!empty($search)) {
+    $sql .= " WHERE full_name LIKE :search1 OR email LIKE :search2";
+    $params[':search1'] = "%$search%";
+    $params[':search2'] = "%$search%";
+}
+
+// Apply Sorting
+switch ($sort) {
+    case 'oldest': 
+        $sql .= " ORDER BY created_at ASC"; break;
+    case 'name_asc': 
+        $sql .= " ORDER BY full_name ASC"; break;
+    case 'name_desc': 
+        $sql .= " ORDER BY full_name DESC"; break;
+    case 'status': 
+        $sql .= " ORDER BY status DESC, created_at DESC"; break;
+    case 'newest':
+    default: 
+        $sql .= " ORDER BY created_at DESC"; break;
+}
+
+$stmt = $conn->prepare($sql);
+$stmt->execute($params);
+$all_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -132,6 +166,23 @@ $all_users = $conn->query("
         .page-eyebrow { font-size: .7rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: .4rem; }
         .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: .04em; line-height: 1; color: #fff; }
 
+        /* ── SEARCH / FILTER BAR ── */
+        .filter-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .search-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border2);
+            color: var(--text);
+            padding: 8px 12px 8px 34px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s;
+            width: 260px;
+        }
+        .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(61,214,140,0.1); }
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); }
+        .select-input { padding-left: 12px; width: auto; cursor: pointer; }
+
         /* ── TABLE ── */
         .table-wrap { background: var(--card); border: 1px solid var(--border2); border-radius: 16px; overflow: hidden; animation: fadeUp .65s cubic-bezier(.22,1,.36,1) .1s both; }
         .table-top { display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: .75rem; }
@@ -186,6 +237,11 @@ $all_users = $conn->query("
             .page-wrap { padding: calc(var(--nav-h) + 1.5rem) 1rem 2rem; }
             .nav-links .nav-link span { display: none; }
             .nav-username, .nav-badge { display: none; }
+            
+            .table-top { flex-direction: column; align-items: stretch; }
+            .filter-form { flex-direction: column; align-items: stretch; width: 100%; }
+            .search-input { width: 100%; }
+
             thead { display: none; }
             tbody tr { display: block; padding: .75rem 1rem; }
             tbody td { display: block; padding: .2rem 0; border: none; display: flex; justify-content: space-between; align-items: center;}
@@ -235,7 +291,7 @@ $all_users = $conn->query("
         <div class="nav-user">
             <div class="nav-avatar"><?= strtoupper(substr($full_name, 0, 1)) ?></div>
             <span class="nav-username"><?= htmlspecialchars($full_name) ?></span>
-            <?php if ($is_incharge): ?>
+            <?php if ($is_global): ?>
             <span class="nav-badge">In-Charge</span>
             <?php endif; ?>
         </div>
@@ -255,6 +311,24 @@ $all_users = $conn->query("
                 <span class="dot"></span>
                 All Registered Accounts
             </div>
+            
+            <form method="GET" id="filterForm" class="filter-form">
+                <div style="position: relative;">
+                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search name or email..." class="search-input" oninput="debounceSearch()">
+                </div>
+                
+                <select name="sort" class="search-input select-input" onchange="document.getElementById('filterForm').submit();">
+                    <option value="newest" <?= $sort == 'newest' ? 'selected' : '' ?>>Sort: Newest First</option>
+                    <option value="oldest" <?= $sort == 'oldest' ? 'selected' : '' ?>>Sort: Oldest First</option>
+                    <option value="name_asc" <?= $sort == 'name_asc' ? 'selected' : '' ?>>Sort: Name (A-Z)</option>
+                    <option value="name_desc" <?= $sort == 'name_desc' ? 'selected' : '' ?>>Sort: Name (Z-A)</option>
+                    <option value="status" <?= $sort == 'status' ? 'selected' : '' ?>>Sort: Active First</option>
+                </select>
+            </form>
+            
         </div>
 
         <table>
@@ -277,7 +351,7 @@ $all_users = $conn->query("
                     <td data-label="User Details">
                         <div class="user-name">
                             <?= htmlspecialchars($u['full_name']) ?>
-                            <?php if ($u['is_incharge'] == 1): ?>
+                            <?php if ($u['is_global'] == 1): ?>
                                 <span class="badge badge-admin">Super Admin</span>
                             <?php else: ?>
                                 <span class="badge badge-client">Client</span>
@@ -304,17 +378,17 @@ $all_users = $conn->query("
                         <div class="actions" style="justify-content: flex-end;">
                             <?php 
                             // Disable the action button if it's the current logged-in user
-                            $is_self = ($u['admin_id'] == $_SESSION['admin']); 
+                            $is_self = ($u['user_id'] == $_SESSION['user_id']); 
                             ?>
 
                             <?php if ($u['status'] == 1): // If Active, show Disable button ?>
-                                <button class="btn-act disable" <?= $is_self ? 'disabled title="You cannot disable yourself"' : '' ?> onclick="toggleStatus(<?= $u['admin_id'] ?>, -1, 'Disable this user? They will immediately lose access to the portal.')">
+                                <button class="btn-act disable" <?= $is_self ? 'disabled title="You cannot disable yourself"' : '' ?> onclick="toggleStatus(<?= $u['user_id'] ?>, -1, 'Disable this user? They will immediately lose access to the portal.')">
                                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                                     Disable
                                 </button>
 
                             <?php elseif ($u['status'] == -1): // If Disabled, show Enable button ?>
-                                <button class="btn-act enable" onclick="toggleStatus(<?= $u['admin_id'] ?>, 1, 'Enable this user? They will regain access to the portal.')">
+                                <button class="btn-act enable" onclick="toggleStatus(<?= $u['user_id'] ?>, 1, 'Enable this user? They will regain access to the portal.')">
                                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     Enable
                                 </button>
@@ -335,12 +409,21 @@ $all_users = $conn->query("
 </main>
 
 <script>
+    // Debounce function to wait until user stops typing before searching
+    let searchTimeout;
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filterForm').submit();
+        }, 500); // Waits 500ms after last keystroke
+    }
+
     function toggleStatus(adminId, newStatus, confirmMessage) {
         if(!confirm(confirmMessage)) return;
 
         const fd = new FormData();
         fd.append('action', 'toggle_status');
-        fd.append('admin_id', adminId);
+        fd.append('user_id', adminId);
         fd.append('new_status', newStatus);
 
         fetch(window.location.href, { method: 'POST', body: fd })

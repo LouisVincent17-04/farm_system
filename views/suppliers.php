@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include '../security/checkAccess.php';
-// checkAccess('suppliers'); // Uncomment if you have specific access rules
+checkAccess('suppliers'); // Uncomment if you have specific access rules
 
 include '../common/navbar.php';
 include '../common/chat_support.php';

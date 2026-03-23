@@ -1,5 +1,5 @@
 <?php
-// globalxadminportal/saveClientFarm.php
+// globalxadminzportal/saveClientFarm.php
 error_reporting(0);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
@@ -221,6 +221,7 @@ CREATE TABLE `access_control` (
   `veterinary` tinyint(1) NULL DEFAULT 0,
   `diseases` tinyint(1) NULL DEFAULT 0,
   `buyer` tinyint(1) NULL DEFAULT 0,
+  `suppliers` tinyint(1) NULL DEFAULT 0,
   `costing` tinyint(1) NULL DEFAULT 0,
   `animal_cost` tinyint(1) NULL DEFAULT 0,
   `feed_consumption` tinyint(1) NULL DEFAULT 0,
@@ -1052,8 +1053,8 @@ SQL;
             $clean_phone = preg_replace('/[^0-9]/', '', $owner_phone);
 
             $stmtSeedUser = $tenant_conn->prepare("
-                INSERT INTO users (FULL_NAME, EMAIL, CONTACT_INFO, PASSWORD, USER_TYPE, IS_ACTIVE, CREATED_AT)
-                VALUES (?, ?, ?, ?, 4, 1, NOW())
+                INSERT INTO users (FULL_NAME, EMAIL, CONTACT_INFO, PASSWORD, USER_TYPE, IS_ACTIVE, CREATED_AT, LOCATION_ID)
+                VALUES (?, ?, ?, ?, 4, 1, NOW(), 1000)
             ");
             $stmtSeedUser->execute([
                 $owner_name,
