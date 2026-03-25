@@ -165,7 +165,9 @@ try {
             border-radius: 12px; border-left: 4px solid #ef4444;
         }
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; color: #94a3b8; }
-        .summary-total { margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; font-weight: 700; color: #fff; display: block; }
+        .summary-total { margin-top: 10px; padding-top: 10px; border-top: 1px solid #334155; font-weight: 700; color: #fff; display: block; font-size: 1.05rem; }
+        .net-loss { color: #ef4444 !important; }
+        .net-gain { color: #34d399 !important; }
         
         /* Buttons */
         .btn-mini {
@@ -229,7 +231,7 @@ try {
         
         <div class="control-panel">
             <div class="panel-title">💀 Group Mortality</div>
-            <div class="panel-subtitle">Record mass mortality events.</div>
+            <div class="panel-subtitle">Record mass mortality events & calculate total loss.</div>
 
             <form id="settingsForm">
                 <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:8px; margin-bottom:1.5rem; border:1px dashed #475569;">
@@ -305,8 +307,16 @@ try {
                         <span id="sum-count" style="color:#fff">0</span>
                     </div>
                     <div class="summary-row">
+                        <span>Est. Animal Value:</span> 
+                        <span id="sum-animal-cost" style="color:#fca5a5">₱0.00</span>
+                    </div>
+                    <div class="summary-row">
                         <span>Total Recovered:</span> 
-                        <span id="sum-cost" style="color:#86efac">₱0.00</span>
+                        <span id="sum-recovered" style="color:#86efac">₱0.00</span>
+                    </div>
+                    <div class="summary-row summary-total">
+                        <span>Net Impact:</span> 
+                        <span id="sum-net" style="color:#fff;">₱0.00</span>
                     </div>
                 </div>
 
@@ -340,7 +350,7 @@ try {
                 <table class="custom-table">
                     <thead>
                         <tr>
-                            <th style="width: 20%;">Tag No</th>
+                            <th style="width: 20%;">Tag No & Value</th>
                             <th>Reason</th>
                             <th>Details / Notes</th>
                             <th style="width: 15%;">Rec. Cost</th>
@@ -508,13 +518,20 @@ try {
         const defaultReason = document.getElementById('default_reason').value;
         const defaultNotes = document.getElementById('default_notes').value;
         const defaultCost = document.getElementById('default_cost').value;
+        
+        // Extract original animal cost safely
+        const originalCost = parseFloat(animal.ACQUISITION_COST || animal.COST || animal.TOTAL_COST || 0);
 
         const tr = document.createElement('tr');
         tr.id = `row-${animal.ANIMAL_ID}`;
         tr.dataset.id = animal.ANIMAL_ID;
+        tr.dataset.originalCost = originalCost; // Store for calculation
         
         tr.innerHTML = `
-            <td data-label="Tag No" style="font-weight:600; color:#fff;">${animal.TAG_NO}</td>
+            <td data-label="Tag No" style="font-weight:600; color:#fff;">
+                ${animal.TAG_NO}
+                <div style="font-size: 0.75rem; color:#94a3b8; font-weight:normal; margin-top:2px;">Value: ₱${originalCost.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </td>
             <td data-label="Reason">
                 <select name="reason[${animal.ANIMAL_ID}]" class="reason-select">
                     <option value="Deceased" ${defaultReason == 'Deceased' ? 'selected' : ''}>Deceased</option>
@@ -584,11 +601,35 @@ try {
         const count = selectedAnimals.size;
         document.getElementById('sum-count').innerText = count;
 
-        let totalCost = 0;
-        document.querySelectorAll('.cost-input').forEach(inp => {
-            totalCost += parseFloat(inp.value) || 0;
+        let totalRecovered = 0;
+        let totalAnimalCost = 0;
+        
+        document.querySelectorAll('#mortality-list tr[id^="row-"]').forEach(tr => {
+            const recCost = parseFloat(tr.querySelector('.cost-input').value) || 0;
+            const animCost = parseFloat(tr.dataset.originalCost) || 0;
+            
+            totalRecovered += recCost;
+            totalAnimalCost += animCost;
         });
-        document.getElementById('sum-cost').innerText = "₱" + totalCost.toFixed(2);
+        
+        document.getElementById('sum-animal-cost').innerText = "₱" + totalAnimalCost.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('sum-recovered').innerText = "₱" + totalRecovered.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Calculate Net Impact
+        const netValue = totalRecovered - totalAnimalCost;
+        const netElement = document.getElementById('sum-net');
+        
+        if (netValue < 0) {
+            netElement.innerText = "-₱" + Math.abs(netValue).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " (Loss)";
+            netElement.className = "net-loss";
+        } else if (netValue > 0) {
+            netElement.innerText = "+₱" + netValue.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " (Gain)";
+            netElement.className = "net-gain";
+        } else {
+            netElement.innerText = "₱0.00 (Break Even)";
+            netElement.className = "";
+            netElement.style.color = "#94a3b8";
+        }
 
         const btn = document.getElementById('btn-submit');
         if(count > 0) {
@@ -597,6 +638,9 @@ try {
         } else {
             btn.disabled = true;
             btn.innerText = "Confirm Mortality";
+            netElement.innerText = "₱0.00";
+            netElement.className = "";
+            netElement.style.color = "#fff";
         }
     }
 

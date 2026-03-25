@@ -58,12 +58,12 @@ $params = [];
 $search = $_GET['search'] ?? '';
 $sort = $_GET['sort'] ?? 'newest';
 
-$sql = "SELECT user_id, full_name, email, phone_no, status, is_global, created_at FROM users";
+$sql = "SELECT user_id, full_name, email, phone_no, status, is_global, created_at FROM users WHERE role = 'superadmin' AND (is_owner = 1 OR is_global = 1)"; // Only show superadmins who are either owners or global admins
 $params = [];
 
 // Apply Search Filter (FIXED: Using unique placeholders)
 if (!empty($search)) {
-    $sql .= " WHERE full_name LIKE :search1 OR email LIKE :search2";
+    $sql .= " AND (full_name LIKE :search1 OR email LIKE :search2)";
     $params[':search1'] = "%$search%";
     $params[':search2'] = "%$search%";
 }
@@ -354,7 +354,7 @@ $all_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php if ($u['is_global'] == 1): ?>
                                 <span class="badge badge-admin">Super Admin</span>
                             <?php else: ?>
-                                <span class="badge badge-client">Client</span>
+                                <span class="badge badge-client">Client (Owner)</span>
                             <?php endif; ?>
                         </div>
                         <div class="user-email"><?= htmlspecialchars($u['email']) ?></div>

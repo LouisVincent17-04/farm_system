@@ -24,6 +24,7 @@ $sql = "SELECT
                 ar.ANIMAL_ID, 
                 ar.IS_ACTIVE,
                 ar.TAG_NO, 
+                ar.ACQUISITION_COST,
                 b.BREED_NAME 
             FROM ANIMAL_RECORDS ar
             LEFT JOIN BREEDS b ON ar.BREED_ID = b.BREED_ID

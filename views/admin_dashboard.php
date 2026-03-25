@@ -17,8 +17,6 @@ if($_SESSION['user']['USER_TYPE'] == 1){
 else
 {
     checkAccess('dashboard');
-   
-
 }
 
 
@@ -35,7 +33,14 @@ try {
     $role_count = $conn->query("SELECT COUNT(*) FROM farm_roles")->fetchColumn();
     $supplier_count = $conn->query("SELECT COUNT(*) FROM suppliers WHERE STATUS = 'Active'")->fetchColumn(); 
 } catch(Exception $e) {}
+
+$active_location = $conn->query("SELECT COUNT(*) FROM locations")->fetchColumn();
+$total_animals = $conn->query("SELECT COUNT(*) FROM animal_records WHERE IS_ACTIVE = 1")->fetchColumn();
+$total_buildings = $conn->query("SELECT COUNT(*) FROM buildings")->fetchColumn();    
+$total_pens = $conn->query("SELECT COUNT(*) FROM pens")->fetchColumn();  
+
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -43,6 +48,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FarmPro Admin Management</title>
+    <link rel="shortcut icon" href="../common/tab-icon.png" type="image/x-icon">
     <link rel="stylesheet" href="../css/admin_dashboard.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -137,10 +143,10 @@ try {
         <div class="quick-stats">
             <h2 class="stats-title">System Overview</h2>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-number">24</div><div class="stat-desc">Active Farms</div></div>
-                <div class="stat-card"><div class="stat-number">1,247</div><div class="stat-desc">Total Animals</div></div>
-                <div class="stat-card"><div class="stat-number">89</div><div class="stat-desc">Buildings</div></div>
-                <div class="stat-card"><div class="stat-number">156</div><div class="stat-desc">Pens</div></div>
+                <div class="stat-card"><div class="stat-number"><?= $active_location ?></div><div class="stat-desc">Active Locations</div></div>
+                <div class="stat-card"><div class="stat-number"><?= $total_animals ?></div><div class="stat-desc">Total Animals</div></div>
+                <div class="stat-card"><div class="stat-number"><?= $total_buildings ?></div><div class="stat-desc">Buildings</div></div>
+                <div class="stat-card"><div class="stat-number"><?= $total_pens ?></div><div class="stat-desc">Pens</div></div>
                 <div class="stat-card"><div class="stat-number"><?= $emp_count ?></div><div class="stat-desc">Employees</div></div>
                 
                 <div class="stat-card"><div class="stat-number"><?= $supplier_count ?></div><div class="stat-desc">Suppliers</div></div>
@@ -188,7 +194,7 @@ try {
         <?php if( hasAccess('animal_type') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="animal_type.php" class="management-card">
                 <div class="card-icon animal">🐄</div>
-                <h3 class="card-title">Animal Type</h3>
+                <h3 class="card-title">Animal Species</h3>
                 <p class="card-description">Adding, Removing, Updating, and Viewing of species categories, physical characteristics, and classification standards.</p>
                 <div class="card-stats">
                     <div class="stat-item"><div class="stat-val-small">15</div><div class="stat-lbl-small">Species</div></div>

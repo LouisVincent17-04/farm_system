@@ -4,10 +4,9 @@ require_once 'checkAuth.php';           // uses $_SESSION['user_id'], not $_SESS
 checkRole('superadmin');                // only superadmins can provision new farms
 
 require_once '../config/SadminConnection.php';
-
 // ============================================================================
 // INTERNAL AJAX: Owner autocomplete search
-// FIX: was querying admin_users — now queries the unified users table,
+// FIX: was querying users — now queries the unified users table,
 //      filtered to role = 'owner' so only valid farm owners appear.
 // ============================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'search_admin') {
@@ -326,7 +325,7 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
 
         <button type="submit" class="btn-provision" id="btnProvision" disabled>
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Provision Farm Database
+            Create Farm Database
         </button>
     </form>
 
@@ -540,7 +539,7 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
                 console.error('Non-JSON response:', raw);
                 showAlert('error', '❌ Server error — check the browser console.');
                 btn.disabled  = false;
-                btn.innerHTML = 'Provision Farm Database';
+                btn.innerHTML = 'Create Farm Database';
                 return;
             }
 
@@ -548,7 +547,7 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
                 document.getElementById('successBox').style.display = 'block';
                 document.getElementById('successBox').scrollIntoView({ behavior: 'smooth' });
                 document.getElementById('alert').style.display = 'none';
-                btn.innerHTML = 'Provision Farm Database';
+                btn.innerHTML = 'Create Farm Database';
 
             } else {
                 showAlert('error', '❌ ' + data.message);

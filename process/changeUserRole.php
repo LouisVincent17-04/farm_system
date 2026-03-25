@@ -6,7 +6,7 @@ header('Content-Type: application/json');
 require_once '../config/Connection.php';
 
 // Get Current User Info (The Admin performing the action)
-$admin_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : null;
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : null;
 $admin_name = $_SESSION['user']['FULL_NAME'] ?? 'System';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] === 'POST') {
         $log_stmt = $conn->prepare($log_sql);
         
         $log_params = [
-            ':user_id'  => $admin_id,
+            ':user_id'  => $user_id,
             ':username' => $admin_name,
             ':details'  => $logDetails,
             ':ip'       => $ip_address

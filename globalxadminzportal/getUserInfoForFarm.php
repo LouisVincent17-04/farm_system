@@ -47,8 +47,8 @@ if (file_exists($_sadmin_path)) {
 if (!isset($conn) || $conn === null) {
     try {
         $conn = new PDO(
-            'mysql:host=localhost;dbname=sadmin_farms;charset=utf8mb4',
-            'root', 'v1i1n1x1',
+            'mysql:host=192.168.1.131;dbname=sadmin_farms;charset=utf8mb4',
+            'pisadmin', 'adminpis',
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
         );
     } catch (PDOException $e) {
@@ -60,8 +60,8 @@ if (!isset($conn) || $conn === null) {
 // ── Connect to the selected farm's tenant database ────────────────────────────
 try {
     $farmConn = new PDO(
-        'mysql:host=localhost;dbname=' . $db_name . ';charset=utf8mb4',
-        'root', 'v1i1n1x1',
+        'mysql:host=192.168.1.131;dbname=' . $db_name . ';charset=utf8mb4',
+        'pisadmin', 'adminpis',
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
 } catch (PDOException $e) {

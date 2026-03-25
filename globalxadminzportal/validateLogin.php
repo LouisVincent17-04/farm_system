@@ -19,8 +19,8 @@ if (file_exists($_sadmin_path)) {
 if (!isset($conn) || $conn === null) {
     try {
         $conn = new PDO(
-            'mysql:host=localhost;dbname=sadmin_farms;charset=utf8mb4',
-            'root', 'v1i1n1x1',
+            'mysql:host=192.168.1.131;dbname=sadmin_farms;charset=utf8mb4',
+            'pisadmin', 'adminpis',
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
         );
     } catch (PDOException $e) {
@@ -140,8 +140,8 @@ try {
         // session redirect logic, since we just set the session above.
         try {
             $farmConn = new PDO(
-                'mysql:host=localhost;dbname=' . $farmRow['db_name'] . ';charset=utf8mb4',
-                'root', 'v1i1n1x1',
+                'mysql:host=192.168.1.131;dbname=' . $farmRow['db_name'] . ';charset=utf8mb4',
+                'pisadmin', 'adminpis',
                 [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
             );
         } catch (PDOException $e) {
@@ -174,3 +174,4 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+?>

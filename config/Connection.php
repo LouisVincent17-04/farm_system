@@ -3,9 +3,10 @@
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-$host    = 'localhost';
-$user    = 'root';
-$pass    = 'v1i1n1x1';
+$host = '192.168.1.131';
+$db   = 'sadmin_farms';
+$user = 'pisadmin';
+$pass = 'adminpis';
 $charset = 'utf8mb4';
 
 // ── Dynamic DB selection ──────────────────────────────────────────────────────

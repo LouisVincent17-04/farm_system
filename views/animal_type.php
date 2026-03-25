@@ -177,14 +177,14 @@ try {
 
         <div class="header">
             <div class="header-info">
-                <h1>Animal Type Management</h1>
-                <p>Manage Animal Types and their information</p>
+                <h1>Animal Species Management</h1>
+                <p>Manage Animal Species and their information</p>
             </div>
             <button class="add-btn" onclick="openAddModal()">
                 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
-                Add Animal Type
+                Add Animal Species
             </button>
         </div>
 
@@ -205,8 +205,8 @@ try {
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Animal Type ID</th>
-                        <th>Animal Type Name</th>
+                        <th>Animal Species ID</th>
+                        <th>Animal Species Name</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>

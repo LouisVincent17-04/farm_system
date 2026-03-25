@@ -4,7 +4,7 @@
 # Trains a TF-IDF + SVM classifier on the training data
 # Run this once to generate: model.pkl
 # ============================================================
-
+# train_model.py
 import pickle
 import numpy as np
 from sklearn.pipeline import Pipeline

@@ -194,7 +194,7 @@ try {
         .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
         .modal-header h2 { margin: 0; font-size: 1.4rem; color: #fff; }
         .modal-body { padding: 1.5rem; overflow-y: auto; flex-grow: 1; }
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
 
         /* FORM ELEMENTS */
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
@@ -252,7 +252,7 @@ try {
             /* Modal Adjustments */
             .form-row { grid-template-columns: 1fr; gap: 0; }
             .modal-footer { flex-direction: column; }
-            .modal-footer button { width: 100%; margin-left: 0; }
+            .modal-footer button { width: 100%; margin: 0 !important; }
             
             .dynamic-row { flex-direction: column; }
             .btn-remove-row { margin-top: 0; width: 100%; }
@@ -389,7 +389,7 @@ try {
                             <td data-label="Quantity">
                                 <div style="white-space: nowrap;">
                                     <?php echo number_format($item['QUANTITY'] ?? 1, 0); ?> 
-                                    <small style="color:#94a3b8"><?php echo htmlspecialchars($item['UNIT_NAME']); ?></small>
+                                    <small style="color:#94a3b8"><?php echo htmlspecialchars("Head"); ?></small>
                                 </div>
                             </td>
                             <td data-label="Cost per Head">
@@ -508,16 +508,32 @@ try {
                     </div>
 
                     <div class="info-group">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom:5px;">
-                            <h3 style="margin:0; border:none; padding:0;">Animals</h3>
-                            <button type="button" id="btnAddAnimal" class="btn-base" style="padding: 6px 12px; background: rgba(59, 130, 246, 0.2); color: #60a5fa;" onclick="addAnimalRow()">+ Add Animal</button>
+                        <div id="bulk-row-controls" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom:10px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="margin:0; border:none; padding:0; width:100%;">Animals to Purchase</h3>
+                            <div style="display:flex; gap:10px; align-items:flex-end;">
+                                <div style="display:flex; flex-direction:column; gap:4px; width: 60px;">
+                                    <label style="font-size:0.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Qty</label>
+                                    <input type="number" id="row_qty" value="1" min="1" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; outline: none; font-size:0.9rem;">
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:4px; width: 90px;">
+                                    <label style="font-size:0.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Wt (kg)</label>
+                                    <input type="number" id="default_weight" placeholder="Opt." step="0.01" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; outline: none; font-size:0.9rem;">
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:4px; width: 100px;">
+                                    <label style="font-size:0.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Cost (₱)</label>
+                                    <input type="number" id="default_cost" placeholder="Opt." step="0.01" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; outline: none; font-size:0.9rem;">
+                                </div>
+                                <button type="button" id="btnAddAnimalTop" class="btn-base" style="padding: 8px 16px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; height: 35px; font-size:0.85rem;" onclick="generateAnimalRows()">+ Add Row(s)</button>
+                            </div>
                         </div>
                         
                         <div id="dynamic-animal-container"></div>
                     </div>
                 </form>
             </div>
+            
             <div class="modal-footer">
+                <button type="button" id="btnFooterAddAnimal" class="btn-base" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; margin-right: auto;" onclick="generateAnimalRows()">+ Add Row(s)</button>
                 <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
                 <button type="button" class="btn-save" id="btn-save" onclick="saveItem()">Save Purchase</button>
             </div>
@@ -641,7 +657,20 @@ try {
             }
         }
 
-        // --- Dynamic Rows & Autocomplete ---
+        // --- Dynamic Rows Generator ---
+        function generateAnimalRows() {
+            const qty = parseInt(document.getElementById('row_qty').value) || 1;
+            const defWeight = document.getElementById('default_weight').value;
+            const defCost = document.getElementById('default_cost').value;
+            
+            for(let i = 0; i < qty; i++) {
+                addAnimalRow('', defWeight, defCost);
+            }
+            
+            // Reset qty to 1 after bulk add to prevent accidental massive additions
+            document.getElementById('row_qty').value = 1;
+        }
+
         function addAnimalRow(name = '', weight = '', cost = '') {
             const container = document.getElementById('dynamic-animal-container');
             const rowId = 'row-' + Date.now() + Math.floor(Math.random() * 100);
@@ -649,7 +678,7 @@ try {
             const html = `
                 <div class="dynamic-row" id="${rowId}">
                     <div class="form-group autocomplete-wrapper" style="flex:2;">
-                        <label>Animal / Breed <span>*</span></label>
+                        <label>Animal Tag <span>*</span></label>
                         <input type="text" name="item_names[]" class="form-input animal-input" value="${name}" required autocomplete="off">
                         <div class="autocomplete-list"></div>
                     </div>
@@ -786,9 +815,18 @@ try {
                 document.getElementById('pen_id').disabled = true;
             }
             
+            // Reset Row Generator UI Defaults
+            document.getElementById('row_qty').value = '1';
+            document.getElementById('default_weight').value = '';
+            document.getElementById('default_cost').value = '';
+
             // Clear existing rows and add one blank
             document.getElementById('dynamic-animal-container').innerHTML = '';
-            document.getElementById('btnAddAnimal').style.display = 'block';
+            
+            // Show bulk row controls for ADD mode
+            document.getElementById('bulk-row-controls').style.display = 'flex';
+            document.getElementById('btnFooterAddAnimal').style.display = 'flex'; 
+
             addAnimalRow(); 
 
             hideAlert();
@@ -818,9 +856,13 @@ try {
                 if(data.pen_id) document.getElementById('pen_id').value = data.pen_id;
             }
 
-            // Clear and add specific row (Disable adding multiple on Edit)
+            // Clear and add specific row
             document.getElementById('dynamic-animal-container').innerHTML = '';
-            document.getElementById('btnAddAnimal').style.display = 'none'; // Only edit 1 at a time
+            
+            // HIDE Row generator controls because EDIT mode is strict 1:1
+            document.getElementById('bulk-row-controls').style.display = 'none';
+            document.getElementById('btnFooterAddAnimal').style.display = 'none';
+
             addAnimalRow(data.item_name, data.weight, data.unit_cost);
             
             // Remove the delete button from the single row since we can't have 0 rows

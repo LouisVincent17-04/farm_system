@@ -11,7 +11,9 @@ header('Access-Control-Allow-Origin: *');
 
 // FIX 1: Removed :80 — HTTPS runs on 443, not 80. Forcing :80
 // causes cURL to fail the TLS handshake entirely.
-define('CHATBOT_API_URL', 'http://localhost:5000/chat');
+// FIX 2: Pointed to the actual network IP of the Python server instead of localhost
+define('CHATBOT_API_URL', 'http://10.1.1.33:5000/chat');
+
 // ── Read JSON body from fetch() ──────────────────────────────
 $raw     = file_get_contents('php://input');
 $body    = json_decode($raw, true);
@@ -33,7 +35,7 @@ curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_HTTPHEADER     => [
         'Content-Type: application/json',
-        'ngrok-skip-browser-warning: true',  // FIX 2: bypass ngrok interstitial page
+        'ngrok-skip-browser-warning: true',  // bypass ngrok interstitial page
     ],
     CURLOPT_POSTFIELDS     => json_encode(['message' => $message]),
     CURLOPT_TIMEOUT        => 7,
@@ -78,3 +80,4 @@ if (!$decoded) {
 }
 
 echo json_encode($decoded);
+?>

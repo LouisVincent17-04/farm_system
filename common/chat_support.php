@@ -228,10 +228,8 @@
     }
 </style>
 
-<!-- TOGGLE BUTTON -->
 <button id="cb-toggle" title="Chat with Assistant">🤖</button>
 
-<!-- CHAT WINDOW -->
 <div id="cb-window">
     <div id="cb-header">
         <div class="cb-avatar">🤖</div>
@@ -253,13 +251,11 @@
         </div>
     </div>
 
-    <!-- Voice listening status bar -->
     <div id="cb-voice-status">🔴 Listening… speak now</div>
 
     <div id="cb-input-area">
         <input type="text" id="cb-input" placeholder="Type or speak a message…" />
 
-        <!-- Mic button -->
         <button id="cb-mic" title="Click to speak">
             <span class="cb-mic-ring"></span>
             <span class="cb-mic-ring"></span>
@@ -460,7 +456,13 @@
         .then(data => {
             clearTimeout(timeoutId);
             typingEl.remove();
-            renderBotResponse(data);
+            
+            // Check for explicit connection errors returned from PHP wrapper
+            if (data.status === 'error') {
+                appendBotHTML(data.message);
+            } else {
+                renderBotResponse(data);
+            }
         })
         .catch(err => {
             clearTimeout(timeoutId);

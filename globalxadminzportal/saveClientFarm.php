@@ -12,12 +12,11 @@ require_once '../config/SadminConnection.php'; // Master DB Connection ($conn)
 // Used only to inject the schema into the newly created farm database.
 // Must have CREATE DATABASE, CREATE USER, GRANT privileges.
 // ============================================================================
-$master_db_host = "localhost";
-$master_db_user = "root"; // <-- CHANGE THIS if needed
-$master_db_pass = "v1i1n1x1";     // <-- CHANGE THIS if needed
+$master_db_host = "192.168.1.131";
+$master_db_user = "pisadmin";
+$master_db_pass = "adminpis";
 // ============================================================================
 
-// FIX: was $_SESSION['admin'] — now uses unified session key
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
     exit;
@@ -33,14 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         exit;
     }
     try {
-        // Check 1: MySQL schema doesn't already exist
         $stmt = $conn->prepare("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
         $stmt->execute([$db_name]);
         if ($stmt->fetch()) {
             echo json_encode(['available' => false]);
             exit;
         }
-        // Check 2: Not already registered in database_connections
         $stmt2 = $conn->prepare("SELECT db_key FROM database_connections WHERE db_name = ? LIMIT 1");
         $stmt2->execute([$db_name]);
         if ($stmt2->fetch()) {
@@ -117,50 +114,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $owner_user_id   = $existingUser['user_id'];
         $owner_name      = $existingUser['full_name'];
-        $app_pass_hashed = $existingUser['password']; // same hash goes into tenant DB
+        $app_pass_hashed = $existingUser['password'];
 
         // Mark user as owner
         $conn->prepare("UPDATE users SET is_owner = 1 WHERE user_id = ?")
              ->execute([$owner_user_id]);
 
         // Generate a unique farm_code for this specific farm (e.g. FP-3A9F1C)
-        // farm_code lives on farms — each farm gets its own unique code
         $farm_code = 'FP-' . strtoupper(substr(md5(uniqid()), 0, 6));
 
-        // ── Generate the db_key (opaque routing slug) and DB credentials ──────
-        // db_key = the "Farm Key" shown to owners and used by employees to self-register
-        $db_key  = 'farm_' . bin2hex(random_bytes(6)); // e.g. farm_3a9f1c82de04
-        $db_user = substr($db_name, 0, 16) . '_' . rand(100, 999);
+        // ── Generate the db_key and DB credentials ────────────────────────────
+        // FIX: MySQL username limit is 16 chars.
+        // substr(db_name, 0, 12) + '_' + 3 digits = max 16 chars total.
+        $db_key  = 'farm_' . bin2hex(random_bytes(6));
+        $db_user = substr($db_name, 0, 12) . '_' . rand(100, 999);
         $db_pass = bin2hex(random_bytes(8));
 
         // ── DDL: Create the new MySQL database and its dedicated user ─────────
         $conn->exec("CREATE DATABASE `$db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         $db_created = true;
 
-        $conn->exec("CREATE USER '$db_user'@'localhost' IDENTIFIED BY '$db_pass'");
+        $conn->exec("CREATE USER '$db_user'@'%' IDENTIFIED BY '$db_pass'");
         $user_created = true;
 
-        $conn->exec("GRANT ALL PRIVILEGES ON `$db_name`.* TO '$db_user'@'localhost'");
+        $conn->exec("GRANT ALL PRIVILEGES ON `$db_name`.* TO '$db_user'@'%'");
+
+        // Grant master user (pisadmin) access to the new DB so it can inject
+        // the schema below. 
+        // FIX: Explicitly grant to the connecting IP, not just '%'
+        $conn->exec("GRANT ALL PRIVILEGES ON `$db_name`.* TO '$master_db_user'@'$master_db_host'");
+        $conn->exec("GRANT ALL PRIVILEGES ON `$db_name`.* TO '$master_db_user'@'%'"); // Fallback
+
         $conn->exec("FLUSH PRIVILEGES");
 
-        // ============================================================================
-        // MIGRATE THE FULL SCHEMA INTO THE NEW FARM DATABASE
-        //
-        // This schema is copied exactly from farm_system.sql — every table, every
-        // index, every FK, every seeded reference row. Only structure is deployed;
-        // no operational data (animals, feeds, etc.) is seeded.
-        //
-        // FIXES vs old version:
-        //   - Added: disease_treatments (was missing)
-        //   - Added: farm_transactions  (was missing)
-        //   - feeds: kept TOTAL_WEIGHT_KG (matches farm_system.sql exactly)
-        //   - farm_roles: seeded all 4 default roles (old only had 1)
-        //   - item_types: seeded with correct IDs matching farm_system.sql
-        //   - units: seeded with correct 4 rows
-        //   - service_day_limits: seeded 5 rows
-        //   - access_control: seeds owner row with ALL permissions = 1
-        //   - USER_TYPE 4 = Super Admin (from user_types lookup)
-        // ============================================================================
         try {
             $tenant_conn = new PDO(
                 "mysql:host=$master_db_host;dbname=$db_name;charset=utf8mb4",
@@ -173,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- ── user_types (reference — must exist before users FK) ──────────────────────
+-- ── user_types ────────────────────────────────────────────────────────────────
 DROP TABLE IF EXISTS `user_types`;
 CREATE TABLE `user_types` (
   `USER_TYPE_ID`   int(11) NOT NULL,
@@ -205,6 +191,9 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
 
 -- ── access_control ───────────────────────────────────────────────────────────
+-- NOTE: `suppliers` is included here as a permission column (controls access
+-- to the Suppliers management page in the farm app). It is separate from the
+-- `suppliers` data table which holds actual supplier records.
 DROP TABLE IF EXISTS `access_control`;
 CREATE TABLE `access_control` (
   `id`       int(11) NOT NULL AUTO_INCREMENT,
@@ -504,7 +493,7 @@ CREATE TABLE `diseases` (
   INDEX `idx_disease_name`(`DISEASE_NAME`(191)) USING BTREE
 ) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
 
--- ── disease_treatments (WAS MISSING — NOW ADDED) ─────────────────────────────
+-- ── disease_treatments ────────────────────────────────────────────────────────
 DROP TABLE IF EXISTS `disease_treatments`;
 CREATE TABLE `disease_treatments` (
   `TREATMENT_ID`   int(11) NOT NULL AUTO_INCREMENT,
@@ -848,7 +837,7 @@ CREATE TABLE `transaction_types` (
   PRIMARY KEY (`TRANS_TYPE_ID`) USING BTREE
 ) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
 
--- ── farm_transactions (WAS MISSING — NOW ADDED) ───────────────────────────────
+-- ── farm_transactions ─────────────────────────────────────────────────────────
 DROP TABLE IF EXISTS `farm_transactions`;
 CREATE TABLE `farm_transactions` (
   `TRANS_ID`      int(11) NOT NULL AUTO_INCREMENT,
@@ -1047,9 +1036,6 @@ SQL;
             ");
 
             // ── Seed owner as Farm Super Admin (USER_TYPE=4) ──────────────────
-            // USER_TYPE 4 = 'Super Admin' from user_types seeded above.
-            // IS_ACTIVE=1 so they can log in immediately.
-            // PASSWORD is the same bcrypt hash from the central users table.
             $clean_phone = preg_replace('/[^0-9]/', '', $owner_phone);
 
             $stmtSeedUser = $tenant_conn->prepare("
@@ -1064,13 +1050,14 @@ SQL;
             ]);
             $owner_tenant_uid = (int)$tenant_conn->lastInsertId();
 
-            // ── Seed full access_control for owner (all 83 permission cols = 1) ─
+            // ── Seed full access_control for owner (all permissions = 1) ─────
+            // Column count: 85 permission cols (84 original + suppliers) + user_id + created_at
             $tenant_conn->prepare("
                 INSERT INTO access_control (
                     user_id,
                     dashboard, animal_record, farm_roles, employee_list,
                     animal_type, location, building, pen, breed,
-                    veterinary, diseases, buyer,
+                    veterinary, diseases, buyer, suppliers,
                     costing, animal_cost,
                     feed_consumption, medication_treatment, vaccinations, vitamins_supplements, veterinary_checkups,
                     farm, animal_class, edit_bio_info, event_scheduler,
@@ -1099,21 +1086,33 @@ SQL;
                     created_at
                 ) VALUES (
                     ?,
-                    1,1,1,1, 1,1,1,1,1,
-                    1,1,1, 1,1,
+                    1,1,1,1,
                     1,1,1,1,1,
-                    1,1,1,1, 1,1,1,1,1,
+                    1,1,1,1,
+                    1,1,
+                    1,1,1,1,1,
+                    1,1,1,1,
+                    1,1,1,1,1,
                     1,1,1,
-                    1,1,1, 1,1,1,
-                    1,1, 1,1,
-                    1,1, 1,1,
-                    1,1,1,1, 1,1,
-                    1,1, 1,1,
-                    1,1, 1,1,1,
-                    1,1,1, 1,1,
+                    1,1,1,
+                    1,1,1,
+                    1,1,
+                    1,1,
+                    1,1,
+                    1,1,
                     1,
-                    1,1,1,1, 1,1,1,1,1,
-                    1,1,1, 1,1,1,
+                    1,1,1,1,
+                    1,1,
+                    1,1,
+                    1,1,
+                    1,1,1,
+                    1,1,
+                    1,1,1,1,
+                    1,
+                    1,1,1,1,
+                    1,1,1,1,1,
+                    1,1,1,
+                    1,1,1,
                     1,1,1,
                     NOW()
                 )
@@ -1128,7 +1127,6 @@ SQL;
         // ── Record everything in the master DB ────────────────────────────────
         $conn->beginTransaction();
 
-        // Insert farm with its own unique farm_code
         $stmtFarm = $conn->prepare("
             INSERT INTO farms (farm_name, owner_id, farm_status, farm_code, db_key)
             VALUES (?, ?, 1, ?, ?)
@@ -1136,35 +1134,32 @@ SQL;
         $stmtFarm->execute([$farm_name, $owner_user_id, $farm_code, $db_key]);
         $farm_id = $conn->lastInsertId();
 
-        // Store connection credentials in database_connections
         $conn->prepare("
             INSERT INTO database_connections (db_key, db_name, db_host, db_user, db_pass, db_port)
-            VALUES (?, ?, 'localhost', ?, ?, 3306)
-        ")->execute([$db_key, $db_name, $db_user, $db_pass]);
+            VALUES (?, ?, ?, ?, ?, 3306)
+        ")->execute([$db_key, $db_name, $master_db_host, $db_user, $db_pass]);
 
-        // Assign owner to their new farm
         $conn->prepare("INSERT INTO assigned_farms (user_id, farm_id) VALUES (?, ?)")
              ->execute([$owner_user_id, $farm_id]);
 
         $conn->commit();
 
         echo json_encode([
-            'success'    => true,
-            'message'    => 'Farm database provisioned successfully.',
-            'farm_code'  => $farm_code,  // ← human-friendly code; owner shares with employees
-            'db_name'    => $db_name,    // ← internal reference only
-            'farm_id'    => $farm_id,
+            'success'   => true,
+            'message'   => 'Farm database provisioned successfully.',
+            'farm_code' => $farm_code,
+            'db_name'   => $db_name,
+            'farm_id'   => $farm_id,
         ]);
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-
-        // Clean up any MySQL resources that were physically created before failure
         try {
             if ($user_created && $db_user) {
                 $conn->exec("DROP USER IF EXISTS '$db_user'@'localhost'");
+                $conn->exec("DROP USER IF EXISTS '$db_user'@'%'");
                 $conn->exec("FLUSH PRIVILEGES");
             }
             if ($db_created) {
@@ -1180,3 +1175,4 @@ SQL;
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
 }
+?>

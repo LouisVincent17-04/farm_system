@@ -376,7 +376,7 @@ try {
         </div>
     </div>
 
-    <form id="deleteBreedForm" method="POST" action="../process/deleteBreed.php" style="display: none;">
+    <form id="deleteBreedForm" method="POST" action="../process/deleteBreeds.php" style="display: none;">
         <input type="hidden" id="delete_breed_id" name="breed_id">
     </form>
 

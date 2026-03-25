@@ -363,7 +363,7 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
         const preset     = presets[roleId];
 
         if (preset === 'ALL') {
-            checkboxes.forEach(cb => { if (!cb.disabled) cb.checked = true; });
+            checkboxes.forEach(cb => { cb.checked = true; });
         } else if (preset === 'ALL_EXCEPT_SYSTEM') {
             checkboxes.forEach(cb => {
                 if (cb.disabled) return;
@@ -379,6 +379,7 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
 
         // Always apply restrictions after setting checkboxes —
         // this unchecks and disables anything the role isn't allowed to have
+        // The 
         applyRestrictions(roleId);
     }
 
@@ -386,7 +387,7 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
     function toggleCard(link) {
         const card       = link.closest('.card');
         const checkboxes = Array.from(card.querySelectorAll('input[type="checkbox"]:not(:disabled)'));
-        const allChecked = checkboxes.every(cb => cb.checked);
+        const allChecked = checkboxes.every(cb => cb.checke-d);
         checkboxes.forEach(cb => cb.checked = !allChecked);
         updateCardHeaderText(card);
     }

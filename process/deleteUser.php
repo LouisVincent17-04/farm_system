@@ -15,7 +15,7 @@ if (!isset($_SESSION['user']['USER_ID'])) {
     exit;
 }
 
-$admin_id   = $_SESSION['user']['USER_ID'];
+$user_id   = $_SESSION['user']['USER_ID'];
 $admin_name = $_SESSION['user']['FULL_NAME'] ?? 'System';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
@@ -37,7 +37,7 @@ if (!$target_user_id) {
     exit;
 }
 
-if ($target_user_id == $admin_id) {
+if ($target_user_id == $user_id) {
     echo json_encode([
         'success' => false,  // ✅ Changed
         'message' => 'You cannot deactivate your own account.'
@@ -97,7 +97,7 @@ try {
 
     $log_stmt = $conn->prepare($log_sql);
     $log_stmt->execute([
-        ':user_id'  => $admin_id,
+        ':user_id'  => $user_id,
         ':username' => $admin_name,
         ':details'  => $details,
         ':ip'       => $ip_address

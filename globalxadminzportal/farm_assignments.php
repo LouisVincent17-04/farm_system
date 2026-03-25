@@ -206,7 +206,7 @@ $full_name = $_SESSION['full_name'] ?? 'Admin';
             $assignments = $conn->query("
                 SELECT af.assignment_id, af.assigned_at, a.full_name, a.email, f.farm_name
                 FROM assigned_farms af
-                JOIN admin_users a ON a.admin_id = af.admin_id
+                JOIN users a ON a.user_id = af.user_id
                 JOIN farms f ON f.farm_id = af.farm_id
                 ORDER BY af.assigned_at DESC
             ")->fetchAll();

@@ -24,7 +24,7 @@ if (empty($email)) {
 }
 
 try {
-    $stmt = $conn->prepare("SELECT * FROM admin_users WHERE email = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
     $stmt->execute([$email]);
     $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -58,10 +58,10 @@ try {
                 SELECT f.farm_id, f.farm_name, f.db_name, f.status AS farm_status
                 FROM farm_activity_log l
                 JOIN farms f ON l.farm_id = f.farm_id
-                WHERE l.admin_id = ? AND l.action = 'CLIENT_REGISTERED'
+                WHERE l.user_id = ? AND l.action = 'CLIENT_REGISTERED'
                 ORDER BY l.created_at DESC LIMIT 1
             ");
-            $farmStmt->execute([$admin['admin_id']]);
+            $farmStmt->execute([$admin['user_id']]);
             $farm = $farmStmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$farm) {

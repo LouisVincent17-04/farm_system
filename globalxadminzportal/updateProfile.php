@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$admin_id = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
 
@@ -37,7 +37,7 @@ if ($action === 'update_info') {
     try {
         // Check if the new email is already taken by a different user
         $check = $conn->prepare("SELECT user_id FROM users WHERE email = ? AND user_id != ?");
-        $check->execute([$email, $admin_id]);
+        $check->execute([$email, $user_id]);
         if ($check->fetch()) {
             echo json_encode(['success' => false, 'message' => 'This email is already in use by another account.']);
             exit;
@@ -45,7 +45,7 @@ if ($action === 'update_info') {
 
         // Update the database
         $stmt = $conn->prepare("UPDATE users SET full_name = ?, email = ? WHERE user_id = ?");
-        $stmt->execute([$full_name, $email, $admin_id]);
+        $stmt->execute([$full_name, $email, $user_id]);
 
         // Update the active session variables so the UI reflects the change immediately
         $_SESSION['full_name'] = $full_name;
@@ -78,7 +78,7 @@ if ($action === 'update_password') {
     try {
         // 1. Fetch the user's current hashed password from the database
         $stmt = $conn->prepare("SELECT password FROM users WHERE user_id = ?");
-        $stmt->execute([$admin_id]);
+        $stmt->execute([$user_id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) {
@@ -96,7 +96,7 @@ if ($action === 'update_password') {
         $new_hashed = password_hash($new_password, PASSWORD_DEFAULT);
         
         $update = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
-        $update->execute([$new_hashed, $admin_id]);
+        $update->execute([$new_hashed, $user_id]);
 
         echo json_encode(['success' => true, 'message' => 'Password changed successfully!']);
     } catch (Exception $e) {

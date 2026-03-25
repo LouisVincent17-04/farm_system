@@ -301,7 +301,7 @@ include '../common/chat_support.php';
             <h2 class="stats-title">Reporting Overview</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-value">24</div>
+                    <div class="stat-value">20</div>
                     <div class="stat-desc">Report Types</div>
                 </div>
                 <div class="stat-card">
@@ -311,18 +311,6 @@ include '../common/chat_support.php';
                 <div class="stat-card">
                     <div class="stat-value">1,847</div>
                     <div class="stat-desc">This Month</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">98%</div>
-                    <div class="stat-desc">Data Accuracy</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">45</div>
-                    <div class="stat-desc">Scheduled</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">5</div>
-                    <div class="stat-desc">Pending</div>
                 </div>
             </div>
         </div>

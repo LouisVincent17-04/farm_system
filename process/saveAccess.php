@@ -5,7 +5,7 @@ require_once '../config/Connection.php';
 require_once '../config/PageList.php';
 
 // --- AUDIT LOG CONTEXT ---
-$admin_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
+$user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : 1; // Default to 1 (System)
 $admin_name = $_SESSION['user']['FULL_NAME'] ?? 'System';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $logStmt = $conn->prepare("INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
                                    VALUES (?, ?, ?, 'ACCESS_CONTROL', ?, ?)");
-        $logStmt->execute([$admin_id, $admin_name, $audit_action, $audit_details, $ip_address]);
+        $logStmt->execute([$user_id, $admin_name, $audit_action, $audit_details, $ip_address]);
 
         $conn->commit();
 

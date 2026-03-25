@@ -64,6 +64,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // ============================================================================
+// AJAX: JOIN FARM VIA FARM CODE
+// ============================================================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'join_farm') {
+    @ob_end_clean();
+    header('Content-Type: application/json');
+    try {
+        $farm_code = trim($_POST['farm_code'] ?? '');
+        if (empty($farm_code)) throw new Exception("Please enter a farm code.");
+
+        // 1. Verify Farm Code
+        $stmt = $conn->prepare("
+            SELECT f.farm_id, dc.db_name 
+            FROM farms f 
+            JOIN database_connections dc ON dc.db_key = f.db_key 
+            WHERE f.farm_code = ? AND f.farm_status = 1
+        ");
+        $stmt->execute([$farm_code]);
+        $farm = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$farm) throw new Exception("Invalid or inactive farm code.");
+
+        $target_farm_id = $farm['farm_id'];
+        $tenant_db_name = $farm['db_name'];
+
+        // 2. Check if user is already assigned
+        $check = $conn->prepare("SELECT 1 FROM assigned_farms WHERE user_id = ? AND farm_id = ?");
+        $check->execute([$user_id, $target_farm_id]);
+        if ($check->fetch()) throw new Exception("You are already a member of this farm.");
+
+        // 3. Assign in central DB
+        $conn->prepare("INSERT INTO assigned_farms (user_id, farm_id) VALUES (?, ?)")->execute([$user_id, $target_farm_id]);
+
+        // 4. Fetch User's details to copy to Tenant DB
+        $uStmt = $conn->prepare("SELECT full_name, email, password, phone_no FROM users WHERE user_id = ?");
+        $uStmt->execute([$user_id]);
+        $me = $uStmt->fetch(PDO::FETCH_ASSOC);
+
+        // 5. Connect to Tenant DB and inject/activate user
+        try {
+            $tenantConn = new PDO(
+                "mysql:host=192.168.1.131;dbname={$tenant_db_name};charset=utf8mb4",
+                'pisadmin', 'adminpis',
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+
+            $tCheck = $tenantConn->prepare("SELECT USER_ID FROM users WHERE EMAIL = ?");
+            $tCheck->execute([$me['email']]);
+            
+            if ($tCheck->fetch()) {
+                // If exists, just activate and set as employee
+                $tenantConn->prepare("UPDATE users SET IS_ACTIVE = 1, USER_TYPE = 2 WHERE EMAIL = ?")->execute([$me['email']]);
+            } else {
+                // If doesn't exist, insert new record
+                $clean_phone = preg_replace('/[^0-9]/', '', $me['phone_no']);
+                $tenantConn->prepare("
+                    INSERT INTO users (FULL_NAME, EMAIL, CONTACT_INFO, PASSWORD, USER_TYPE, IS_ACTIVE, CREATED_AT)
+                    VALUES (?, ?, ?, ?, 2, 1, NOW())
+                ")->execute([$me['full_name'], $me['email'], $clean_phone ?: null, $me['password']]);
+            }
+        } catch (Exception $e) {
+            error_log("join_farm tenant DB error: " . $e->getMessage());
+            // We intentionally don't throw here so the central assignment still succeeds
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Successfully joined the farm!']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ============================================================================
 // AJAX: Search users already assigned to a specific farm
 // ============================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'search_user') {
@@ -359,7 +431,7 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
         .btn-launch-farm.already-active{background:rgba(61,214,140,.1);color:var(--accent);border:1px solid rgba(61,214,140,.3);}
         .launch-status{margin-top:.75rem;font-size:.8rem;text-align:center;color:var(--muted);min-height:18px;}
 
-        /* Assign button */
+        /* Action buttons */
         .btn-assign{background:linear-gradient(135deg,var(--blue),#2563eb);border:none;color:#fff;padding:10px 20px;border-radius:8px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px;font-size:.88rem;}
         .btn-assign:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(59,130,246,.3);}
 
@@ -417,12 +489,19 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
             <h1 class="page-title">My Farms</h1>
             <p class="page-sub">Click a farm to view its details and launch the dashboard.</p>
         </div>
-        <?php if ($is_owner && !empty($my_farms)): ?>
-        <button class="btn-assign" onclick="openAssignModal()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-            Assign User
-        </button>
-        <?php endif; ?>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-assign" style="background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #051a0e;" onclick="openJoinModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Join Farm
+            </button>
+
+            <?php if ($is_owner && !empty($my_farms)): ?>
+            <button class="btn-assign" onclick="openAssignModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                Assign User
+            </button>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if (isset($_SESSION['active_farm'])): ?>
@@ -437,7 +516,7 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
         <div class="empty-state">
             <div style="font-size:3rem;margin-bottom:1rem;">🌾</div>
             <h3 style="color:#fff;margin-bottom:.5rem;">No Farms Assigned</h3>
-            <p>You have not been assigned to any farms yet. Contact your administrator.</p>
+            <p>You have not been assigned to any farms yet. Use a farm code to join one.</p>
         </div>
     <?php else: ?>
         <div class="farms-grid">
@@ -482,7 +561,6 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
 
 </main>
 
-<!-- ── Farm Info Drawer ──────────────────────────────────────────────────── -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="farmDrawer">
     <div class="drawer-header">
@@ -536,7 +614,6 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
         </button>
         <div class="launch-status" id="launchStatus"></div>
 
-        <!-- Pending employees section — only for owners -->
         <?php if ($is_owner): ?>
         <div class="divider" style="margin-top:1.5rem;"></div>
         <div id="pendingSection">
@@ -555,7 +632,28 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
     </div>
 </div>
 
-<!-- ── Assign Modal ──────────────────────────────────────────────────────── -->
+<div class="modal" id="joinModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Join a Farm</h2>
+            <button class="modal-close" onclick="closeJoinModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="joinForm" onsubmit="submitJoinFarm(event)">
+                <input type="hidden" name="action" value="join_farm">
+
+                <div class="form-group">
+                    <label class="form-label">Farm Code</label>
+                    <input type="text" name="farm_code" class="form-control" placeholder="e.g. FP-7A4B1C" required autocomplete="off" style="text-transform: uppercase;">
+                    <div style="font-size:.73rem;color:var(--muted);margin-top:8px;">Enter the invite code provided by your Farm Manager.</div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btnJoin" style="background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #051a0e;">Join Farm</button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="assignModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -677,7 +775,6 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
                 // Redirect to the FarmSystem login page
                 setTimeout(() => {
                     window.location.href = 'getUserInfoForFarm.php';
-                    
                 }, 800);
 
             } else {
@@ -707,7 +804,40 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
             const el = document.createElement('textarea');
             el.value = code; document.body.appendChild(el); el.select();
             document.execCommand('copy'); document.body.removeChild(el);
+            document.getElementById('btnCopyCode').textContent = '✅ Copied!';
         });
+    }
+
+    // ── Join Farm Modal ──────────────────────────────────────────────────────
+    function openJoinModal() {
+        document.getElementById('joinForm').reset();
+        document.getElementById('joinModal').classList.add('show');
+    }
+    function closeJoinModal() { 
+        document.getElementById('joinModal').classList.remove('show'); 
+    }
+    
+    async function submitJoinFarm(e) {
+        e.preventDefault();
+        const fd  = new FormData(document.getElementById('joinForm'));
+        const btn = document.getElementById('btnJoin');
+        
+        btn.disabled = true; 
+        btn.textContent = 'Verifying Code…';
+        
+        try {
+            const res  = await fetch(window.location.href, { method:'POST', body:fd });
+            const data = await res.json();
+            alert(data.success ? data.message : 'Error: ' + data.message);
+            if (data.success) {
+                window.location.reload(); // Reload to show the newly joined farm
+            }
+        } catch(err) { 
+            alert('System Error while attempting to join.'); 
+        }
+        
+        btn.disabled = false; 
+        btn.textContent = 'Join Farm';
     }
 
     // ── Assign modal ─────────────────────────────────────────────────────────

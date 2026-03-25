@@ -36,12 +36,12 @@ try {
 
     // 1. FETCH NAME FOR LOGGING AND ERROR MESSAGES
     // We do this first to ensure the ID exists and to get the name for the audit log
-    $name_sql = "SELECT ITEM_TYPE_NAME FROM ANIMAL_TYPE WHERE ANIMAL_TYPE_ID = :tid"; 
+    $name_sql = "SELECT ANIMAL_TYPE_NAME FROM ANIMAL_TYPE WHERE ANIMAL_TYPE_ID = :tid"; 
     $name_stmt = $conn->prepare($name_sql);
     $name_stmt->execute([':tid' => $animal_type_id]);
     
     $type_row = $name_stmt->fetch(PDO::FETCH_ASSOC);
-    $type_name = $type_row['ITEM_TYPE_NAME'] ?? 'ID ' . $animal_type_id;
+    $type_name = $type_row['ANIMAL_TYPE_NAME'] ?? 'ID ' . $animal_type_id;
 
     // 2. HARD DELETE ANIMAL TYPE
     $sqlDelete = "DELETE FROM ANIMAL_TYPE WHERE ANIMAL_TYPE_ID = :animal_type_id";

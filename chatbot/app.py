@@ -160,10 +160,14 @@ def batch():
     return jsonify({"results": results})
 
 # ── Start server ─────────────────────────────────────────────
+# if __name__ == "__main__":
+#     app.run(
+#         host="0.0.0.0",
+#         port=5000,
+#         debug=False,
+#         threaded=True
+#     )
+
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False,
-        threaded=True
-    )
+    from waitress import serve
+    serve(app, host="10.1.1.33", port=5000, threads=4)

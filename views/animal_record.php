@@ -14,15 +14,28 @@ include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
 
 // --- 1. HANDLING FILTERS ---
 // Auto-assign location filter if user is restricted
-$filter_loc = ($USER_LOCATION_ != 1000) ? $USER_LOCATION_ : ($_GET['f_loc'] ?? '');
-$filter_bld = $_GET['f_bld'] ?? '';
-$filter_pen = $_GET['f_pen'] ?? '';
+$filter_loc  = ($USER_LOCATION_ != 1000) ? $USER_LOCATION_ : ($_GET['f_loc'] ?? '');
+$filter_bld  = $_GET['f_bld'] ?? '';
+$filter_pen  = $_GET['f_pen'] ?? '';
+$filter_type = $_GET['f_type'] ?? '';
+$filter_brd  = $_GET['f_brd'] ?? '';
+$filter_sex  = $_GET['f_sex'] ?? '';
+$filter_stat = $_GET['f_status'] ?? 'Active'; // Default to active animals
+$filter_acq  = $_GET['f_acq'] ?? ''; // Acquisition Type: 1 (Purchased), 0 (Existing/Farm Born)
+
+// --- PAGINATION SETUP ---
+$limit = 50; 
+$page_no = isset($_GET['page_no']) ? max(1, (int)$_GET['page_no']) : 1;
+$offset = ($page_no - 1) * $limit;
+$total_pages = 1;
+$total_records = 0;
 
 $animal_data = [];
 $animal_types = [];
 $locations = [];
 $filter_buildings = [];
 $filter_pens = [];
+$filter_breeds = [];
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -49,15 +62,44 @@ try {
         $stmt->execute([$filter_bld]);
         $filter_pens = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    if ($filter_type) {
+        $stmt = $conn->prepare("SELECT * FROM Breeds WHERE ANIMAL_TYPE_ID = ? ORDER BY BREED_NAME");
+        $stmt->execute([$filter_type]);
+        $filter_breeds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-    // --- 3. FETCH ANIMALS ---
-    if (!empty($filter_loc) || !empty($filter_bld) || !empty($filter_pen)) {
+    // --- 3. FETCH ANIMALS (WITH PAGINATION) ---
+    if (!empty($filter_loc) || !empty($filter_bld) || !empty($filter_pen) || !empty($filter_type) || !empty($filter_brd) || !empty($filter_sex) || !empty($filter_stat) || $filter_acq !== '') {
         
+        $where_sql = " WHERE 1=1";
+        $params = [];
+
+        // Apply Hierarchical Filters
+        if ($filter_loc) { $where_sql .= " AND a.LOCATION_ID = :loc"; $params[':loc'] = $filter_loc; }
+        if ($filter_bld) { $where_sql .= " AND a.BUILDING_ID = :bld"; $params[':bld'] = $filter_bld; }
+        if ($filter_pen) { $where_sql .= " AND a.PEN_ID = :pen"; $params[':pen'] = $filter_pen; }
+        
+        // Apply Specific Filters
+        if ($filter_type) { $where_sql .= " AND a.ANIMAL_TYPE_ID = :type"; $params[':type'] = $filter_type; }
+        if ($filter_brd)  { $where_sql .= " AND a.BREED_ID = :brd"; $params[':brd'] = $filter_brd; }
+        if ($filter_sex)  { $where_sql .= " AND a.SEX = :sex"; $params[':sex'] = $filter_sex; }
+        if ($filter_stat) { $where_sql .= " AND a.CURRENT_STATUS = :stat"; $params[':stat'] = $filter_stat; }
+        if ($filter_acq !== '') { $where_sql .= " AND a.IS_PURCHASED = :acq"; $params[':acq'] = $filter_acq; }
+
+        // Get Total Count for Pagination
+        $count_sql = "SELECT COUNT(*) FROM Animal_Records a " . $where_sql;
+        $count_stmt = $conn->prepare($count_sql);
+        foreach($params as $key => $val) { $count_stmt->bindValue($key, $val); }
+        $count_stmt->execute();
+        $total_records = $count_stmt->fetchColumn();
+        $total_pages = ceil($total_records / $limit);
+
+        // Fetch Data for Current Page
         $sql = "SELECT 
                     a.ANIMAL_ID, a.TAG_NO, a.SEX, a.BIRTH_DATE, a.CURRENT_STATUS, 
                     a.LOCATION_ID, a.BUILDING_ID, a.PEN_ID, a.ANIMAL_TYPE_ID, a.BREED_ID, a.ANIMAL_ITEM_ID,
                     a.WEIGHT_AT_BIRTH, a.CURRENT_ESTIMATED_WEIGHT, a.CURRENT_ACTUAL_WEIGHT, a.ACQUISITION_COST,
-                    a.MOTHER_ID, a.FATHER_ID,
+                    a.MOTHER_ID, a.FATHER_ID, a.IS_PURCHASED,
                     at.ANIMAL_TYPE_NAME, b.BREED_NAME, l.LOCATION_NAME, 
                     ac.STAGE_NAME,  
                     bld.BUILDING_NAME, p.PEN_NAME,
@@ -73,23 +115,25 @@ try {
                 LEFT JOIN animal_classifications ac ON a.CLASS_ID = ac.CLASS_ID 
                 LEFT JOIN Animal_Records m ON a.MOTHER_ID = m.ANIMAL_ID 
                 LEFT JOIN Animal_Records f ON a.FATHER_ID = f.ANIMAL_ID 
-                WHERE a.IS_ACTIVE = 1";
-
-        $params = [];
-
-        if ($filter_loc) { $sql .= " AND a.LOCATION_ID = ?"; $params[] = $filter_loc; }
-        if ($filter_bld) { $sql .= " AND a.BUILDING_ID = ?"; $params[] = $filter_bld; }
-        if ($filter_pen) { $sql .= " AND a.PEN_ID = ?"; $params[] = $filter_pen; }
-
-        $sql .= " ORDER BY a.ANIMAL_ID DESC";
+                " . $where_sql . " ORDER BY a.ANIMAL_ID DESC LIMIT :limit OFFSET :offset";
         
         $stmt = $conn->prepare($sql);
-        $stmt->execute($params);
+        foreach($params as $key => $val) { $stmt->bindValue($key, $val); }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $animal_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 } catch (Exception $e) {
     echo "<script>console.error('Database Error: " . addslashes($e->getMessage()) . "');</script>";
+}
+
+// Function to generate pagination links while keeping active filters
+function getPaginationUrl($page_num) {
+    $params = $_GET;
+    $params['page_no'] = $page_num;
+    return '?' . http_build_query($params);
 }
 ?>
 
@@ -116,6 +160,7 @@ try {
             text-decoration: none; color: #94a3b8; font-weight: 600; 
             font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
         }
+
         .back-link:hover { color: white; }
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
@@ -128,14 +173,19 @@ try {
         .add-btn:hover { transform: translateY(-2px); }
         .btn-purchase { background: linear-gradient(135deg, #2563eb, #9333ea); }
         .btn-existing { background: linear-gradient(135deg, #f59e0b, #d97706); } 
+        #select_purchases { height: 2rem; }
         
-        /* Filter Bar */
-        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
+        /* Advanced Filter Bar */
+        .filter-bar { background: rgba(30, 41, 59, 0.6); border: 1px solid #475569; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; align-items: end; }
         .filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
-        .filter-group label { font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
-        .filter-select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border-color 0.2s;}
+        .filter-group label { font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.5px;}
+        .filter-select { width: 100%; padding: 10px 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; outline: none; transition: border-color 0.2s;}
         .filter-select:focus { border-color: #3b82f6; }
-        .btn-reset { padding: 12px 24px; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 8px; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; white-space: nowrap; transition: 0.2s;}
+        .filter-actions { display: flex; gap: 10px; grid-column: 1 / -1; margin-top: 10px; justify-content: flex-end; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px;}
+        .btn-filter-apply { padding: 10px 24px; background: #3b82f6; border: none; color: white; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;}
+        .btn-filter-apply:hover { background: #2563eb; }
+        .btn-reset { padding: 10px 24px; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 8px; text-decoration: none; font-weight: 600; display: flex; align-items: center; justify-content: center; white-space: nowrap; transition: 0.2s;}
         .btn-reset:hover { background: rgba(255,255,255,0.05); color: white; border-color: white;}
 
         /* Search */
@@ -144,8 +194,8 @@ try {
         .search-input:focus { border-color: #3b82f6; }
         
         /* Table */
-        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 12px; border: 1px solid #475569; overflow-x: auto; min-height: 200px; }
-        .table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 12px; border: 1px solid #475569; overflow-x: auto; min-height: 200px; display: flex; flex-direction: column;}
+        .table { width: 100%; border-collapse: collapse; min-width: 1200px; margin-bottom: auto;}
         .table thead { background: rgba(15, 23, 42, 0.5); }
         .table th { padding: 1rem 1.5rem; text-align: left; color: #e2e8f0; text-transform: uppercase; font-size: 0.85rem; font-weight: 600; white-space: nowrap; border-bottom: 1px solid #475569;}
         .table td { padding: 1rem 1.5rem; vertical-align: middle; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #cbd5e1;}
@@ -165,6 +215,14 @@ try {
         .action-btn.edit { color: #60a5fa; } .action-btn.edit:hover { color: #93c5fd; border-color: #3b82f6; background: rgba(59, 130, 246, 0.2);}
         .action-btn.delete { color: #f87171; } .action-btn.delete:hover { color: #fca5a5; border-color: #ef4444; background: rgba(239, 68, 68, 0.2);}
 
+        /* Pagination Styles */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 1rem; border-top: 1px solid #475569; background: rgba(15, 23, 42, 0.3); flex-wrap: wrap;}
+        .pagination a { background: rgba(255,255,255,0.05); color: #cbd5e1; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; border: 1px solid #475569; transition: 0.2s;}
+        .pagination a:hover { background: #3b82f6; border-color: #3b82f6; color: white; }
+        .pagination a.active { background: #3b82f6; border-color: #3b82f6; color: white; cursor: default;}
+        .pagination .dots { color: #94a3b8; padding: 0 5px; font-weight: bold;}
+        .pagination .total-info { color: #94a3b8; font-size: 0.85rem; font-weight: 500; margin-left: 10px;}
+
         /* Modal Styles */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
         
@@ -174,7 +232,7 @@ try {
         .modal.show { display: flex; }
         .modal-content { background: #1e293b; border-radius: 16px; width: 100%; max-width: 700px; padding: 0; border: 1px solid #475569; margin: auto; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);}
         .modal-content.large { max-width: 800px; }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
         .modal-header h2 { margin: 0; font-size: 1.4rem; color: #fff;}
         .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
         .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
@@ -209,6 +267,11 @@ try {
         .alert.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; }
         
         .icon { width: 18px; height: 18px; }
+
+        /* Bulk Add Table Styles */
+        #bulk-add-table { background: rgba(15, 23, 42, 0.4); border-radius: 8px; overflow: hidden; margin-top: 10px; width: 100%; border-collapse: collapse; }
+        #bulk-add-table th { background: rgba(30, 41, 59, 0.8); font-size: 0.8rem; padding: 10px; color: #94a3b8; text-transform: uppercase; text-align: left; }
+        #bulk-add-table td { padding: 10px; border-bottom: 1px solid #334155; vertical-align: middle; }
         
         /* Mobile Responsive */
         @media (max-width: 900px) {
@@ -217,8 +280,9 @@ try {
             .header-buttons { flex-direction: column; width: 100%; }
             .add-btn { width: 100%; justify-content: center; }
             
-            .filter-bar { grid-template-columns: 1fr; }
-            .btn-reset { width: 100%; }
+            .filter-grid { grid-template-columns: 1fr; }
+            .filter-actions { flex-direction: column; }
+            .btn-reset, .btn-filter-apply { width: 100%; justify-content: center;}
             
             .form-row, .lineage-row { grid-template-columns: 1fr; gap: 0;}
             .modal-footer { flex-direction: column; }
@@ -261,6 +325,7 @@ try {
             .animal-details h3 { font-size: 1.1rem; text-align: right; margin: 0;}
             .animal-type-info { text-align: right; }
             .actions { justify-content: flex-end; width: 100%; }
+            .pagination { flex-direction: column; }
         }
     </style>
 </head>
@@ -284,42 +349,103 @@ try {
         </div>
 
         <form method="GET" class="filter-bar">
-            <div class="filter-group">
-                <label>1. Location</label>
-                <select name="f_loc" class="filter-select" onchange="this.form.submit()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events: none; opacity: 0.7; background-color: #1e293b;"' : ''; ?>>
-                    <?php if($USER_LOCATION_ == 1000): ?>
-                        <option value="">-- All Locations --</option>
-                    <?php endif; ?>
-                    <?php foreach ($locations as $loc): ?>
-                        <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div class="filter-grid">
+                
+                <div class="filter-group">
+                    <label>Location</label>
+                    <select name="f_loc" class="filter-select" onchange="this.form.submit()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events: none; opacity: 0.7; background-color: #1e293b;"' : ''; ?>>
+                        <?php if($USER_LOCATION_ == 1000): ?>
+                            <option value="">All Locations</option>
+                        <?php endif; ?>
+                        <?php foreach ($locations as $loc): ?>
+                            <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Building</label>
+                    <select name="f_bld" class="filter-select" onchange="this.form.submit()" <?= empty($filter_loc) ? 'disabled' : '' ?>>
+                        <option value="">All Buildings</option>
+                        <?php foreach ($filter_buildings as $bld): ?>
+                            <option value="<?= $bld['BUILDING_ID'] ?>" <?= $filter_bld == $bld['BUILDING_ID'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($bld['BUILDING_NAME']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Pen</label>
+                    <select name="f_pen" class="filter-select" onchange="this.form.submit()" <?= empty($filter_bld) ? 'disabled' : '' ?>>
+                        <option value="">All Pens</option>
+                        <?php foreach ($filter_pens as $pen): ?>
+                            <option value="<?= $pen['PEN_ID'] ?>" <?= $filter_pen == $pen['PEN_ID'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($pen['PEN_NAME']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Animal Type</label>
+                    <select name="f_type" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        <?php foreach ($animal_types as $type): ?>
+                            <option value="<?= $type['ANIMAL_TYPE_ID'] ?>" <?= $filter_type == $type['ANIMAL_TYPE_ID'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($type['ANIMAL_TYPE_NAME']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Breed</label>
+                    <select name="f_brd" class="filter-select" onchange="this.form.submit()" <?= empty($filter_type) ? 'disabled' : '' ?>>
+                        <option value="">All Breeds</option>
+                        <?php foreach ($filter_breeds as $brd): ?>
+                            <option value="<?= $brd['BREED_ID'] ?>" <?= $filter_brd == $brd['BREED_ID'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($brd['BREED_NAME']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Sex</label>
+                    <select name="f_sex" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Sexes</option>
+                        <option value="M" <?= $filter_sex === 'M' ? 'selected' : '' ?>>Male</option>
+                        <option value="F" <?= $filter_sex === 'F' ? 'selected' : '' ?>>Female</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select name="f_status" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="Active" <?= $filter_stat === 'Active' ? 'selected' : '' ?>>Active</option>
+                        <option value="Sold" <?= $filter_stat === 'Sold' ? 'selected' : '' ?>>Sold</option>
+                        <option value="Deceased" <?= $filter_stat === 'Deceased' ? 'selected' : '' ?>>Deceased</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Acquisition</label>
+                    <select name="f_acq" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        <option value="1" <?= $filter_acq === '1' ? 'selected' : '' ?>>Purchased</option>
+                        <option value="0" <?= $filter_acq === '0' ? 'selected' : '' ?>>Farm Born / Existing</option>
+                    </select>
+                </div>
+                
             </div>
-            <div class="filter-group">
-                <label>2. Building</label>
-                <select name="f_bld" class="filter-select" onchange="this.form.submit()" <?= empty($filter_loc) ? 'disabled' : '' ?>>
-                    <option value="">-- All Buildings --</option>
-                    <?php foreach ($filter_buildings as $bld): ?>
-                        <option value="<?= $bld['BUILDING_ID'] ?>" <?= $filter_bld == $bld['BUILDING_ID'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($bld['BUILDING_NAME']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div class="filter-actions">
+                <a href="animal_records.php" class="btn-reset">Clear Filters</a>
+                <button type="submit" class="btn-filter-apply">Apply Filters</button>
             </div>
-            <div class="filter-group">
-                <label>3. Pen</label>
-                <select name="f_pen" class="filter-select" onchange="this.form.submit()" <?= empty($filter_bld) ? 'disabled' : '' ?>>
-                    <option value="">-- All Pens --</option>
-                    <?php foreach ($filter_pens as $pen): ?>
-                        <option value="<?= $pen['PEN_ID'] ?>" <?= $filter_pen == $pen['PEN_ID'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($pen['PEN_NAME']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <a href="animal_records.php" class="btn-reset">Reset</a>
         </form>
 
         <div class="search-container">
@@ -396,12 +522,38 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
+
+            <?php if ($total_pages > 1): ?>
+                <div class="pagination">
+                    <?php if ($page_no > 1): ?>
+                        <a href="<?= getPaginationUrl($page_no - 1) ?>">&laquo; Prev</a>
+                    <?php endif; ?>
+                    
+                    <?php
+                    $adjacents = 2; // How many pages around current page to show
+                    for ($i = 1; $i <= $total_pages; $i++):
+                        if ($i == 1 || $i == $total_pages || ($i >= $page_no - $adjacents && $i <= $page_no + $adjacents)):
+                    ?>
+                            <a href="<?= getPaginationUrl($i) ?>" class="<?= ($i == $page_no) ? 'active' : '' ?>" <?= ($i == $page_no) ? 'onclick="return false;"' : '' ?>><?= $i ?></a>
+                    <?php 
+                        elseif ($i == $page_no - $adjacents - 1 || $i == $page_no + $adjacents + 1): 
+                    ?>
+                            <span class="dots">...</span>
+                    <?php 
+                        endif;
+                    endfor; 
+                    ?>
+                    
+                    <?php if ($page_no < $total_pages): ?>
+                        <a href="<?= getPaginationUrl($page_no + 1) ?>">Next &raquo;</a>
+                    <?php endif; ?>
+                    
+                    <span class="total-info">Total: <?= $total_records ?> records</span>
+                </div>
+            <?php endif; ?>
+
             <div id="empty-state" class="empty-state" style="display: <?php echo empty($animal_data) ? 'block' : 'none'; ?>;">
-                <?php if (empty($filter_loc)): ?>
-                    <h3>Please select a Location to view records</h3>
-                <?php else: ?>
-                    <h3>No records found matching criteria</h3>
-                <?php endif; ?>
+                <h3>No records found matching your active filters.</h3>
             </div>
         </div>
     </div>
@@ -414,6 +566,14 @@ try {
                 <form id="addAnimalForm">
                     <input type="hidden" id="entry_type" name="entry_type" value="existing">
                     <input type="hidden" id="acquisition_type" name="acquisition_type" value="0">
+
+                    <div id="purchase-group" class="form-group full-width" style="display: none; background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label style="color: #60a5fa; margin: 0;">Linked Purchase Records *</label>
+                            <button type="button" class="btn-select" id="select_purchases" onclick="openSelectPurchaseModal()">Select Purchases</button>
+                        </div>
+                        <div id="bulk_selection_summary" style="font-size: 0.85rem; color: #94a3b8; margin-top: 5px;">0 items selected</div>
+                    </div>
 
                     <div id="lineage-group" class="lineage-container" style="display:none;">
                         <label>Lineage (Optional)</label>
@@ -438,30 +598,37 @@ try {
                         </div>
                     </div>
 
-                    <div id="purchase-group" class="form-group full-width" style="display: none;">
-                        <label>Linked Purchase Record *</label>
-                        <div class="input-group">
-                            <input type="hidden" id="add_animal_item_id" name="animal_item_id">
-                            <input type="text" id="display_purchase_item" placeholder="Select a purchase record..." readonly>
-                            <button type="button" class="btn-select" onclick="openSelectPurchaseModal()">Select Source</button>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
+                    <div id="single-entry-group" class="form-row">
                         <div class="form-group">
                             <label>Tag Number *</label>
-                            <input type="text" id="add_tag_no" name="tag_no" required>
+                            <input type="text" id="add_tag_no" name="tag_no">
                         </div>
                         <div class="form-group">
                             <label>Sex *</label>
-                            <select id="add_sex" name="sex" required>
+                            <select id="add_sex" name="sex">
                                 <option value="M">Male</option>
                                 <option value="F">Female</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="form-row">
+                    <div id="bulk-entry-group" style="display: none; grid-column: 1/-1; margin-bottom: 15px;">
+                        <label style="color: #cbd5e1; font-weight: 600;">Assign Tags and Sex to Purchased Animals:</label>
+                        <table id="bulk-add-table">
+                            <thead>
+                                <tr>
+                                    <th>Purchase Details</th>
+                                    <th>Tag No *</th>
+                                    <th>Sex *</th>
+                                    <th width="40"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulk-table-body">
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-row" style="margin-top: 15px; border-top: 1px solid #334155; padding-top: 15px;">
                         <div class="form-group">
                             <label>Animal Type *</label>
                             <select id="add_animal_type" name="animal_type_id" required onchange="loadBreeds(this.value, 'add')">
@@ -530,7 +697,7 @@ try {
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
-                <button class="btn-save" id="btn-add-save" onclick="submitAddForm()">Save Record</button>
+                <button class="btn-save" id="btn-add-save" onclick="submitAddForm(event)">Save Record</button>
             </div>
         </div>
     </div>
@@ -539,6 +706,7 @@ try {
         <div class="modal-content large">
             <div class="modal-header">
                 <h2 id="parent-modal-title">Select Parent</h2>
+                <button class="action-btn" onclick="closeSelectParentModal()" style="border:none;">X</button>
             </div>
             <div class="modal-body">
                 <div class="table-container">
@@ -548,22 +716,35 @@ try {
                     </table>
                 </div>
             </div>
-            <div class="modal-footer"><button class="btn-cancel" onclick="closeSelectParentModal()">Close</button></div>
         </div>
     </div>
 
     <div id="selectPurchaseModal" class="modal">
         <div class="modal-content large">
-            <div class="modal-header"><h2>Select Purchase Record</h2></div>
+            <div class="modal-header">
+                <h2>Select Purchase Records</h2>
+                <button class="action-btn" onclick="closeSelectPurchaseModal()" style="border:none;">X</button>
+            </div>
             <div class="modal-body">
                 <div class="table-container">
                     <table class="table">
-                        <thead><tr><th>ID</th><th>Name</th><th>Cost</th><th>Location</th><th style="text-align:center;">Action</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th width="40" style="text-align: center;"><input type="checkbox" id="selectAllPurchases" onclick="toggleAllPurchases(this)" style="width:16px; height:16px; cursor:pointer;"></th>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Cost</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
                         <tbody id="add-purchase-table-body"></tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer"><button class="btn-cancel" onclick="closeSelectPurchaseModal()">Close</button></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeSelectPurchaseModal()">Cancel</button>
+                <button class="btn-save" onclick="confirmPurchaseSelection()">Apply Selected</button>
+            </div>
         </div>
     </div>
 
@@ -717,6 +898,7 @@ try {
         <div class="modal-content large">
             <div class="modal-header">
                 <h2>Change Purchase Record</h2>
+                <button class="action-btn" onclick="closeEditSelectPurchaseModal()" style="border:none;">X</button>
             </div>
             <div class="modal-body">
                 <div class="table-container">
@@ -725,9 +907,6 @@ try {
                         <tbody id="edit-purchase-table-body"></tbody>
                     </table>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeEditSelectPurchaseModal()">Close</button>
             </div>
         </div>
     </div>
@@ -753,6 +932,22 @@ try {
         document.addEventListener('DOMContentLoaded', () => {
             const rows = document.querySelectorAll('#animal-table tr');
             if(rows.length === 0) document.getElementById('empty-state').style.display = 'block';
+
+            // --- AUTO-SAVE SELECTIONS ---
+            const typeSelect = document.getElementById('add_animal_type');
+            const breedSelect = document.getElementById('add_breed');
+            
+            if(typeSelect) {
+                typeSelect.addEventListener('change', function() {
+                    localStorage.setItem('farmpro_last_animal_type', this.value);
+                    localStorage.removeItem('farmpro_last_breed'); // reset breed on type change
+                });
+            }
+            if(breedSelect) {
+                breedSelect.addEventListener('change', function() {
+                    if(this.value) localStorage.setItem('farmpro_last_breed', this.value);
+                });
+            }
         });
 
         // --- MODAL CONTROLLERS ---
@@ -765,8 +960,21 @@ try {
             form.reset();
             fpAddBirth.clear(); // Reset the datepicker
             
-            document.getElementById('add_breed').innerHTML = '<option value="">Select Type First</option>';
-            document.getElementById('add_breed').disabled = true;
+            // --- RESTORE LAST TYPE & BREED ---
+            const lastType = localStorage.getItem('farmpro_last_animal_type');
+            const lastBreed = localStorage.getItem('farmpro_last_breed');
+
+            if (lastType) {
+                document.getElementById('add_animal_type').value = lastType;
+                loadBreeds(lastType, 'add').then(() => {
+                    if (lastBreed) {
+                        setTimeout(() => { document.getElementById('add_breed').value = lastBreed; }, 50);
+                    }
+                });
+            } else {
+                document.getElementById('add_breed').innerHTML = '<option value="">Select Type First</option>';
+                document.getElementById('add_breed').disabled = true;
+            }
 
             const modalTitle = document.getElementById('modal-title');
             const purchaseGroup = document.getElementById('purchase-group');
@@ -774,6 +982,11 @@ try {
             const birthGroup = document.getElementById('birth-date-group');
             const costGroup = document.getElementById('acquisition-cost-group'); 
             const entryType = document.getElementById('entry_type');
+            
+            const singleEntryGroup = document.getElementById('single-entry-group');
+            const bulkEntryGroup = document.getElementById('bulk-entry-group');
+            const addTagNo = document.getElementById('add_tag_no');
+            const addSex = document.getElementById('add_sex');
 
             acquisition_type = acquisition;
             if(document.getElementById('acquisition_type')) {
@@ -785,22 +998,44 @@ try {
             const today = new Date().toISOString().split('T')[0];
 
             if (type === 'purchase') {
-                modalTitle.textContent = 'Add Purchased Animal';
+                modalTitle.textContent = 'Batch Add Purchased Animals';
                 entryType.value = 'purchase';
+                
                 purchaseGroup.style.display = 'block';
-                birthGroup.style.display = 'flex'; 
-                costGroup.style.display = 'block'; 
+                bulkEntryGroup.style.display = 'block';
+                singleEntryGroup.style.display = 'none';
+                
                 lineageGroup.style.display = 'none';
-                fpAddBirth.setDate(today); // Use flatpickr api to set value
+                costGroup.style.display = 'none'; // Hidden because bulk handles per-row cost
+                birthGroup.style.display = 'flex'; 
+                
+                // Clear the bulk table and summary
+                document.getElementById('bulk-table-body').innerHTML = '';
+                document.getElementById('bulk_selection_summary').textContent = '0 items selected';
+                
+                // Disable required fields for single entry so it doesn't block form validation
+                addTagNo.required = false;
+                addSex.required = false;
+
+                fpAddBirth.setDate(today); 
                 
             } else if (type === 'existing') {
                 modalTitle.textContent = 'Add Existing Record';
                 entryType.value = 'existing';
+                
                 purchaseGroup.style.display = 'none';
+                bulkEntryGroup.style.display = 'none';
+                singleEntryGroup.style.display = 'flex';
+                
                 birthGroup.style.display = 'flex';
                 costGroup.style.display = 'block'; 
                 lineageGroup.style.display = 'block';
-                fpAddBirth.setDate(today); // Use flatpickr api to set value
+                
+                // Re-enable required fields for single entry
+                addTagNo.required = true;
+                addSex.required = true;
+                
+                fpAddBirth.setDate(today); 
             }
 
             const locSelect = document.getElementById('add_location');
@@ -821,15 +1056,12 @@ try {
         function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
         function openSelectParentModal(type, mode = 'add') {
-
-            // ONLY SET VARIABLES - DO NOT CLOSE THE EDIT MODAL
             currentParentType = type;
             currentParentMode = mode;
             
             document.getElementById('selectParentModal').classList.add('show');
             document.getElementById('parent-modal-title').textContent = type === 'sow' ? 'Select Mother' : 'Select Father';
             loadAvailableParents(type);
-            
         }
         function closeSelectParentModal() { document.getElementById('selectParentModal').classList.remove('show'); }
 
@@ -875,48 +1107,127 @@ try {
 
         function loadAvailablePurchases(targetBodyId) {
             const tbody = document.getElementById(targetBodyId);
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
+            const cols = targetBodyId === 'add-purchase-table-body' ? 5 : 5; // Columns match html
+            tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;">Loading...</td></tr>`;
+            
             fetch('../process/getAvailablePurchasedAnimals.php').then(r=>r.json()).then(data=>{
                 if(data.success && data.items.length > 0) {
                     tbody.innerHTML = data.items.map(i => {
-                        const funcName = targetBodyId === 'add-purchase-table-body' ? 'selectPurchaseItem' : 'selectEditPurchaseItem';
-                        return `<tr>
-                            <td data-label="ID">${i.ITEM_ID}</td>
-                            <td data-label="Name">${i.ITEM_NAME}</td>
-                            <td data-label="Cost">${i.UNIT_COST}</td>
-                            <td data-label="Location">${i.LOCATION_NAME}</td>
-                            <td data-label="Action" style="text-align:center;"><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="${funcName}('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">SELECT</button></td>
-                        </tr>`;
+                        if (targetBodyId === 'add-purchase-table-body') {
+                            // Checkbox Mode (For Bulk Add)
+                            const itemData = encodeURIComponent(JSON.stringify(i));
+                            return `<tr>
+                                <td style="text-align:center;"><input type="checkbox" class="purchase-cb" data-item="${itemData}" style="width:18px;height:18px; cursor:pointer;"></td>
+                                <td data-label="ID">${i.ITEM_ID}</td>
+                                <td data-label="Name">${i.ITEM_NAME}</td>
+                                <td data-label="Cost">${i.UNIT_COST}</td>
+                                <td data-label="Location">${i.LOCATION_NAME || '-'}</td>
+                            </tr>`;
+                        } else {
+                            // Single Select Mode (For Edit)
+                            return `<tr>
+                                <td data-label="ID">${i.ITEM_ID}</td>
+                                <td data-label="Name">${i.ITEM_NAME}</td>
+                                <td data-label="Cost">${i.UNIT_COST}</td>
+                                <td data-label="Location">${i.LOCATION_NAME || '-'}</td>
+                                <td data-label="Action" style="text-align:center;"><button class="action-btn" style="background:#22c55e20; color:#86efac; border:1px solid #22c55e40; padding:5px 15px; border-radius:5px; font-weight:600;" onclick="selectEditPurchaseItem('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">SELECT</button></td>
+                            </tr>`;
+                        }
                     }).join('');
-                } else { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No items found</td></tr>'; }
+                } else { 
+                    tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;">No items found</td></tr>`; 
+                }
             });
         }
 
+        // --- BULK PURCHASE LOGIC (ADD MODAL) ---
         function openSelectPurchaseModal() {
             document.getElementById('selectPurchaseModal').classList.add('show');
+            document.getElementById('selectAllPurchases').checked = false;
             loadAvailablePurchases('add-purchase-table-body');
         }
         function closeSelectPurchaseModal() { document.getElementById('selectPurchaseModal').classList.remove('show'); }
         
-        function selectPurchaseItem(id, loc, bldg, pen, name, cost) {
-            document.getElementById('add_animal_item_id').value = id;
-            document.getElementById('display_purchase_item').value = name;
-            document.getElementById('add_acquisition_cost').value = cost;
+        function toggleAllPurchases(source) {
+            document.querySelectorAll('.purchase-cb').forEach(cb => cb.checked = source.checked);
+        }
+        
+        function confirmPurchaseSelection() {
+            const checked = document.querySelectorAll('.purchase-cb:checked');
+            if(checked.length === 0) {
+                alert('Please select at least one item.');
+                return;
+            }
 
-            if(loc) {
-                document.getElementById('add_location').value = loc;
-                loadBuildings(loc, 'add').then(() => {
-                    if(bldg) {
-                        document.getElementById('add_building').value = bldg;
-                        loadPens(bldg, 'add').then(() => {
-                            if(pen) document.getElementById('add_pen').value = pen;
+            const tbody = document.getElementById('bulk-table-body');
+            
+            let unifiedLoc = null;
+            let unifiedBld = null;
+            let unifiedPen = null;
+            let uniform = true;
+
+            checked.forEach((cb, index) => {
+                const item = JSON.parse(decodeURIComponent(cb.getAttribute('data-item')));
+                
+                // Check uniformity for Location, Building, and Pen
+                if (index === 0) {
+                    unifiedLoc = item.LOCATION_ID;
+                    unifiedBld = item.BUILDING_ID;
+                    unifiedPen = item.PEN_ID;
+                } else {
+                    if (item.LOCATION_ID !== unifiedLoc) uniform = false;
+                    if (item.BUILDING_ID !== unifiedBld) uniform = false;
+                    if (item.PEN_ID !== unifiedPen) uniform = false;
+                }
+
+                // Escape quotes for input value
+                const safeName = item.ITEM_NAME ? item.ITEM_NAME.replace(/"/g, '&quot;') : '';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <strong>${item.ITEM_NAME}</strong><br>
+                        <small style="color:#fbbf24;">₱${item.UNIT_COST}</small>
+                        <input type="hidden" class="bulk-item-id" value="${item.ITEM_ID}">
+                        <input type="hidden" class="bulk-cost" value="${item.UNIT_COST}">
+                    </td>
+                    <td><input type="text" class="form-control bulk-tag" required placeholder="Tag No" value="${safeName}" style="padding: 8px;"></td>
+                    <td>
+                        <select class="form-control bulk-sex" required style="padding: 8px;">
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                        </select>
+                    </td>
+                    <td><button type="button" class="action-btn delete" onclick="this.closest('tr').remove(); updateBulkSummary();" style="padding: 6px 10px;">X</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Auto-select location hierarchy if uniform
+            if (uniform && unifiedLoc) {
+                document.getElementById('add_location').value = unifiedLoc;
+                loadBuildings(unifiedLoc, 'add').then(() => {
+                    if (unifiedBld) {
+                        document.getElementById('add_building').value = unifiedBld;
+                        loadPens(unifiedBld, 'add').then(() => {
+                            if (unifiedPen) {
+                                document.getElementById('add_pen').value = unifiedPen;
+                            }
                         });
                     }
                 });
             }
+
+            updateBulkSummary();
             closeSelectPurchaseModal();
         }
 
+        function updateBulkSummary() {
+            const count = document.querySelectorAll('#bulk-table-body tr').length;
+            document.getElementById('bulk_selection_summary').textContent = count + ' animal(s) queued for addition';
+        }
+
+        // --- SINGLE PURCHASE LOGIC (EDIT MODAL) ---
         function openEditSelectPurchaseModal() {
             document.getElementById('editSelectPurchaseModal').classList.add('show');
             loadAvailablePurchases('edit-purchase-table-body');
@@ -941,28 +1252,92 @@ try {
             closeEditSelectPurchaseModal();
         }
 
-        function submitAddForm() {
+        // --- SUBMIT ADD FORM (Handles Single and Bulk via concurrent requests) ---
+        async function submitAddForm(event) {
+            event.preventDefault();
             const form = document.getElementById('addAnimalForm');
-            const formData = new FormData(form);
+            const entryType = document.getElementById('entry_type').value;
             const btn = document.getElementById('btn-add-save');
 
             if(document.getElementById('acquisition_type')) {
                 document.getElementById('acquisition_type').value = acquisition_type;
-                formData.set('acquisition_type', acquisition_type); 
             }
 
             if (!form.checkValidity()) { form.reportValidity(); return; }
+
             btn.disabled = true; btn.innerHTML = 'Saving...';
-            fetch('../process/addAnimalRecord.php', { method: 'POST', body: formData })
-            .then(res => res.json()).then(data => {
-                if (data.success) {
-                    showAlert('add', data.message, 'success');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('add', data.message, 'error');
+
+            if (entryType === 'purchase') {
+                const rows = document.querySelectorAll('#bulk-table-body tr');
+                if (rows.length === 0) {
+                    showAlert('add', 'Please select at least one purchase record.', 'error');
+                    btn.disabled = false; btn.innerHTML = 'Save Record';
+                    return;
+                }
+
+                // Gather Global Values
+                const commonData = {
+                    entry_type: 'purchase',
+                    acquisition_type: 1,
+                    animal_type_id: document.getElementById('add_animal_type').value,
+                    breed_id: document.getElementById('add_breed').value,
+                    birth_date: document.getElementById('add_birth_date').value,
+                    current_status: document.getElementById('add_status').value,
+                    location_id: document.getElementById('add_location').value,
+                    building_id: document.getElementById('add_building').value,
+                    pen_id: document.getElementById('add_pen').value
+                };
+
+                const promises = [];
+
+                // Create a request for each row
+                for (let r of rows) {
+                    const fd = new FormData();
+                    for (let key in commonData) fd.append(key, commonData[key]);
+                    
+                    fd.append('animal_item_id', r.querySelector('.bulk-item-id').value);
+                    fd.append('acquisition_cost', r.querySelector('.bulk-cost').value);
+                    fd.append('tag_no', r.querySelector('.bulk-tag').value);
+                    fd.append('sex', r.querySelector('.bulk-sex').value);
+
+                    promises.push(fetch('../process/addAnimalRecord.php', { method: 'POST', body: fd }).then(res => res.json()));
+                }
+
+                try {
+                    const results = await Promise.all(promises);
+                    const hasError = results.some(r => !r.success);
+                    
+                    if (hasError) {
+                        // Find the first error to display
+                        const firstError = results.find(r => !r.success);
+                        showAlert('add', 'Batch Add Error: ' + firstError.message, 'error');
+                        btn.disabled = false; btn.innerHTML = 'Save Record';
+                    } else {
+                        showAlert('add', 'All ' + results.length + ' records saved successfully!', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                } catch (e) {
+                    showAlert('add', 'System error during batch save.', 'error');
                     btn.disabled = false; btn.innerHTML = 'Save Record';
                 }
-            });
+
+            } else {
+                // SINGLE ENTRY LOGIC (Existing/Farm Born)
+                const formData = new FormData(form);
+                fetch('../process/addAnimalRecord.php', { method: 'POST', body: formData })
+                .then(res => res.json()).then(data => {
+                    if (data.success) {
+                        showAlert('add', data.message, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('add', data.message, 'error');
+                        btn.disabled = false; btn.innerHTML = 'Save Record';
+                    }
+                }).catch(e => {
+                    showAlert('add', 'System error.', 'error');
+                    btn.disabled = false; btn.innerHTML = 'Save Record';
+                });
+            }
         }
 
         function submitEditForm() {
@@ -1138,10 +1513,7 @@ try {
         }
 
         document.getElementById('addModal').addEventListener('click', function(e) { if(e.target===this) closeAddModal(); });
-        
-        // RESTORED editModal click listener! It works safely now because of z-index stacking.
         document.getElementById('editModal').addEventListener('click', function(e) { if(e.target===this) closeEditModal(); });
-        
         document.getElementById('selectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeSelectPurchaseModal(); });
         document.getElementById('editSelectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeEditSelectPurchaseModal(); });
         document.getElementById('selectParentModal').addEventListener('click', function(e) { if(e.target===this) closeSelectParentModal(); });

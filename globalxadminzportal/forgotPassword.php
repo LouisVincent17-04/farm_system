@@ -22,7 +22,7 @@ if (!$email) {
 
 try {
     // 2. Verify user exists
-    $stmt = $conn->prepare("SELECT admin_id, full_name FROM admin_users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT user_id, full_name FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -36,7 +36,7 @@ try {
     $otp = sprintf("%06d", mt_rand(1, 999999));
     $expires = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-    $update = $conn->prepare("UPDATE admin_users SET reset_token = ?, reset_expires = ? WHERE email = ?");
+    $update = $conn->prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE email = ?");
     $update->execute([$otp, $expires, $email]);
 
     // 4. Send Email using PHPMailer

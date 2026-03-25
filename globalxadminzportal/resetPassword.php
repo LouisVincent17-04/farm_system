@@ -24,7 +24,7 @@ if (strlen($password) < 8) {
 
 try {
     // 1. Verify OTP and check expiration
-    $stmt = $conn->prepare("SELECT admin_id, reset_token, reset_expires FROM admin_users WHERE email = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT user_id, reset_token, reset_expires FROM users WHERE email = ? LIMIT 1");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -46,8 +46,8 @@ try {
     // 2. Hash new password and clear the token
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-    $update = $conn->prepare("UPDATE admin_users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE admin_id = ?");
-    $update->execute([$hashed_password, $user['admin_id']]);
+    $update = $conn->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE user_id = ?");
+    $update->execute([$hashed_password, $user['user_id']]);
 
     echo json_encode(['success' => true, 'message' => 'Password has been reset successfully. You can now log in.']);
 

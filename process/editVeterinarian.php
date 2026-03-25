@@ -9,7 +9,7 @@ include '../security/checkRole.php';
 
 checkRole(3); // Admin
 
-$admin_id = $_SESSION['user']['USER_ID'];
+$user_id = $_SESSION['user']['USER_ID'];
 $admin_name = $_SESSION['user']['FULL_NAME'] ?? 'Admin';
 $ip_address = $_SERVER['REMOTE_ADDR'];
 
@@ -86,7 +86,7 @@ try {
     
     $log_stmt = $conn->prepare($sqlLog);
     $log_params = [
-        ':user_id'  => $admin_id,
+        ':user_id'  => $user_id,
         ':username' => $admin_name,
         ':details'  => $logDetails,
         ':ip'       => $ip_address
