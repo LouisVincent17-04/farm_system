@@ -14,19 +14,24 @@ try {
         throw new Exception("Invalid Request Method.");
     }
 
-    $conn->beginTransaction();
-
-    // 1. Find the Most Recent Batch
-    // We group by BATCH_ID to handle both Bulk (multiple rows) and Single transactions.
-    $stmt = $conn->query("SELECT BATCH_ID, TRANSACTION_DATE FROM feed_transactions ORDER BY FT_ID DESC LIMIT 1");
-    $last_trans = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$last_trans) {
-        throw new Exception("No feeding transactions found to reverse.");
+    // --- THE FIX: Get the specific batch ID sent from the frontend ---
+    $batch_id = $_POST['batch_id'] ?? null;
+    if (empty($batch_id)) {
+        throw new Exception("No Batch ID provided for reversal.");
     }
 
-    $batch_id = $last_trans['BATCH_ID'];
-    $trans_date = $last_trans['TRANSACTION_DATE'];
+    $conn->beginTransaction();
+
+    // 1. Verify the Batch exists and get its Transaction Date
+    $stmt = $conn->prepare("SELECT TRANSACTION_DATE FROM feed_transactions WHERE BATCH_ID = ? LIMIT 1");
+    $stmt->execute([$batch_id]);
+    $target_trans = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$target_trans) {
+        throw new Exception("Batch ID {$batch_id} not found or already reversed.");
+    }
+    
+    $trans_date = $target_trans['TRANSACTION_DATE'];
 
     // 2. Get Data needed for Restoration (Feed ID, Total Qty, Total Cost, Involved Animals)
     // We aggregate because a batch might involve multiple animals but (usually) one feed type.
@@ -65,7 +70,6 @@ try {
 
     // 4. Remove Financial Impact (Operational Cost)
     // We delete rows matching the specific animals and the exact timestamp of the transaction.
-    // Creating placeholders for IN clause (?,?,?)
     $placeholders = implode(',', array_fill(0, count($animal_ids), '?'));
     
     // Merge params: [trans_date, animal_id_1, animal_id_2, ...]
@@ -91,11 +95,11 @@ try {
 
     echo json_encode([
         'success' => true, 
-        'message' => "Transaction reversed! Restored " . number_format($restore_qty, 2) . "kg to inventory."
+        'message' => "Batch {$batch_id} reversed! Restored " . number_format($restore_qty, 2) . "kg to inventory."
     ]);
 
 } catch (Exception $e) {
-    if ($conn->inTransaction()) {
+    if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
     echo json_encode([

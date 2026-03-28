@@ -265,6 +265,14 @@ try {
 } catch (Exception $e) {
     error_log($e->getMessage());
 }
+
+// Count active filters
+$active_filters = 0;
+if ($date_from || $date_to) $active_filters++;
+if ($f_loc !== '' && $USER_LOCATION_ == 1000) $active_filters++;
+if ($f_bld !== '') $active_filters++;
+if ($f_pen !== '') $active_filters++;
+if ($f_ani !== '') $active_filters++;
 ?>
 
 <!DOCTYPE html>
@@ -274,6 +282,10 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vaccines Usage & Accountancy Report</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -284,257 +296,479 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; padding-bottom: 40px; }
-        .container { max-width: 1500px; margin: 0 auto; padding: 2rem; }
-        
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s; }
-        .back-link:hover { color: white; }
-
-        .header { text-align: center; margin-bottom: 2rem; }
-        .title { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
-        .subtitle { color: #94a3b8; font-size: 1rem; margin-bottom: 0.5rem;}
-        
-        .location-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 10px;
-            padding: 6px 16px;
-            background: rgba(6, 182, 212, 0.15);
-            border: 1px solid rgba(6, 182, 212, 0.3);
-            color: #22d3ee;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(6,182,212,0.5); /* Cyan/Teal Accent */
+            --cyan:           #06b6d4;
+            --cyan-dim:       rgba(6,182,212,0.12);
+            --cyan-glow:      rgba(6,182,212,0.25);
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --blue:           #3b82f6;
+            --blue-dim:       rgba(59,130,246,0.12);
+            --purple:         #a855f7;
+            --purple-dim:     rgba(168,85,247,0.12);
+            --pink:           #ec4899;
+            --pink-dim:       rgba(236,72,153,0.12);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
         }
 
-        /* --- ACCOUNTANT SUMMARY CARDS --- */
-        .acc-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
-        .acc-card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); position: relative; overflow: hidden;}
-        .acc-card h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; color: #cbd5e1; }
-        .acc-val { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.25rem; color: #fff; }
-        .acc-sub { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #94a3b8;}
-        
-        .c-inwards { border-top: 4px solid #10b981; } .c-inwards .acc-val { color: #10b981; }
-        .c-outwards { border-top: 4px solid #f59e0b; } .c-outwards .acc-val { color: #f59e0b; }
-        .c-variance { border-top: 4px solid #3b82f6; } .c-variance .acc-val { color: #3b82f6; }
-        .c-adjust { border-top: 4px solid #a855f7; } 
-        .c-adj-net { border-top: 4px solid #ec4899; } .c-adj-net .acc-val { color: #ec4899; }
-        .c-stock { border-top: 4px solid #06b6d4; } .c-stock .acc-val { color: #06b6d4; }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(6,182,212,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        /* --- FILTER BAR --- */
-        .filter-box { background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; }
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end; }
-        .form-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase; }
-        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; outline: none; }
-        .form-input:focus { border-color: #06b6d4; }
-        .form-input:disabled { opacity: 0.6; cursor: not-allowed; }
-        
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        .action-bar { margin-top: 1.5rem; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 0.9rem; transition: transform 0.1s; white-space: nowrap; }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: #0891b2; color: white; }
-        .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
-        .btn-pdf { background: #ef4444; color: white; } .btn-excel { background: #10b981; color: white; } .btn-csv { background: #f59e0b; color: white; }
+        /* ─── TOP BAR & HEADER ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        /* --- TABLES --- */
-        .group-container { background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px solid #334155; margin-bottom: 1.5rem; overflow: hidden; }
-        .group-header { background: rgba(15, 23, 42, 0.8); padding: 1rem 1.5rem; font-weight: 700; color: #67e8f9; border-bottom: 1px solid #334155; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
-        .group-header.warehouse { color: #10b981; }
-        .group-header.adjustments { color: #c084fc; background: rgba(168, 85, 247, 0.15); }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--cyan); background: var(--cyan-dim); border: 1px solid rgba(6,182,212,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        .page-header { margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;}
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--cyan), #0891b2);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* ─── ACCOUNTING STAT CARDS ─── */
+        .acc-summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem; margin-bottom: 2.5rem;
+        }
+        .acc-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 1.5rem;
+            position: relative; overflow: hidden; transition: transform var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .acc-card:hover { transform: translateY(-2px); }
+        .acc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        
+        .c-inwards::before  { background: var(--emerald); }
+        .c-outwards::before { background: var(--amber); }
+        .c-variance::before { background: var(--blue); }
+        .c-adjust::before   { background: var(--purple); }
+        .c-adj-net::before  { background: var(--pink); }
+        .c-stock::before    { background: var(--cyan); }
+
+        .acc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem; }
+        .acc-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+        
+        .c-inwards .acc-icon { background: var(--emerald-dim); color: var(--emerald); }
+        .c-outwards .acc-icon { background: var(--amber-dim); color: var(--amber); }
+        .c-variance .acc-icon { background: var(--blue-dim); color: var(--blue); }
+        .c-adjust .acc-icon { background: var(--purple-dim); color: var(--purple); }
+        .c-adj-net .acc-icon { background: var(--pink-dim); color: var(--pink); }
+        .c-stock .acc-icon { background: var(--cyan-dim); color: var(--cyan); }
+
+        .acc-title { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.05em;}
+        .acc-val { font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1; }
+        
+        .c-inwards .acc-val { color: var(--emerald); }
+        .c-outwards .acc-val { color: var(--amber); }
+        .c-variance .acc-val { color: var(--blue); }
+        .c-adj-net .acc-val { color: var(--pink); }
+        .c-stock .acc-val { color: var(--cyan); }
+
+        .acc-sub { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono);}
+
+        /* ─── FILTER PANEL ─── */
+        .filter-panel {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); margin-bottom: 2rem; overflow: hidden;
+        }
+        .filter-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+            cursor: pointer; user-select: none;
+        }
+        .filter-header-left { display: flex; align-items: center; gap: 10px; }
+        .filter-header-title { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+        .filter-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700;
+            background: var(--cyan); color: #000; border-radius: 99px; padding: 0 6px;
+        }
+        .filter-toggle-btn {
+            display: flex; align-items: center; gap: 6px; font-size: 0.8rem;
+            font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer;
+        }
+        .filter-toggle-btn i { transition: transform 0.25s ease; }
+        .filter-toggle-btn.collapsed i { transform: rotate(-90deg); }
+
+        .filter-body { padding: 1.5rem; display: grid; transition: all 0.25s ease; }
+        .filter-body.hidden { display: none; }
+
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px; }
+        .form-label.accent { color: var(--cyan); }
+
+        .form-control, .form-select {
+            width: 100%; padding: 0 12px; height: 40px; background: var(--bg-elevated);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: var(--radius-md); font-size: 0.875rem; font-family: var(--font);
+            outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .form-select {
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+        }
+        .form-control:focus, .form-select:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-glow); background: var(--bg-hover); }
+        .form-select:disabled, .form-control:disabled { opacity: 0.5; cursor: not-allowed; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+        /* Filter Actions */
+        .filter-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.5rem; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 1rem;
+        }
+        .filter-footer-left, .filter-footer-right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 0 16px; height: 38px; border-radius: var(--radius-md);
+            font-size: 0.8rem; font-weight: 600; font-family: var(--font);
+            border: 1px solid transparent; cursor: pointer; transition: all var(--transition);
+            text-decoration: none; white-space: nowrap; letter-spacing: 0.01em;
+        }
+        .btn-primary { background: var(--cyan); color: #000; }
+        .btn-primary:hover { background: #22d3ee; box-shadow: 0 0 16px var(--cyan-glow); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+        
+        .btn-pdf { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+        .btn-pdf:hover { background: #1e40af; box-shadow: 0 0 12px rgba(29,78,216,0.4); }
+        .btn-excel { background: #059669; color: #fff; border-color: #059669; }
+        .btn-excel:hover { background: #047857; box-shadow: 0 0 12px rgba(5,150,105,0.4); }
+        .btn-csv { background: #b45309; color: #fff; border-color: #b45309; }
+        .btn-csv:hover { background: #92400e; box-shadow: 0 0 12px rgba(180,83,9,0.35); }
+        .btn-sm { height: 32px; padding: 0 12px; font-size: 0.75rem; }
+
+        /* ─── TABLES ─── */
+        .group-container {
+            background: var(--bg-surface); border-radius: var(--radius-xl);
+            border: 1px solid var(--border); margin-bottom: 2rem; overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .group-header {
+            background: var(--bg-elevated); padding: 1.25rem 1.5rem;
+            font-weight: 700; color: var(--cyan); border-bottom: 1px solid var(--border);
+            font-size: 1rem; display: flex; align-items: center; gap: 10px;
+        }
+        .group-header.warehouse { color: var(--emerald); border-bottom-color: var(--emerald-dim); }
+        .group-header.adjustments { color: var(--purple); background: var(--purple-dim); border-bottom-color: var(--border); }
         
         .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { background: rgba(15, 23, 42, 0.4); color: #94a3b8; text-align: left; padding: 0.8rem 1.5rem; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
-        td { padding: 0.8rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #e2e8f0; }
-        tr:last-child td { border-bottom: none; }
-        .t-right { text-align: right; }
-        
-        .row-total { background: rgba(6, 182, 212, 0.1); font-weight: bold; border-top: 1px solid #334155 !important; }
-        .row-total td { color: #fff; }
-        
-        .empty-state { text-align: center; padding: 4rem; color: #64748b; background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px solid #334155; }
-        
-        .badge-add { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;}
-        .badge-deduct { background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;}
-
-        @media (max-width: 900px) {
-            .container { padding: 1rem; }
-            .header { text-align: left; }
-            .acc-summary-grid { grid-template-columns: 1fr 1fr; }
-            .filter-grid { grid-template-columns: 1fr; }
-            .action-bar { flex-direction: column; } .action-bar .btn { width: 100%; justify-content: center; }
-
-            /* Mobile Table */
-            .table-wrap { border: none; overflow: visible; }
-            table, thead, tbody, th, td, tr { display: block; width: 100%; }
-            thead { display: none; }
-            tr { background: rgba(15, 23, 42, 0.4); border: 1px solid #475569; border-radius: 8px; margin-bottom: 1rem; padding: 1rem; }
-            td { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed rgba(255,255,255,0.1); text-align: right; }
-            td:last-child { border-bottom: none; }
-            td::before { content: attr(data-label); font-weight: 700; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; margin-right: 1rem; text-align: left; }
-            .row-total { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        thead th {
+            background: rgba(0,0,0,0.2); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 12px 16px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
         }
-        @media (max-width: 600px) {
+        tbody tr { border-bottom: 1px solid rgba(255,255,255,0.03); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td { padding: 12px 16px; font-size: 0.85rem; color: var(--text-primary); vertical-align: middle; }
+
+        .row-total { background: var(--bg-elevated); border-top: 2px solid var(--border) !important; }
+        .row-total td { font-weight: 700; color: #fff; }
+
+        /* Cell Formatting */
+        .t-right { text-align: right; }
+        .col-name { font-weight: 600; color: #fff; font-size: 0.95rem;}
+        .val-mono { font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem;}
+        .val-money { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
+        .text-green { color: var(--emerald); }
+        .text-red { color: var(--red); }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+            border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+        }
+        .b-add { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2); }
+        .b-sub { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block; }
+        .empty-state h3 { font-size: 1rem; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 600;}
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 900px) {
+            .filter-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-header { flex-direction: column; align-items: flex-start; }
             .acc-summary-grid { grid-template-columns: 1fr; }
+            .filter-grid { grid-template-columns: 1fr; }
+            .filter-footer { flex-direction: column; align-items: stretch; }
+            .filter-footer-left, .filter-footer-right { justify-content: stretch; }
+            .filter-footer .btn { flex: 1; justify-content: center; }
+
+            /* Mobile Table to Cards */
+            .table-wrap { border: none; background: transparent; overflow: visible; }
+            table { min-width: 0; display: block; }
+            thead { display: none; }
+            tbody { display: block; }
+            tbody tr {
+                display: block; background: var(--bg-elevated);
+                border: 1px solid var(--border); border-radius: var(--radius-lg);
+                margin-bottom: 0.75rem; padding: 1.25rem; box-shadow: var(--shadow-sm);
+            }
+            td {
+                display: flex; justify-content: space-between; align-items: center;
+                gap: 1rem; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: right;
+            }
+            td:last-child { border-bottom: none; }
+            td::before {
+                content: attr(data-label); font-size: 0.7rem; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+                white-space: nowrap; flex-shrink: 0; padding-top: 2px; text-align: left;
+            }
+            .row-total { background: var(--cyan-dim); border-color: rgba(6,182,212,0.3); }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    
-    <a href="reports.php" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i> Back to Reports Dashboard
-    </a>
 
-    <div class="header">
-        <h1 class="title">Vaccines Usage & Ledger Report</h1>
-        <p class="subtitle">Accountancy overview of vaccine purchases, administration, adjustments, and live balances.</p>
-        <div class="location-badge">
-            <i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($current_location_name) ?>
+    <div class="top-bar">
+        <a href="reports.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Reports
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-syringe"></i> Medical Accountancy</span>
+    </div>
+
+    <div class="page-header">
+        <div class="header-info">
+            <h1 class="page-title">Vaccines Usage <span>&amp; Ledger</span></h1>
+            <p class="page-subtitle">Financial and physical overview of vaccine purchases, administration, adjustments, and live balances.</p>
         </div>
     </div>
 
     <div class="acc-summary-grid">
         <div class="acc-card c-inwards">
-            <h4>📥 Confirmed Purchases (IN)</h4>
-            <div class="acc-val"><?= number_format($purchased_qty, 2) ?> doses</div>
+            <div class="acc-header">
+                <div class="acc-icon"><i class="fa-solid fa-arrow-down-to-line"></i></div>
+                <div class="acc-title">Confirmed Purchases (IN)</div>
+            </div>
+            <div class="acc-val"><?= number_format($purchased_qty, 2) ?> <span style="font-size:1rem;color:var(--text-muted);">doses</span></div>
             <div class="acc-sub">₱ <?= number_format($purchased_cost, 2) ?></div>
         </div>
         
         <div class="acc-card c-outwards">
-            <h4>📤 Total Administered (OUT)</h4>
-            <div class="acc-val"><?= number_format($grand_total_used, 2) ?> doses</div>
+            <div class="acc-header">
+                <div class="acc-icon"><i class="fa-solid fa-arrow-up-from-bracket"></i></div>
+                <div class="acc-title">Total Administered (OUT)</div>
+            </div>
+            <div class="acc-val"><?= number_format($grand_total_used, 2) ?> <span style="font-size:1rem;color:var(--text-muted);">doses</span></div>
             <div class="acc-sub">₱ <?= number_format($grand_total_cost, 2) ?></div>
         </div>
 
         <div class="acc-card c-variance">
-            <h4>⚖️ Raw Period Net</h4>
+            <div class="acc-header">
+                <div class="acc-icon"><i class="fa-solid fa-scale-unbalanced"></i></div>
+                <div class="acc-title">Raw Period Net</div>
+            </div>
             <?php 
                 $var_qty = $purchased_qty - $grand_total_used;
                 $var_cost = $purchased_cost - $grand_total_cost;
             ?>
-            <div class="acc-val"><?= number_format($var_qty, 2) ?> doses</div>
-            <div class="acc-sub">Strictly IN minus OUT</div>
+            <div class="acc-val"><?= number_format($var_qty, 2) ?> <span style="font-size:1rem;color:var(--text-muted);">doses</span></div>
+            <div class="acc-sub" style="font-weight:400;font-family:var(--font);">Strictly IN minus OUT</div>
         </div>
 
         <div class="acc-card c-adjust">
-            <h4>🔧 Net Adjustments</h4>
+            <div class="acc-header">
+                <div class="acc-icon"><i class="fa-solid fa-wrench"></i></div>
+                <div class="acc-title">Net Adjustments</div>
+            </div>
             <?php 
-                $adj_color = $net_adjustments < 0 ? '#ef4444' : ($net_adjustments > 0 ? '#10b981' : '#cbd5e1');
+                $adj_color = $net_adjustments < 0 ? 'var(--red)' : ($net_adjustments > 0 ? 'var(--emerald)' : 'var(--text-primary)');
                 $adj_sign = $net_adjustments > 0 ? '+' : '';
             ?>
-            <div class="acc-val" style="color:<?= $adj_color ?>;"><?= $adj_sign . number_format($net_adjustments, 2) ?> doses</div>
+            <div class="acc-val" style="color:<?= $adj_color ?>;"><?= $adj_sign . number_format($net_adjustments, 2) ?> <span style="font-size:1rem;color:var(--text-muted);">doses</span></div>
             <div class="acc-sub">Add: <?= number_format($total_added, 2) ?> | Ded: <?= number_format($total_deducted, 2) ?></div>
         </div>
 
         <div class="acc-card c-adj-net">
-            <h4>🎯 Adjusted Period Net</h4>
-            <?php 
-                // Formula: Purchases - Consumed + Net Adjustments
-                $expected_net = $var_qty + $net_adjustments;
-            ?>
-            <div class="acc-val"><?= number_format($expected_net, 2) ?> doses</div>
-            <div class="acc-sub">IN - OUT + ADJ</div>
+            <div class="acc-header">
+                <div class="acc-icon"><i class="fa-solid fa-bullseye"></i></div>
+                <div class="acc-title">Adjusted Period Net</div>
+            </div>
+            <?php $expected_net = $var_qty + $net_adjustments; ?>
+            <div class="acc-val"><?= number_format($expected_net, 2) ?> <span style="font-size:1rem;color:var(--text-muted);">doses</span></div>
+            <div class="acc-sub" style="font-weight:400;font-family:var(--font);">IN - OUT + ADJ</div>
         </div>
 
         <div class="acc-card c-stock">
-            <h4>📦 Live Warehouse Stock</h4>
-            <div class="acc-val"><?= number_format($current_stock, 2) ?> doses</div>
-            <div class="acc-sub">All-Time Current Balance</div>
+            <div class="acc-header">
+                <div class="acc-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <div class="acc-title">Live Warehouse Stock</div>
+            </div>
+            <div class="acc-val"><?= number_format($current_stock, 2) ?> <span style="font-size:1rem;color:var(--text-muted);">doses</span></div>
+            <div class="acc-sub" style="font-weight:400;font-family:var(--font);">All-Time Current Balance</div>
         </div>
     </div>
 
-    <div class="filter-box">
-        <form method="GET" id="filterForm">
-            <div class="filter-grid">
-                
-                <div class="form-group">
-                    <label>Date From</label>
-                    <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
-                </div>
-                
-                <div class="form-group">
-                    <label>Date To</label>
-                    <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
-                </div>
+    <div class="filter-panel">
+        <div class="filter-header" onclick="toggleFilters()" id="filterHeader">
+            <div class="filter-header-left">
+                <i class="fa-solid fa-sliders" style="color:var(--text-secondary); font-size:0.85rem;"></i>
+                <span class="filter-header-title">Filters &amp; Scoping</span>
+                <?php if($active_filters > 0): ?>
+                    <span class="filter-badge"><?= $active_filters ?></span>
+                <?php endif; ?>
+            </div>
+            <button class="filter-toggle-btn" id="filterToggleBtn" type="button">
+                <span id="filterToggleLabel">Collapse</span>
+                <i class="fa-solid fa-chevron-down" id="filterChevron"></i>
+            </button>
+        </div>
 
-                <div class="form-group">
-                    <label>Location</label>
-                    <select id="f_loc" name="f_loc" class="form-input" onchange="loadBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events: none; opacity: 0.7; background-color: #1e293b;"' : ''; ?>>
-                        <?php if($USER_LOCATION_ == 1000): ?>
-                            <option value="">All Locations</option>
-                        <?php endif; ?>
-                        <?php foreach($locations as $loc): ?>
-                            <option value="<?= $loc['LOCATION_ID'] ?>" <?= $f_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Building</label>
-                    <select id="f_bld" name="f_bld" class="form-input" onchange="loadPens()" <?= empty($f_loc) ? 'disabled' : '' ?>>
-                        <option value="">All Buildings</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Pen</label>
-                    <select id="f_pen" name="f_pen" class="form-input" onchange="loadAnimals()" <?= empty($f_bld) ? 'disabled' : '' ?>>
-                        <option value="">All Pens</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Animal Tag (Optional)</label>
-                    <select id="f_animal" name="f_animal" class="form-input" <?= empty($f_pen) ? 'disabled' : '' ?>>
-                        <option value="">All Animals</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <div class="btn-group">
-                        <button type="submit" class="btn btn-primary">Apply Filters</button>
-                        <a href="vaccines_usage_report.php" class="btn btn-outline">Reset</a>
+        <div class="filter-body" id="filterBody">
+            <form method="GET" id="filterForm">
+                <div class="filter-grid">
+                    
+                    <div class="form-group">
+                        <label class="form-label accent"><i class="fa-solid fa-calendar-days"></i> Transaction Period</label>
+                        <div class="input-row">
+                            <input type="text" name="date_from" class="form-control date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                            <input type="text" name="date_to" class="form-control date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
+                        </div>
                     </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-map-pin"></i> Location</label>
+                        <select id="f_loc" name="f_loc" class="form-select" onchange="loadBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
+                            <?php if($USER_LOCATION_ == 1000): ?>
+                                <option value="">All Locations</option>
+                            <?php endif; ?>
+                            <?php foreach($locations as $loc): ?>
+                                <option value="<?= $loc['LOCATION_ID'] ?>" <?= $f_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if ($USER_LOCATION_ != 1000): ?>
+                            <input type="hidden" name="f_loc" value="<?= $USER_LOCATION_ ?>">
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-building"></i> Building</label>
+                        <select id="f_bld" name="f_bld" class="form-select" onchange="loadPens()" <?= empty($f_loc) ? 'disabled' : '' ?>>
+                            <option value="">All Buildings</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-border-all"></i> Pen</label>
+                        <select id="f_pen" name="f_pen" class="form-select" onchange="loadAnimals()" <?= empty($f_bld) ? 'disabled' : '' ?>>
+                            <option value="">All Pens</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-tag"></i> Animal Tag</label>
+                        <select id="f_animal" name="f_animal" class="form-select" <?= empty($f_pen) ? 'disabled' : '' ?>>
+                            <option value="">All Animals</option>
+                        </select>
+                    </div>
+
                 </div>
+            </form>
+        </div>
+
+        <div class="filter-footer">
+            <div class="filter-footer-left">
+                <a href="vaccines_usage_report.php" class="btn btn-ghost btn-sm">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </a>
+                <button type="submit" form="filterForm" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-filter"></i> Apply Filters
+                </button>
             </div>
             
             <?php if(!empty($grouped_data) || $purchased_qty > 0 || !empty($adjustments_data)): ?>
-            <div class="action-bar">
-                <button type="button" class="btn btn-pdf" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
-                <button type="button" class="btn btn-excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
-                <button type="button" class="btn btn-csv" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+            <div class="filter-footer-right">
+                <button type="button" class="btn btn-pdf btn-sm" onclick="exportPDF()">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+                <button type="button" class="btn btn-excel btn-sm" onclick="exportExcel()">
+                    <i class="fa-solid fa-file-excel"></i> Excel
+                </button>
+                <button type="button" class="btn btn-csv btn-sm" onclick="exportCSV()">
+                    <i class="fa-solid fa-file-csv"></i> CSV
+                </button>
             </div>
             <?php endif; ?>
-        </form>
+        </div>
     </div>
 
     <?php if(empty($grouped_data) && $purchased_qty == 0 && empty($adjustments_data)): ?>
         <div class="empty-state">
-            <h2 style="margin-bottom:10px;">No Vaccine Activity Found</h2>
-            <p>No purchases, usage, or adjustments recorded for this date range and location.</p>
+            <i class="fa-solid fa-receipt"></i>
+            <h3>No Vaccine Activity Found</h3>
+            <p>No purchases, usage, or adjustments recorded for the selected criteria.</p>
         </div>
     <?php else: ?>
         
         <?php foreach ($grouped_data as $header => $group): ?>
             <div class="group-container">
                 <div class="group-header">
-                    <i class="fa-solid fa-syringe"></i> <?= htmlspecialchars($header) ?>
+                    <i class="fa-solid fa-diagram-project"></i> <?= htmlspecialchars($header) ?>
                 </div>
                 <div class="table-wrap">
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Vaccine Name</th>
-                                <th class="t-right" style="color:#10b981;">Location Purch. (IN)</th>
+                                <th class="t-right" style="color:var(--emerald);">Location Purch. (IN)</th>
                                 <th class="t-right">Doses Used (OUT)</th>
                                 <th class="t-right">Used Cost</th>
                                 <th class="t-right">Date Range</th>
@@ -543,24 +777,24 @@ try {
                         <tbody>
                             <?php foreach ($group['items'] as $item): ?>
                                 <tr>
-                                    <td data-label="Vaccine Name" style="font-weight:600; color:#fff;"><?= htmlspecialchars($item['ITEM_NAME']) ?></td>
-                                    
-                                    <td data-label="Purchased (IN)" class="t-right" style="color:#10b981;">
+                                    <td data-label="Vaccine Name" class="col-name"><?= htmlspecialchars($item['ITEM_NAME']) ?></td>
+                                    <td data-label="Purchased (IN)" class="t-right val-mono text-green">
                                         <?= number_format($item['PURCHASED_QTY'], 2) ?> doses
                                     </td>
-                                    
-                                    <td data-label="Doses Used (OUT)" class="t-right" style="color:#0891b2; font-weight:bold;"><?= number_format($item['TOTAL_USED'], 2) ?> doses</td>
-                                    <td data-label="Used Cost" class="t-right" style="color:#fbbf24; font-family:monospace;">₱<?= number_format($item['TOTAL_COST'], 2) ?></td>
-                                    <td data-label="Date Range" class="t-right" style="font-size:0.85rem; color:#94a3b8;">
+                                    <td data-label="Doses Used (OUT)" class="t-right val-mono" style="color:var(--cyan);">
+                                        <?= number_format($item['TOTAL_USED'], 2) ?> doses
+                                    </td>
+                                    <td data-label="Used Cost" class="t-right val-money">₱<?= number_format($item['TOTAL_COST'], 2) ?></td>
+                                    <td data-label="Date Range" class="t-right" style="font-size:0.8rem; color:var(--text-muted);">
                                         <?= $display_date_range ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                             <tr class="row-total">
                                 <td data-label="Summary">SUBTOTAL</td>
-                                <td data-label="Purchased (IN)" class="t-right" style="color:#94a3b8; font-weight:normal;">-</td>
-                                <td data-label="Doses Used (OUT)" class="t-right"><?= number_format($group['sub_used'], 2) ?> doses</td>
-                                <td data-label="Used Cost" class="t-right">₱<?= number_format($group['sub_cost'], 2) ?></td>
+                                <td data-label="Purchased (IN)" class="t-right" style="color:var(--text-muted); font-weight:normal;">-</td>
+                                <td data-label="Doses Used (OUT)" class="t-right val-mono"><?= number_format($group['sub_used'], 2) ?> doses</td>
+                                <td data-label="Used Cost" class="t-right val-money">₱<?= number_format($group['sub_cost'], 2) ?></td>
                                 <td data-label="Date Range" class="t-right">-</td>
                             </tr>
                         </tbody>
@@ -570,12 +804,12 @@ try {
         <?php endforeach; ?>
 
         <?php if(!empty($adjustments_data)): ?>
-            <div class="group-container" style="border-color: #a855f7;">
+            <div class="group-container" style="border-color: var(--purple-dim);">
                 <div class="group-header adjustments">
                     <i class="fa-solid fa-wrench"></i> INVENTORY ADJUSTMENTS (VACCINES)
                 </div>
                 <div class="table-wrap">
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Date</th>
@@ -589,24 +823,22 @@ try {
                         <tbody>
                             <?php foreach ($adjustments_data as $adj): ?>
                                 <tr>
-                                    <td data-label="Date" style="color:#94a3b8; font-size:0.85rem;">
-                                        <?= $adj['TRANSACTION_DATE_FMT'] ?>
-                                    </td>
-                                    <td data-label="Location" style="color:#93c5fd; font-weight:600;"><?= htmlspecialchars($adj['LOCATION_NAME']) ?></td>
-                                    <td data-label="Vaccine Name" style="font-weight:600; color:#fff;"><?= htmlspecialchars($adj['ITEM_NAME']) ?></td>
+                                    <td data-label="Date" class="val-mono" style="font-size:0.8rem;"><?= $adj['TRANSACTION_DATE_FMT'] ?></td>
+                                    <td data-label="Location" style="color:var(--blue); font-weight:600;"><?= htmlspecialchars($adj['LOCATION_NAME']) ?></td>
+                                    <td data-label="Vaccine Name" class="col-name"><?= htmlspecialchars($adj['ITEM_NAME']) ?></td>
                                     <td data-label="Type">
                                         <?php if(strtolower($adj['ADJUSTMENT_TYPE']) == 'add'): ?>
-                                            <span class="badge-add">Addition</span>
+                                            <span class="badge b-add">Addition</span>
                                         <?php else: ?>
-                                            <span class="badge-deduct">Deduction</span>
+                                            <span class="badge b-sub">Deduction</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td data-label="Doses Adjusted" class="t-right" style="font-weight:bold; color: <?= strtolower($adj['ADJUSTMENT_TYPE']) == 'add' ? '#34d399' : '#f87171' ?>;">
+                                    <td data-label="Quantity" class="t-right val-mono <?= strtolower($adj['ADJUSTMENT_TYPE']) == 'add' ? 'text-green' : 'text-red' ?>">
                                         <?= strtolower($adj['ADJUSTMENT_TYPE']) == 'add' ? '+' : '-' ?><?= number_format($adj['QUANTITY'], 2) ?> doses
                                     </td>
                                     <td data-label="Reason">
-                                        <div style="color:#e2e8f0;"><?= htmlspecialchars($adj['REASON']) ?></div>
-                                        <div style="font-size:0.8rem; color:#64748b; font-style:italic;"><?= htmlspecialchars($adj['REMARKS']) ?></div>
+                                        <div style="color:var(--text-primary); font-weight:500; font-size:0.85rem;"><?= htmlspecialchars($adj['REASON']) ?></div>
+                                        <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic;"><?= htmlspecialchars($adj['REMARKS']) ?></div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -623,17 +855,17 @@ try {
         }
         if($has_unused):
         ?>
-            <div class="group-container" style="border-color: #10b981;">
+            <div class="group-container" style="border-color: var(--emerald-dim);">
                 <div class="group-header warehouse">
                     <i class="fa-solid fa-warehouse"></i> WAREHOUSE STOCK (Purchased but 0 Administered)
                 </div>
                 <div class="table-wrap">
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Location</th>
                                 <th>Vaccine Name</th>
-                                <th class="t-right" style="color:#10b981;">Purchased (IN)</th>
+                                <th class="t-right" style="color:var(--emerald);">Purchased (IN)</th>
                                 <th class="t-right">Doses Used (OUT)</th>
                                 <th class="t-right">Purchased Cost</th>
                             </tr>
@@ -642,13 +874,13 @@ try {
                             <?php foreach ($purchases_by_item as $fName => $pData): ?>
                                 <?php if(!isset($pData['processed'])): ?>
                                 <tr>
-                                    <td data-label="Location" style="color:#93c5fd; font-weight:600;"><?= htmlspecialchars($pData['location_name']) ?></td>
-                                    <td data-label="Vaccine Name" style="font-weight:600; color:#fff;"><?= htmlspecialchars($pData['original_name']) ?></td>
-                                    <td data-label="Purchased (IN)" class="t-right" style="color:#10b981; font-weight:bold;">
+                                    <td data-label="Location" style="color:var(--blue); font-weight:600;"><?= htmlspecialchars($pData['location_name']) ?></td>
+                                    <td data-label="Vaccine Name" class="col-name"><?= htmlspecialchars($pData['original_name']) ?></td>
+                                    <td data-label="Purchased (IN)" class="t-right val-mono text-green">
                                         <?= number_format($pData['qty'], 2) ?> doses
                                     </td>
-                                    <td data-label="Doses Used (OUT)" class="t-right" style="color:#64748b;">0.00 doses</td>
-                                    <td data-label="Purchased Cost" class="t-right" style="color:#fbbf24; font-family:monospace;">₱<?= number_format($pData['cost'], 2) ?></td>
+                                    <td data-label="Doses Used (OUT)" class="t-right val-mono" style="color:var(--text-muted);">0.00 doses</td>
+                                    <td data-label="Purchased Cost" class="t-right val-money">₱<?= number_format($pData['cost'], 2) ?></td>
                                 </tr>
                                 <?php endif; ?>
                             <?php endforeach; ?>
@@ -658,18 +890,18 @@ try {
             </div>
         <?php endif; ?>
 
-        <div class="group-container" style="border-color: #0891b2;">
-            <div class="group-header" style="background: rgba(8, 145, 178, 0.2); color: #fff;">
+        <div class="group-container" style="border-color: var(--cyan);">
+            <div class="group-header" style="background: rgba(6, 182, 212, 0.15); color: #fff;">
                 <i class="fa-solid fa-chart-pie"></i> GRAND TOTAL (Filtered Outwards)
             </div>
             <div class="table-wrap">
-                <table>
+                <table class="table">
                     <tbody>
-                        <tr class="row-total" style="font-size: 1.1rem; background: rgba(8, 145, 178, 0.1);">
-                            <td data-label="Summary" style="color: #22d3ee;">OVERALL ADMINISTERED</td>
-                            <td data-label="Used Doses (OUT)" class="t-right" style="color: #22d3ee;"><?= number_format($grand_total_used, 2) ?> doses</td>
-                            <td data-label="Used Cost" class="t-right" style="color: #fbbf24;">₱<?= number_format($grand_total_cost, 2) ?></td>
-                            <td data-label="Date Range" class="t-right">-</td>
+                        <tr class="row-total" style="font-size: 1rem; background: rgba(6, 182, 212, 0.1);">
+                            <td data-label="Summary" style="color: var(--cyan);">OVERALL ADMINISTERED</td>
+                            <td data-label="Used Doses (OUT)" class="t-right val-mono" style="color: var(--cyan);"><?= number_format($grand_total_used, 2) ?> doses</td>
+                            <td data-label="Used Cost" class="t-right val-money">₱<?= number_format($grand_total_cost, 2) ?></td>
+                            <td data-label="Date Range" class="t-right" style="color:var(--text-muted);">-</td>
                         </tr>
                     </tbody>
                 </table>
@@ -681,12 +913,25 @@ try {
 </div>
 
 <script>
-    // Initialize Flatpickr for Date Inputs
+    // ─── Filter Panel Toggle ───
+    let filterOpen = true;
+    function toggleFilters() {
+        filterOpen = !filterOpen;
+        const body = document.getElementById('filterBody');
+        const btn  = document.getElementById('filterToggleBtn');
+        const label = document.getElementById('filterToggleLabel');
+
+        body.classList.toggle('hidden', !filterOpen);
+        btn.classList.toggle('collapsed', !filterOpen);
+        label.textContent = filterOpen ? 'Collapse' : 'Expand';
+    }
+
+    // ─── Date Picker ───
     document.addEventListener('DOMContentLoaded', () => {
         flatpickr(".date-picker", {
-            dateFormat: "Y-m-d", // Value submitted to PHP
-            altInput: true,      // Visual input
-            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            dateFormat: "Y-m-d", 
+            altInput: true,      
+            altFormat: "m/d/Y",  
             allowInput: true
         });
     });
@@ -767,7 +1012,7 @@ try {
         el.disabled = false;
     }
 
-    // --- EXPORT LOGIC ---
+    // ─── EXPORT LOGIC ───
     const rawData = <?php echo json_encode($grouped_data); ?>;
     const purchasesData = <?php echo json_encode($purchases_by_item); ?>;
     const adjustmentsData = <?php echo json_encode($adjustments_data); ?>;
@@ -853,7 +1098,7 @@ try {
     function exportPDF() {
         const doc = new window.jspdf.jsPDF();
         doc.setFontSize(16);
-        doc.setTextColor(8, 145, 178);
+        doc.setTextColor(6, 182, 212); // Cyan
         doc.text("Vaccines Usage & Ledger Report", 14, 15);
         
         doc.setFontSize(10);
@@ -883,7 +1128,7 @@ try {
                     data.cell.styles.fillColor = [240, 240, 240];
                     data.cell.styles.textColor = [0, 0, 0];
                     if(data.row.raw[0].includes('WAREHOUSE')) {
-                        data.cell.styles.textColor = [16, 185, 129]; // Green text for warehouse
+                        data.cell.styles.textColor = [16, 185, 129];
                     }
                 }
                 if (data.row.raw[0] === 'SUBTOTAL') {

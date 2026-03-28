@@ -144,80 +144,293 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sow Breeding Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sow Breeding Management | FarmPro</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.9rem; transition: color 0.2s; }
-        .back-link:hover { color: white; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(236,72,153,0.5); /* Pink Accent */
+            
+            --pink:           #ec4899;
+            --pink-dim:       rgba(236,72,153,0.12);
+            --pink-glow:      rgba(236,72,153,0.25);
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --blue:           #3b82f6;
+            --purple:         #a855f7;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-        .filter-card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; align-items: flex-end; }
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group label { font-size: 0.9rem; color: #94a3b8; font-weight: 600; }
-        .form-select, .form-input { padding: 10px; background: #1e293b; border: 1px solid #475569; color: white; border-radius: 6px; width: 100%; font-size: 1rem; color-scheme: dark;}
-        .form-input:focus, .form-select:focus { border-color: #ec4899; outline: none; }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(236,72,153,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--pink); background: var(--pink-dim); border: 1px solid rgba(236,72,153,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
         
-        .table-container { background: rgba(15, 23, 42, 0.6); border-radius: 12px; overflow: hidden; margin-bottom: 3rem; border: 1px solid rgba(255,255,255,0.05); }
+        .page-header { margin-bottom: 2rem; }
+        .page-header h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; }
+        .page-header h1 span { background: linear-gradient(135deg, var(--pink), #be185d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* ─── FILTERS ─── */
+        .filter-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 1.5rem; margin-bottom: 2rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; align-items: flex-end;
+            box-shadow: var(--shadow-md);
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { color: var(--text-secondary); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-select {
+            width: 100%; padding: 12px 16px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition); appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+        }
+        .form-select:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-glow); background: var(--bg-hover); }
+        .form-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ─── TABLE ─── */
+        .table-container {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden; margin-bottom: 3rem; box-shadow: var(--shadow-md);
+        }
         .table-scroll-wrapper { width: 100%; overflow-x: auto; }
-        .sow-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        .sow-table th { background: rgba(30, 41, 59, 0.8); padding: 15px; text-align: left; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; white-space: nowrap; }
-        .sow-table td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; }
+        .sow-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .sow-table th {
+            background: var(--bg-elevated); color: var(--text-muted); font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.07em; padding: 16px; text-align: left; border-bottom: 1px solid var(--border);
+        }
+        .sow-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.02); color: var(--text-primary); vertical-align: middle; }
         .sow-table tr:hover { background: rgba(255,255,255,0.02); }
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
-        .status-dry { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
-        .status-service { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
-        .status-pregnant { background: rgba(34, 197, 94, 0.2); color: #86efac; }
-        .status-birthing { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-        .status-abortion { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; } 
+        .sow-table tr.active-row { background: var(--pink-dim); border-left: 3px solid var(--pink); }
+
+        .tag-no { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; color: #fff; }
+        .stage-name { color: var(--text-secondary); font-size: 0.9rem; }
+        .date-val { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-primary); }
+        .time-val { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 6px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; white-space: nowrap;
+        }
+        .status-dry { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+        .status-service { background: var(--pink-dim); color: var(--pink); border: 1px solid rgba(236,72,153,0.3); }
+        .status-pregnant { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.3); }
+        .status-birthing { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+        .status-abortion { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); } 
         
-        .btn-manage { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.85rem; white-space: nowrap; }
-        .btn-manage:hover { background: rgba(59, 130, 246, 0.2); }
-        .btn-manage.active { background: #3b82f6; color: white; }
-        .detail-section { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; animation: slideIn 0.3s ease; }
-        .status-card { background: rgba(30, 41, 59, 0.8); border: 1px solid #ec4899; border-radius: 16px; padding: 2rem; text-align: center; height: fit-content; }
-        .current-status-large { font-size: 2.5rem; font-weight: 800; margin: 1rem 0; background: linear-gradient(135deg, #ec4899, #db2777); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .action-btn { display: block; width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 1rem; }
+        .btn-manage {
+            background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-flex;
+            align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; font-family: var(--font); transition: var(--transition);
+        }
+        .btn-manage:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+        .btn-manage.active { background: var(--pink); color: #000; border-color: var(--pink); box-shadow: 0 4px 12px var(--pink-glow); }
+        .btn-manage.active:hover { background: #f472b6; transform: translateY(-1px); }
+
+        /* ─── DETAIL SECTION ─── */
+        .detail-section {
+            display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;
+            animation: slideIn 0.3s ease-out forwards; opacity: 0; transform: translateY(20px);
+        }
+        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+
+        /* Status Card (Left Pane) */
+        .status-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; text-align: center; height: fit-content;
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+        }
+        .status-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--pink), #be185d);
+        }
+        .status-card h3 { font-size: 1.5rem; margin: 0 0 0.5rem 0; color: #fff; font-family: var(--font-mono); }
+        .status-card .lbl { color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        .current-status-large {
+            font-size: 2.5rem; font-weight: 800; margin: 1rem 0 2rem 0;
+            background: linear-gradient(135deg, var(--pink), #db2777);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.1;
+        }
         
-        .btn-primary { background: #3b82f6; color: white; }
-        .btn-success { background: #10b981; color: white; }
-        .btn-warning { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid #f59e0b; }
-        .btn-purple { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3); }
-        .btn-danger { background: rgba(239, 68, 68, 0.8); color: white; border: 1px solid #ef4444; } 
+        .action-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+            padding: 14px; margin-bottom: 12px; border-radius: var(--radius-md); border: none;
+            font-weight: 700; font-family: var(--font); cursor: pointer; font-size: 0.95rem; transition: var(--transition);
+        }
+        .action-btn i { font-size: 1.1rem; }
+        .btn-primary { background: var(--pink); color: #000; }
+        .btn-primary:hover { background: #f472b6; box-shadow: 0 4px 15px var(--pink-glow); transform: translateY(-1px); }
         
-        .timeline-container { background: rgba(15, 23, 42, 0.4); border-radius: 12px; padding: 1.5rem; }
-        .timeline-item { border-left: 3px solid #475569; padding-left: 15px; margin-bottom: 15px; position: relative; }
-        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 0; width: 9px; height: 9px; border-radius: 50%; background: #475569; }
-        .timeline-item.active { border-color: #10b981; }
-        .timeline-item.active::before { background: #10b981; box-shadow: 0 0 10px #10b981; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
+        .btn-success { background: var(--emerald); color: #000; }
+        .btn-success:hover { background: #34d399; box-shadow: 0 4px 15px var(--emerald-glow); transform: translateY(-1px); }
+        
+        .btn-warning { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+        .btn-warning:hover { background: rgba(245,158,11,0.2); border-color: var(--amber); }
+        
+        .btn-purple { background: var(--purple); color: #fff; }
+        .btn-purple:hover { background: #c084fc; box-shadow: 0 4px 15px var(--purple-glow); transform: translateY(-1px); }
+        
+        .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: rgba(239,68,68,0.2); border-color: var(--red); }
+
+        /* Timeline (Right Pane) */
+        .timeline-container {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; box-shadow: var(--shadow-md);
+        }
+        .timeline-title { color: var(--text-primary); font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;}
+        
+        .timeline { position: relative; padding-left: 20px; }
+        .timeline::before { content: ''; position: absolute; left: 6px; top: 10px; bottom: 10px; width: 2px; background: var(--bg-elevated); border-radius: 2px; }
+        
+        .timeline-item { position: relative; padding-bottom: 1.5rem; }
+        .timeline-item:last-child { padding-bottom: 0; }
+        
+        .timeline-dot {
+            position: absolute; left: -20px; top: 4px; width: 14px; height: 14px;
+            border-radius: 50%; background: var(--bg-elevated); border: 2px solid var(--text-muted);
+            z-index: 2; transition: all 0.3s;
+        }
+        .timeline-item.active .timeline-dot { background: var(--emerald); border-color: var(--emerald); box-shadow: 0 0 10px var(--emerald-glow); }
+        
+        .timeline-content { background: var(--bg-elevated); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border); transition: all 0.2s;}
+        .timeline-item.active .timeline-content { border-color: rgba(16,185,129,0.3); }
+        .timeline-content:hover { background: var(--bg-hover); }
+        
+        .tl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .tl-status { font-weight: 700; color: var(--text-primary); font-size: 1.05rem; }
+        .timeline-item.active .tl-status { color: var(--emerald); }
+        
+        .tl-time { text-align: right; }
+        .tl-date { color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; }
+        .tl-hour { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem; }
+        
+        .tl-meta { font-size: 0.85rem; color: var(--pink); margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; background: var(--pink-dim); padding: 4px 10px; border-radius: 6px;}
+        .tl-ended { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; font-family: var(--font-mono); }
+
+        /* ─── MODALS ─── */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem; box-sizing: border-box;
+        }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 12px; width: 90%; max-width: 450px; padding: 1.5rem; border: 1px solid #475569; animation: zoomIn 0.2s ease; }
-        .modal h2 { margin-top: 0; color: #fff; font-size: 1.2rem; }
-        .modal p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem; }
-        .radio-group { display: flex; gap: 1rem; margin-bottom: 1rem; }
-        .radio-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #e2e8f0; font-size: 0.95rem; }
-        .radio-label input { accent-color: #ec4899; width: 18px; height: 18px; }
-        @media (max-width: 768px) { .container { padding: 1rem; } .detail-section { grid-template-columns: 1fr; } .filter-card { gap: 1rem; padding: 1rem; } }
+        
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            animation: modalZoom 0.2s ease-out;
+        }
+        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff; }
+        .modal-header p { margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+        .modal-body { padding: 2rem; overflow-y: auto; }
+        .modal-footer { padding: 1.25rem 2rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); border-radius: 0 0 var(--radius-xl) var(--radius-xl);}
+
+        .form-input {
+            width: 100%; padding: 12px 16px; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            color: var(--text-primary); font-size: 0.95rem; font-family: var(--font); outline: none; transition: all var(--transition);
+        }
+        .form-input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-glow); }
+
+        .radio-group { display: flex; gap: 1.5rem; margin-top: 8px; }
+        .radio-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-primary); font-size: 0.95rem; font-weight: 500;}
+        .radio-label input[type="radio"] { appearance: none; width: 20px; height: 20px; border: 2px solid var(--text-muted); border-radius: 50%; outline: none; transition: var(--transition); cursor: pointer; position: relative; margin: 0;}
+        .radio-label input[type="radio"]:checked { border-color: var(--pink); }
+        .radio-label input[type="radio"]:checked::after { content: ''; position: absolute; top: 4px; left: 4px; width: 8px; height: 8px; background: var(--pink); border-radius: 50%; }
+
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .detail-section { grid-template-columns: 1fr; }
+            .filter-card { grid-template-columns: 1fr; gap: 1rem; padding: 1.25rem; }
+            .modal-content { max-width: 95%; margin: 10px; }
+        }
     </style>
 </head>
 <body>
 
+<div id="toastContainer"></div>
+
 <div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
-        <h1 style="margin:0;">Sow Breeding Management</h1>
+    
+    <div class="top-bar">
         <a href="farm_dashboard.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Farm Dashboard
+            <i class="fa-solid fa-arrow-left"></i> Back to Farm Dashboard
         </a>
+        <span class="page-badge"><i class="fa-solid fa-venus"></i> Reproductive Engine</span>
+    </div>
+
+    <div class="page-header">
+        <h1>Sow Breeding <span>Management</span></h1>
     </div>
 
     <form class="filter-card" method="GET">
@@ -268,17 +481,17 @@ try {
                                 $timeStr = $dt->format('h:i A');
                             }
                         ?>
-                        <tr style="<?php echo $isActive ? 'background: rgba(59, 130, 246, 0.1);' : ''; ?>">
-                            <td style="font-weight: bold; color: white;"><?php echo $row['TAG_NO']; ?></td>
-                            <td><?php echo $row['STAGE_NAME']; ?></td>
+                        <tr class="<?php echo $isActive ? 'active-row' : ''; ?>">
+                            <td><div class="tag-no"><?php echo $row['TAG_NO']; ?></div></td>
+                            <td><div class="stage-name"><?php echo $row['STAGE_NAME']; ?></div></td>
                             <td><span class="status-badge <?php echo $badgeClass; ?>"><?php echo $status; ?></span></td>
                             <td>
-                                <div><?php echo $dateStr; ?></div>
-                                <div style="font-size: 0.85rem; color: #94a3b8; font-family: monospace;"><?php echo $timeStr; ?></div>
+                                <div class="date-val"><?php echo $dateStr; ?></div>
+                                <div class="time-val"><?php echo $timeStr; ?></div>
                             </td>
                             <td style="text-align: right;">
                                 <a href="?location_id=<?php echo $location_id; ?>&building_id=<?php echo $building_id; ?>&animal_id=<?php echo $row['ANIMAL_ID']; ?>" class="btn-manage <?php echo $isActive ? 'active' : ''; ?>">
-                                    <?php echo $isActive ? 'Selected' : 'Manage Status'; ?>
+                                    <?php echo $isActive ? '<i class="fa-solid fa-check"></i> Selected' : 'Manage Status'; ?>
                                 </a>
                             </td>
                         </tr>
@@ -288,31 +501,38 @@ try {
             </div>
         </div>
     <?php elseif($building_id): ?>
-        <div style="text-align: center; padding: 2rem; color: #94a3b8; background: rgba(30,41,59,0.5); border-radius: 12px;">No Sows or Gilts found in this building.</div>
+        <div style="text-align: center; padding: 3rem 2rem; color: var(--text-muted); background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--radius-xl); margin-bottom: 2rem;">
+            <i class="fa-solid fa-piggy-bank" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <h3>No Sows or Gilts found in this building.</h3>
+        </div>
     <?php endif; ?>
 
     <?php if($selected_sow_data): ?>
         <div id="action-area" class="detail-section">
+            
             <div class="status-card">
-                <h3 style="color:white; margin-top:0;">Tag: <?php echo $selected_sow_data['TAG_NO']; ?></h3>
-                <div style="color: #94a3b8; font-size: 0.9rem;">Current Cycle Status</div>
+                <div class="lbl">Tag Number</div>
+                <h3><?php echo $selected_sow_data['TAG_NO']; ?></h3>
+                
+                <div class="lbl" style="margin-top: 1.5rem;">Current Cycle Status</div>
                 <div class="current-status-large"><?php echo $current_status; ?></div>
-                <div style="margin-top: 2rem;">
+                
+                <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 8px;">
                     <?php if (empty($actions)): ?>
-                        <p style="color:#64748b;">No actions available.</p>
+                        <p style="color:var(--text-muted); font-style: italic;">No actions available for this state.</p>
                     <?php else: ?>
                         <?php foreach($actions as $action): 
-                            $btnClass = 'btn-primary'; $val = '';
+                            $btnClass = 'btn-primary'; $val = ''; $icon = '';
                             
-                            if (strpos($action, 'Undo') !== false) { $btnClass = 'btn-warning'; $val = 'undo'; }
-                            elseif (strpos($action, 'Abortion') !== false) { $btnClass = 'btn-danger'; $val = 'abortion'; }
-                            elseif (strpos($action, 'Recovery') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; }
-                            elseif (strpos($action, 'Go to Sow Card') !== false) { $btnClass = 'btn-purple'; $val = 'redirect_sow_card'; }
-                            elseif (strpos($action, 'Completed') !== false || strpos($action, 'Start') !== false || strpos($action, 'Birthing') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; }
-                            elseif (strpos($action, 'Next Service') !== false) { $btnClass = 'btn-primary'; $val = 'repeat_service'; }
+                            if (strpos($action, 'Undo') !== false) { $btnClass = 'btn-warning'; $val = 'undo'; $icon = '<i class="fa-solid fa-rotate-left"></i>'; }
+                            elseif (strpos($action, 'Abortion') !== false) { $btnClass = 'btn-danger'; $val = 'abortion'; $icon = '<i class="fa-solid fa-triangle-exclamation"></i>'; }
+                            elseif (strpos($action, 'Recovery') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; $icon = '<i class="fa-solid fa-heart-pulse"></i>'; }
+                            elseif (strpos($action, 'Go to Sow Card') !== false) { $btnClass = 'btn-purple'; $val = 'redirect_sow_card'; $icon = '<i class="fa-solid fa-clipboard-list"></i>'; }
+                            elseif (strpos($action, 'Completed') !== false || strpos($action, 'Start') !== false || strpos($action, 'Birthing') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; $icon = '<i class="fa-solid fa-check-double"></i>'; }
+                            elseif (strpos($action, 'Next Service') !== false) { $btnClass = 'btn-primary'; $val = 'repeat_service'; $icon = '<i class="fa-solid fa-repeat"></i>'; }
                         ?>
                         <button class="action-btn <?php echo $btnClass; ?>" onclick="handleAction('<?php echo $val; ?>', '<?php echo $action; ?>')">
-                            <?php echo $action; ?>
+                            <?php echo $icon . ' ' . $action; ?>
                         </button>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -320,142 +540,158 @@ try {
             </div>
 
             <div class="timeline-container">
-                <h3 style="color: #cbd5e1; margin-top: 0; margin-bottom: 1.5rem;">Cycle History</h3>
-                <?php foreach($history as $h): 
-                    $histDate = new DateTime($h['STATUS_START_DATE']);
-                    // Format History Date to mm/dd/yyyy
-                    $hDate = $histDate->format('m/d/Y');
-                    $hTime = $histDate->format('h:i A');
-                ?>
-                    <div class="timeline-item <?php echo $h['IS_ACTIVE'] ? 'active' : ''; ?>">
-                        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-                            <strong style="color: <?php echo $h['IS_ACTIVE'] ? '#10b981' : '#e2e8f0'; ?>"><?php echo $h['STATUS_NAME']; ?></strong>
-                            <div style="text-align: right;">
-                                <small style="color: #94a3b8; display: block;"><?php echo $hDate; ?></small>
-                                <small style="color: #64748b; font-size: 0.75rem;"><?php echo $hTime; ?></small>
+                <h3 class="timeline-title"><i class="fa-solid fa-clock-rotate-left" style="color:var(--pink);"></i> Cycle History</h3>
+                <div class="timeline">
+                    <?php foreach($history as $h): 
+                        $histDate = new DateTime($h['STATUS_START_DATE']);
+                        $hDate = $histDate->format('m/d/Y');
+                        $hTime = $histDate->format('h:i A');
+                    ?>
+                        <div class="timeline-item <?php echo $h['IS_ACTIVE'] ? 'active' : ''; ?>">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div class="tl-header">
+                                    <div class="tl-status"><?php echo $h['STATUS_NAME']; ?></div>
+                                    <div class="tl-time">
+                                        <div class="tl-date"><?php echo $hDate; ?></div>
+                                        <div class="tl-hour"><?php echo $hTime; ?></div>
+                                    </div>
+                                </div>
+                                
+                                <?php if($h['SERVICE_TYPE']): ?>
+                                    <div class="tl-meta">
+                                        <i class="fa-solid fa-syringe"></i> <?php echo $h['SERVICE_TYPE']; ?> 
+                                        <?php echo $h['BOAR_TAG'] ? '&nbsp;|&nbsp;<i class="fa-solid fa-mars"></i> Boar: '.$h['BOAR_TAG'] : ''; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if($h['IS_ACTIVE']): ?>
+                                    <div style="color: var(--emerald); font-size: 0.8rem; margin-top: 8px; font-weight: 700;"><i class="fa-solid fa-circle-dot"></i> Current Active Stage</div>
+                                <?php else: ?>
+                                    <?php 
+                                        $endDate = new DateTime($h['STATUS_END_DATE']);
+                                        $eDate = $endDate->format('m/d/Y h:i A');
+                                    ?>
+                                    <div class="tl-ended">Concluded: <?php echo $eDate; ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
-                        <?php if($h['SERVICE_TYPE']): ?>
-                            <div style="font-size: 0.8rem; color: #f472b6; margin-top: 4px;">
-                                Service: <?php echo $h['SERVICE_TYPE']; ?> 
-                                <?php echo $h['BOAR_TAG'] ? ' | Boar: '.$h['BOAR_TAG'] : ''; ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if($h['IS_ACTIVE']): ?>
-                            <div style="color: #10b981; font-size: 0.8rem;">● Current Active Stage</div>
-                        <?php else: ?>
-                            <?php 
-                                $endDate = new DateTime($h['STATUS_END_DATE']);
-                                // Format History End Date to mm/dd/yyyy
-                                $eDate = $endDate->format('m/d/Y h:i A');
-                            ?>
-                            <div style="color: #64748b; font-size: 0.8rem;">Ended: <?php echo $eDate; ?></div>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </div>
             </div>
+
         </div>
     <?php endif; ?>
 </div>
 
-
-
 <div id="serviceModal" class="modal">
     <div class="modal-content">
-        <h2>Record Service Details</h2>
-        <p>Please specify how the service was performed.</p>
-        
-        <form onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
-            <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
-            <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
-            <input type="hidden" name="action_type" id="modal_action_type">
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label>Service Date & Time</label>
-                <input type="text" name="action_date" id="service_date" class="form-input datetime-picker" required>
+        <div class="modal-header">
+            <div>
+                <h2>Record Service Details</h2>
+                <p>Specify how the service was performed.</p>
             </div>
+        </div>
+        <div class="modal-body">
+            <form id="form-service" onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
+                <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
+                <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
+                <input type="hidden" name="action_type" id="modal_action_type">
 
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label>Service Method</label>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="service_type" value="Natural" checked> Natural
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="service_type" value="Artificial"> Artificial Insemination
-                    </label>
+                <div class="form-group">
+                    <label class="form-label">Service Date &amp; Time</label>
+                    <input type="text" name="action_date" id="service_date" class="form-input datetime-picker" required>
                 </div>
-            </div>
 
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label>Locate Boar (Optional if AI)</label>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <select id="boarBld" class="form-select" onchange="loadBoarPens()">
-                        <option value="">-- Building --</option>
-                        <?php if($location_id): foreach($buildings as $b): ?>
-                            <option value="<?= $b['BUILDING_ID'] ?>"><?= htmlspecialchars($b['BUILDING_NAME']) ?></option>
-                        <?php endforeach; endif; ?>
-                    </select>
-                    <select id="boarPen" class="form-select" disabled onchange="loadBoars()">
-                        <option value="">-- Pen --</option>
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label class="form-label">Service Method</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="service_type" value="Natural" checked> Natural
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="service_type" value="Artificial"> AI
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label class="form-label">Locate Boar (Optional if AI)</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <select id="boarBld" class="form-select" onchange="loadBoarPens()">
+                            <option value="">-- Building --</option>
+                            <?php if($location_id): foreach($buildings as $b): ?>
+                                <option value="<?= $b['BUILDING_ID'] ?>"><?= htmlspecialchars($b['BUILDING_NAME']) ?></option>
+                            <?php endforeach; endif; ?>
+                        </select>
+                        <select id="boarPen" class="form-select" disabled onchange="loadBoars()">
+                            <option value="">-- Pen --</option>
+                        </select>
+                    </div>
+                    <select name="boar_id" id="boarSelect" class="form-select" disabled>
+                        <option value="">-- Unknown / External --</option>
                     </select>
                 </div>
-                <select name="boar_id" id="boarSelect" class="form-select" disabled>
-                    <option value="">-- Unknown / External --</option>
-                </select>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-manage" style="border:none; color: #94a3b8;" onclick="closeModal('serviceModal')">Cancel</button>
-                <button type="submit" class="btn-manage active" style="border:none; padding: 10px 20px;">Confirm & Save</button>
-            </div>
-        </form>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-manage" style="border:none;" onclick="closeModal('serviceModal')">Cancel</button>
+            <button type="submit" form="form-service" class="btn-manage active" style="border:none;">Confirm &amp; Save</button>
+        </div>
     </div>
 </div>
 
 <div id="pregnancyModal" class="modal">
     <div class="modal-content">
-        <h2>Confirm Pregnancy</h2>
-        <p>Please specify the date and time the sow was confirmed pregnant.</p>
-        
-        <form onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
-            <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
-            <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
-            <input type="hidden" name="action_type" id="pregnancy_action_type">
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label>Confirmation Date & Time</label>
-                <input type="text" name="action_date" id="pregnancy_date" class="form-input datetime-picker" required>
+        <div class="modal-header">
+            <div>
+                <h2>Confirm Pregnancy</h2>
+                <p>Specify the date and time the sow was confirmed pregnant.</p>
             </div>
+        </div>
+        <div class="modal-body">
+            <form id="form-pregnancy" onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
+                <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
+                <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
+                <input type="hidden" name="action_type" id="pregnancy_action_type">
 
-            <div class="modal-footer">
-                <button type="button" class="btn-manage" style="border:none; color: #94a3b8;" onclick="closeModal('pregnancyModal')">Cancel</button>
-                <button type="submit" class="btn-manage active btn-success" style="border:none; padding: 10px 20px;">Save Pregnancy</button>
-            </div>
-        </form>
+                <div class="form-group">
+                    <label class="form-label">Confirmation Date &amp; Time</label>
+                    <input type="text" name="action_date" id="pregnancy_date" class="form-input datetime-picker" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-manage" style="border:none;" onclick="closeModal('pregnancyModal')">Cancel</button>
+            <button type="submit" form="form-pregnancy" class="action-btn btn-success" style="width:auto; margin:0;">Save Pregnancy</button>
+        </div>
     </div>
 </div>
 
 <div id="genericModal" class="modal">
     <div class="modal-content">
-        <h2 id="generic_modal_title">Confirm Action</h2>
-        <p id="generic_modal_desc">Please specify the date and time for this action.</p>
-        
-        <form onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
-            <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
-            <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
-            <input type="hidden" name="action_type" id="generic_action_type">
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label>Action Date & Time</label>
-                <input type="text" name="action_date" id="generic_date" class="form-input datetime-picker" required>
+        <div class="modal-header">
+            <div>
+                <h2 id="generic_modal_title">Confirm Action</h2>
+                <p id="generic_modal_desc">Please specify the date and time for this action.</p>
             </div>
+        </div>
+        <div class="modal-body">
+            <form id="form-generic" onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
+                <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
+                <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
+                <input type="hidden" name="action_type" id="generic_action_type">
 
-            <div class="modal-footer">
-                <button type="button" class="btn-manage" style="border:none; color: #94a3b8;" onclick="closeModal('genericModal')">Cancel</button>
-                <button type="submit" class="btn-manage active" id="genericSubmitBtn" style="border:none; padding: 10px 20px;">Confirm</button>
-            </div>
-        </form>
+                <div class="form-group">
+                    <label class="form-label">Action Date &amp; Time</label>
+                    <input type="text" name="action_date" id="generic_date" class="form-input datetime-picker" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-manage" style="border:none;" onclick="closeModal('genericModal')">Cancel</button>
+            <button type="submit" form="form-generic" class="action-btn" id="genericSubmitBtn" style="width:auto; margin:0;">Confirm</button>
+        </div>
     </div>
 </div>
 
@@ -466,7 +702,7 @@ try {
             enableTime: true,
             dateFormat: "Y-m-d H:i",      // The format submitted to the backend
             altInput: true,               // Dummy input for UI
-            altFormat: "m/d/Y h:i K",     // Visual Format: mm/dd/yyyy hh:mm AM/PM
+            altFormat: "M j, Y h:i K",    // Visual Format: Jan 1, 2024 12:00 AM
             allowInput: true
         });
     });
@@ -496,11 +732,9 @@ try {
         pen.disabled = true;
         pen.innerHTML = '<option>Loading...</option>';
         
-        // --- NEW: AJAX CALL FOR BOAR PENS ONLY ---
         fetchJSON(`?action=get_boar_pens&bld_id=${bld}`).then(data => {
             pen.innerHTML = '<option value="">-- Select Pen --</option>';
             if(data && data.length > 0) {
-                // Populate options AND add the Title attribute so users see the Boar list on hover!
                 data.forEach(i => {
                     pen.innerHTML += `<option value="${i.PEN_ID}" title="Boars inside: ${i.BOAR_LIST}">${i.PEN_NAME} (${i.BOAR_LIST})</option>`;
                 });
@@ -533,15 +767,14 @@ try {
         });
     }
 
-    // Modal Display Logic
     function handleAction(val, label) {
         const now = new Date();
 
         if (label.includes('Service')) {
             document.getElementById('modal_action_type').value = val;
-            document.getElementById('service_date')._flatpickr.setDate(now); // Set flatpickr to current time
+            document.getElementById('service_date')._flatpickr.setDate(now); 
             
-            // Reset Boar dropdowns when modal opens
+            // Reset Boar dropdowns
             document.getElementById('boarBld').value = '';
             document.getElementById('boarPen').innerHTML = '<option value="">-- Pen --</option>';
             document.getElementById('boarPen').disabled = true;
@@ -552,7 +785,7 @@ try {
         } 
         else if (label.includes('Pregnant')) {
             document.getElementById('pregnancy_action_type').value = val;
-            document.getElementById('pregnancy_date')._flatpickr.setDate(now); // Set flatpickr to current time
+            document.getElementById('pregnancy_date')._flatpickr.setDate(now);
             document.getElementById('pregnancyModal').classList.add('show');
         }
         else if (val === 'redirect_sow_card') {
@@ -562,7 +795,7 @@ try {
             const pen = '<?php echo $selected_sow_data['PEN_ID'] ?? ''; ?>';
             window.location.href = `animal_sow_cards.php?location_id=${loc}&building_id=${bld}&pen_id=${pen}&animal_id=${aid}`;
         }
-        // Use Generic Modal for EVERYTHING ELSE (Birthing, Abortion, Undo, etc.)
+        // Generic Modal
         else {
             const titleEl = document.getElementById('generic_modal_title');
             const descEl = document.getElementById('generic_modal_desc');
@@ -570,19 +803,18 @@ try {
             const submitBtn = document.getElementById('genericSubmitBtn');
 
             typeInput.value = val;
-            document.getElementById('generic_date')._flatpickr.setDate(now); // Set flatpickr to current time
+            document.getElementById('generic_date')._flatpickr.setDate(now);
 
             if (val === 'undo') {
                 titleEl.innerText = "Confirm Undo";
-                descEl.innerHTML = "<span style='color:#f87171;'>⚠️ WARNING: Undo will revert the status and close current records. Please confirm the timestamp for this reversal.</span>";
-                submitBtn.className = "btn-manage active btn-warning";
+                descEl.innerHTML = "<span style='color:var(--red); font-weight:600;'><i class='fa-solid fa-triangle-exclamation'></i> WARNING: Undo will revert the status and close current records. Please confirm the timestamp for this reversal.</span>";
+                submitBtn.className = "action-btn btn-warning";
             } else {
                 titleEl.innerText = label;
                 descEl.innerText = `Please specify the exact date and time for: ${label}`;
                 
-                // Style button based on action type
-                if(val === 'abortion') submitBtn.className = "btn-manage active btn-danger";
-                else submitBtn.className = "btn-manage active btn-success";
+                if(val === 'abortion') submitBtn.className = "action-btn btn-danger";
+                else submitBtn.className = "action-btn btn-success";
             }
             
             document.getElementById('genericModal').classList.add('show');
@@ -597,11 +829,11 @@ try {
     async function submitModalForm(e, form) {
         e.preventDefault();
         const btn = form.querySelector('button[type="submit"]');
-        const originalText = btn.innerText;
-        btn.innerText = "Saving...";
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         btn.disabled = true;
 
-        // Extract disabled elements to temporarily enable them so their values are sent (like boar_id)
+        // Extract disabled elements to temporarily enable them so their values are sent
         const disabledElements = form.querySelectorAll(':disabled');
         disabledElements.forEach(el => el.disabled = false);
 
@@ -621,16 +853,29 @@ try {
                 body: data.toString()
             });
             
-            // Re-navigate to the clean GET URL, obliterating POST history entirely
+            // Re-navigate to the clean GET URL
             const cleanUrl = `?location_id=<?php echo $location_id; ?>&building_id=<?php echo $building_id; ?>&animal_id=<?php echo $selected_animal_id; ?>`;
             window.location.href = cleanUrl;
             
         } catch (err) {
             console.error(err);
-            alert("❌ System connection error.");
-            btn.innerText = originalText;
+            showToast("System connection error.", "error");
+            btn.innerHTML = originalText;
             btn.disabled = false;
         }
+    }
+
+    // Optional Toast function if you want to replace the hard alert in catch block
+    function showToast(msg, type = 'success') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.position = 'fixed'; t.style.top = '20px'; t.style.right = '20px'; t.style.zIndex = '9999';
+        t.style.background = '#1e293b'; t.style.color = '#fff'; t.style.padding = '1rem 1.5rem';
+        t.style.borderRadius = '10px'; t.style.border = '1px solid #475569';
+        t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
+        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
     }
 </script>
 

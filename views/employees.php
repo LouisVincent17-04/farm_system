@@ -39,90 +39,291 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Management</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; margin: 0; padding-bottom: 40px; min-height: 100vh;}
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; margin-bottom: 20px; transition: 0.2s; }
-        .back-link:hover { color: white; }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;}
-        .title { font-size: 2rem; color: #0ea5e9; font-weight: bold; margin:0; }
-        .btn-add { background: #0ea5e9; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.2s; display: flex; align-items: center; gap: 8px;}
-        .btn-add:hover { background: #0284c7; }
-
-        /* Filters & Sort */
-        .filters-wrapper { display: flex; gap: 15px; margin-bottom: 2rem; flex-wrap: wrap; }
-        .search-container { position: relative; flex: 1; min-width: 250px; }
-        .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); box-sizing: border-box; }
-        .search-input::placeholder { color: #94a3b8; }
-        .search-input:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
-        
-        .sort-select {
-            width: auto; min-width: 220px; padding: 1rem; border-radius: 0.5rem;
-            background: rgba(30, 41, 59, 0.5); border: 1px solid #334155;
-            color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;
-            backdrop-filter: blur(10px); cursor: pointer;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(56,189,248,0.5); /* Sky Blue Accent */
+            --sky:            #38bdf8;
+            --sky-dim:        rgba(56,189,248,0.12);
+            --sky-glow:       rgba(56,189,248,0.25);
+            --green:          #22c55e;
+            --green-dim:      rgba(34,197,94,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-sm:      6px;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
         }
-        .sort-select:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
-        .sort-select option { background: #1e293b; color: white; }
 
-        /* Table */
-        .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 12px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { background: rgba(15, 23, 42, 0.9); color: #0ea5e9; text-align: left; padding: 1rem; text-transform: uppercase; font-size: 0.8rem; border-bottom: 1px solid #334155; }
-        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 85% 10%, rgba(56,189,248,0.04) 0%, transparent 50%);
+        }
+
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR & HEADER ─── */
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--sky); background: var(--sky-dim); border: 1px solid rgba(56,189,248,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 0.25rem 0;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--sky), #0ea5e9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-primary { background: var(--sky); color: #000; border-color: var(--sky); }
+        .btn-primary:hover { background: #0ea5e9; box-shadow: 0 0 16px var(--sky-glow); color: #fff; transform: translateY(-2px); }
         
-        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
-        .b-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .b-inactive { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
 
-        .actions { display: flex; justify-content: center; align-items: center; }
-        .actions button { background: transparent; border: none; font-size: 1.1rem; margin: 0 5px; cursor: pointer; transition: 0.2s; }
-        .btn-edit { color: #3b82f6; } .btn-edit:hover { color: #60a5fa; transform: scale(1.1); }
-        .btn-delete { color: #ef4444; } .btn-delete:hover { color: #f87171; transform: scale(1.1); }
+        /* ─── FILTER & SEARCH BAR ─── */
+        .filters-wrapper {
+            display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            padding: 1rem; border-radius: var(--radius-xl); align-items: center;
+        }
+        .search-container { position: relative; flex: 1; min-width: 250px; display: flex; align-items: center; }
+        .search-icon {
+            position: absolute; left: 1rem; color: var(--text-muted); width: 18px; height: 18px; pointer-events: none;
+        }
+        .search-input {
+            width: 100%; padding: 12px 12px 12px 2.8rem; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary);
+            font-size: 0.9rem; font-family: var(--font); outline: none; transition: all var(--transition);
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+        .search-input:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); background: var(--bg-hover); }
 
-        /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; padding: 1rem; box-sizing: border-box;}
+        .sort-select {
+            width: auto; min-width: 200px; padding: 12px 36px 12px 12px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); font-size: 0.9rem; font-family: var(--font);
+            border-radius: var(--radius-md); outline: none; transition: all var(--transition);
+            appearance: none; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+        }
+        .sort-select:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); background: var(--bg-hover); }
+        .sort-select option { background: #1e293b; color: var(--text-primary); }
+
+        /* ─── TABLE ─── */
+        .table-wrap {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 12px 16px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td { padding: 12px 16px; font-size: 0.85rem; color: var(--text-primary); vertical-align: middle; }
+
+        /* Badges */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+            border-radius: 99px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+        }
+        .b-active   { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .b-inactive { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
+
+        /* Typography Utilities */
+        .col-name { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
+        .val-mono { font-family: var(--font-mono); color: var(--sky); font-weight: 600; font-size: 0.85rem;}
+        .val-date { color: var(--text-secondary); font-size: 0.85rem; }
+
+        /* Action Buttons */
+        .actions { display: flex; justify-content: center; gap: 8px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary); font-size: 0.85rem;
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.edit:hover { color: var(--sky); border-color: var(--sky); }
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
+
+        /* ─── MODAL ─── */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem; overflow-y: auto;
+        }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; width: 100%; max-width: 450px; border-radius: 12px; border: 1px solid #334155; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);}
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
-        .modal-body { padding: 1.5rem; max-height: 70vh; overflow-y: auto; }
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 550px;
+            max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-md);
+            margin: auto;
+        }
+        .modal-header {
+            padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
         
-        .form-row { display: flex; gap: 10px; }
-        .form-row .form-group { flex: 1; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 5px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; outline: none; transition: 0.2s;}
-        .form-group input:focus, .form-group select:focus { border-color: #0ea5e9; }
-        
-        .btn-cancel { background: transparent; color: #cbd5e1; border: 1px solid #475569; cursor: pointer; padding: 8px 16px; border-radius: 6px; transition: 0.2s; }
-        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
-        .btn-save { background: #0ea5e9; color: white; border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        .btn-save:hover { background: #0284c7; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+        .modal-footer {
+            padding: 1.25rem 1.5rem; border-top: 1px solid var(--border);
+            display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated);
+        }
 
+        /* Form Layouts in Modal */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label {
+            font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--text-secondary); display: flex; align-items: center; gap: 5px;
+        }
+        .form-control {
+            width: 100%; padding: 10px 12px; height: 42px; background: var(--bg-elevated);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: var(--radius-md); font-size: 0.9rem; font-family: var(--font);
+            outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            padding-right: 36px; cursor: pointer;
+        }
+        .form-control:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); background: var(--bg-hover); }
+
+        .alert {
+            padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem;
+            display: none; font-size: 0.9rem; text-align: center; font-weight: 600;
+        }
+        .alert.success { background: var(--green-dim); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+        .alert.error { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-buttons { width: 100%; }
+            .header-buttons .btn { width: 100%; }
             .filters-wrapper { flex-direction: column; }
             .sort-select { width: 100%; }
-            .form-row { flex-direction: column; gap: 0; }
+            .form-row { grid-template-columns: 1fr; gap: 1rem; }
+            .modal-footer { flex-direction: column; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
+
+            /* Mobile Table to Cards */
+            .table-wrap { border: none; background: transparent; overflow: visible; }
+            .table { min-width: 0; display: block; }
+            .table thead { display: none; }
+            .table tbody { display: block; width: 100%; }
+            .table tr { 
+                display: block; background: var(--bg-surface); 
+                border: 1px solid var(--border); border-radius: var(--radius-lg); 
+                margin-bottom: 1rem; padding: 1.25rem; box-shadow: var(--shadow-sm);
+            }
+            .table td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); 
+                text-align: right; white-space: normal;
+            }
+            .table td:last-child { border-bottom: none; }
+            .table td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; margin-right: 1rem; text-align: left; flex-shrink: 0;
+            }
+            .actions { justify-content: flex-end; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="admin_dashboard.php" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
     
-    <div class="header">
-        <h1 class="title">Employee Management</h1>
-        <button class="btn-add" onclick="openModal('add')"><i class="fa-solid fa-plus"></i> Add Employee</button>
+    <div class="top-bar">
+        <a href="admin_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-users"></i> Personnel</span>
+    </div>
+
+    <div class="page-header">
+        <div class="header-info">
+            <h1>Employee <span>Management</span></h1>
+            <p>Manage farm staff, roles, and administrative access.</p>
+        </div>
+        <div class="header-buttons">
+            <button class="btn btn-primary" onclick="openModal('add')">
+                <i class="fa-solid fa-user-plus"></i> Add Employee
+            </button>
+        </div>
     </div>
 
     <div class="filters-wrapper">
@@ -141,79 +342,94 @@ try {
         </select>
     </div>
 
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Emp Code</th>
-                    <th>Name</th>
-                    <th>Position / Role</th>
-                    <th>Contact No.</th>
-                    <th>Hire Date</th>
-                    <th>Status</th>
-                    <th style="text-align:center;">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="employee-table-body">
-                <?php if(empty($employees)): ?>
-                    <tr id="empty-state-row"><td colspan="7" style="text-align:center; padding: 3rem; color: #94a3b8;">No employees found.</td></tr>
-                <?php else: ?>
-                    <?php foreach($employees as $emp): ?>
-                        <tr class="emp-row"
-                            data-id="<?= $emp['EMPLOYEE_ID'] ?>" 
-                            data-code="<?= htmlspecialchars($emp['EMPLOYEE_CODE']) ?>"
-                            data-name="<?= htmlspecialchars(strtolower($emp['FULL_NAME'])) ?>"
-                            data-pos="<?= htmlspecialchars(strtolower($emp['POSITION'])) ?>"
-                            data-contact="<?= htmlspecialchars($emp['CONTACT_NO']) ?>"
-                            data-hire="<?= $emp['HIRE_DATE'] ?>"
-                            data-timestamp="<?= $emp['HIRE_DATE'] ? strtotime($emp['HIRE_DATE']) : 0 ?>"
-                            data-status="<?= $emp['STATUS'] ?>">
-                            
-                            <td style="color:#0ea5e9; font-weight:bold; font-family:monospace;"><?= htmlspecialchars($emp['EMPLOYEE_CODE']) ?></td>
-                            <td style="font-weight:bold; color:#fff;"><?= htmlspecialchars($emp['FULL_NAME']) ?></td>
-                            <td style="color:#94a3b8;"><?= htmlspecialchars($emp['POSITION']) ?></td>
-                            <td><?= htmlspecialchars($emp['CONTACT_NO'] ?? 'N/A') ?></td>
-                            <td><?= $emp['HIRE_DATE'] ? date('m/d/Y', strtotime($emp['HIRE_DATE'])) : '-' ?></td>
-                            <td>
-                                <span class="badge <?= $emp['STATUS'] == 'Active' ? 'b-active' : 'b-inactive' ?>">
-                                    <?= $emp['STATUS'] ?>
-                                </span>
-                            </td>
-                            <td class="actions">
-                                <button class="btn-edit" onclick="openModal('edit', this)"><i class="fa-solid fa-pen-to-square"></i></button>
-                                <button class="btn-delete" onclick="deleteEmployee(<?= $emp['EMPLOYEE_ID'] ?>)"><i class="fa-solid fa-trash"></i></button>
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Emp Code</th>
+                        <th>Name</th>
+                        <th>Position / Role</th>
+                        <th>Contact No.</th>
+                        <th>Hire Date</th>
+                        <th>Status</th>
+                        <th style="text-align:center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="employee-table-body">
+                    <?php if(empty($employees)): ?>
+                        <tr id="empty-state-row">
+                            <td colspan="7" style="text-align:center; padding: 4rem 2rem; color: var(--text-muted);">
+                                <i class="fa-solid fa-user-slash" style="font-size: 2.5rem; opacity: 0.4; margin-bottom: 1rem; display:block;"></i>
+                                No employees found.
                             </td>
                         </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                    <?php else: ?>
+                        <?php foreach($employees as $emp): ?>
+                            <tr class="emp-row"
+                                data-id="<?= $emp['EMPLOYEE_ID'] ?>" 
+                                data-code="<?= htmlspecialchars($emp['EMPLOYEE_CODE']) ?>"
+                                data-name="<?= htmlspecialchars(strtolower($emp['FULL_NAME'])) ?>"
+                                data-pos="<?= htmlspecialchars(strtolower($emp['POSITION'])) ?>"
+                                data-contact="<?= htmlspecialchars($emp['CONTACT_NO']) ?>"
+                                data-hire="<?= $emp['HIRE_DATE'] ?>"
+                                data-timestamp="<?= $emp['HIRE_DATE'] ? strtotime($emp['HIRE_DATE']) : 0 ?>"
+                                data-status="<?= $emp['STATUS'] ?>">
+                                
+                                <td data-label="Emp Code" class="val-mono"><?= htmlspecialchars($emp['EMPLOYEE_CODE']) ?></td>
+                                <td data-label="Name" class="col-name"><?= htmlspecialchars($emp['FULL_NAME']) ?></td>
+                                <td data-label="Position / Role" style="color:var(--text-secondary);"><?= htmlspecialchars($emp['POSITION']) ?></td>
+                                <td data-label="Contact No."><?= htmlspecialchars($emp['CONTACT_NO'] ?? 'N/A') ?></td>
+                                <td data-label="Hire Date" class="val-date"><?= $emp['HIRE_DATE'] ? date('m/d/Y', strtotime($emp['HIRE_DATE'])) : '-' ?></td>
+                                <td data-label="Status">
+                                    <span class="badge <?= $emp['STATUS'] == 'Active' ? 'b-active' : 'b-inactive' ?>">
+                                        <?= $emp['STATUS'] ?>
+                                    </span>
+                                </td>
+                                <td data-label="Actions">
+                                    <div class="actions">
+                                        <button class="action-btn edit" onclick="openModal('edit', this)" title="Edit">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button class="action-btn delete" onclick="deleteEmployee(<?= $emp['EMPLOYEE_ID'] ?>)" title="Delete">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <div id="empModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 id="modalTitle" style="margin:0; font-size:1.2rem; color:#0ea5e9;">Add Employee</h2>
+            <h2 id="modalTitle">Add Employee</h2>
+            <button class="action-btn" onclick="closeModal()" style="border:none; background:transparent;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="empForm" onsubmit="submitForm(event)">
             <div class="modal-body">
+                <div id="add-alert" class="alert"></div>
                 <input type="hidden" id="emp_id" name="employee_id">
                 <input type="hidden" id="action_type" name="action_type" value="add">
 
                 <div class="form-group">
-                    <label>Employee Code (ID) *</label>
-                    <input type="number" id="employee_code" name="employee_code" placeholder="e.g. 1001" required>
+                    <label class="form-label">Employee Code (ID) *</label>
+                    <input type="number" id="employee_code" name="employee_code" class="form-control" placeholder="e.g. 1001" required>
                 </div>
                 
                 <div class="form-group">
-                    <label>Full Name *</label>
-                    <input type="text" id="full_name" name="full_name" placeholder="Enter Full Name" required>
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" id="full_name" name="full_name" class="form-control" placeholder="Enter Full Name" required>
                 </div>
                 
                 <div class="form-group">
-                    <label>Position / Role *</label>
-                    <select id="position" name="position" required>
+                    <label class="form-label">Position / Role *</label>
+                    <select id="position" name="position" class="form-control" required>
                         <option value="">Select Role...</option>
                         <?php foreach($roles as $role): ?>
                             <option value="<?= htmlspecialchars($role['ROLE_NAME']) ?>">
@@ -225,26 +441,26 @@ try {
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Contact Number</label>
-                        <input type="text" id="contact_no" name="contact_no" placeholder="09xxxxxxxxx">
+                        <label class="form-label">Contact Number</label>
+                        <input type="text" id="contact_no" name="contact_no" class="form-control" placeholder="09xxxxxxxxx">
                     </div>
                     <div class="form-group">
-                        <label>Hire Date</label>
-                        <input type="date" id="hire_date" name="hire_date">
+                        <label class="form-label">Hire Date</label>
+                        <input type="date" id="hire_date" name="hire_date" class="form-control date-picker">
                     </div>
                 </div>
 
                 <div class="form-group" id="statusGroup" style="display:none;">
-                    <label>Status</label>
-                    <select id="status" name="status">
+                    <label class="form-label">Status</label>
+                    <select id="status" name="status" class="form-control">
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                     </select>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn-save">Save Employee</button>
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-save">Save Employee</button>
             </div>
         </form>
     </div>
@@ -302,7 +518,7 @@ try {
             if (!emptyRow) {
                 emptyRow = document.createElement('tr');
                 emptyRow.id = 'empty-state-row';
-                emptyRow.innerHTML = '<td colspan="7" style="text-align:center; padding: 3rem; color: #94a3b8;">No employees found matching your search.</td>';
+                emptyRow.innerHTML = '<td colspan="7" style="text-align:center; padding: 4rem 2rem; color: var(--text-muted);"><i class="fa-solid fa-user-slash" style="font-size: 2.5rem; opacity: 0.4; margin-bottom: 1rem; display:block;"></i>No employees found matching your search.</td>';
                 tbody.appendChild(emptyRow);
             }
             emptyRow.style.display = '';
@@ -331,7 +547,7 @@ try {
             fpDatePicker.setDate("today"); 
         } else {
             document.getElementById('modalTitle').textContent = 'Edit Employee';
-            document.getElementById('statusGroup').style.display = 'block';
+            document.getElementById('statusGroup').style.display = 'flex';
             
             const tr = btn.closest('tr');
             document.getElementById('emp_id').value = tr.dataset.id;
@@ -374,16 +590,25 @@ try {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                alert(data.message);
-                location.reload();
+                const alertEl = document.getElementById('add-alert');
+                alertEl.textContent = data.message;
+                alertEl.className = 'alert success';
+                alertEl.style.display = 'block';
+                setTimeout(() => location.reload(), 1000);
             } else {
-                alert("Error: " + data.message);
+                const alertEl = document.getElementById('add-alert');
+                alertEl.textContent = "Error: " + data.message;
+                alertEl.className = 'alert error';
+                alertEl.style.display = 'block';
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Save Employee';
             }
         })
         .catch(err => {
-            alert("System Error");
+            const alertEl = document.getElementById('add-alert');
+            alertEl.textContent = "System Error";
+            alertEl.className = 'alert error';
+            alertEl.style.display = 'block';
             submitBtn.disabled = false;
             submitBtn.textContent = 'Save Employee';
         });

@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include '../security/checkAccess.php';
-checkAccess('suppliers'); // Uncomment if you have specific access rules
+checkAccess('suppliers'); 
 
 include '../common/navbar.php';
 include '../common/chat_support.php';
@@ -18,7 +18,6 @@ if($_SESSION['user']['USER_TYPE'] < 3)
     echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
     exit();
 }
-
 
 // Fetch all suppliers
 $suppliers = [];
@@ -34,111 +33,279 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Suppliers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Supplier Management System</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        
-        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .page-title { font-size: 2rem; font-weight: bold; color: white; }
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 1rem; margin-bottom: 1rem; transition: color 0.2s; }
-        .back-link:hover { color: white; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(225,29,72,0.5); /* Rose Accent */
+            --rose:           #e11d48;
+            --rose-dim:       rgba(225,29,72,0.12);
+            --rose-glow:      rgba(225,29,72,0.25);
+            --green:          #22c55e;
+            --green-dim:      rgba(34,197,94,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
 
-        .btn-add { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; white-space: nowrap; }
-        .btn-add:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(225, 29, 72, 0.4); }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(225,29,72,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        /* Table Styling */
-        .table-area { background: #1e293b; border-radius: 16px; border: 1px solid #475569; overflow: hidden; }
-        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .w-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        .w-table th { background: #0f172a; padding: 15px; text-align: left; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #334155; }
-        .w-table td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
-        .w-table tr:hover { background: rgba(255,255,255,0.02); }
-        
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block;}
-        .badge.active { background: rgba(34, 197, 94, 0.1); color: #34d399; border: 1px solid rgba(34, 197, 94, 0.3); }
-        .badge.inactive { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .action-btn { background: transparent; border: 1px solid #475569; color: #e2e8f0; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: 0.2s;}
-        .action-btn:hover { background: #334155; color: white;}
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--rose); background: var(--rose-dim); border: 1px solid rgba(225,29,72,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
 
-        /* Prefixed Modal Styling */
-        .supplier-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; }
+        /* ─── HEADER ─── */
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--rose), #be123c);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-primary { background: var(--rose); color: #fff; }
+        .btn-primary:hover { background: #be123c; box-shadow: 0 0 16px var(--rose-glow); transform: translateY(-2px); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+
+        /* ─── SEARCH ─── */
+        .search-container { position: relative; margin-bottom: 1.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; height: 18px; pointer-events: none; }
+        .search-input {
+            width: 100%; padding: 14px 14px 14px 2.8rem; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            color: var(--text-primary); font-size: 1rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .search-input:focus { border-color: var(--rose); box-shadow: 0 0 0 3px var(--rose-glow); background: var(--bg-hover); }
+
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+        }
+        .table-wrap { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .table thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        .table tbody tr:last-child { border-bottom: none; }
+        .table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .table td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
+
+        .col-name { font-weight: 700; color: #fff; font-size: 1rem; }
+        .val-mono { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary); }
+
+        .badge {
+            padding: 4px 10px; border-radius: 99px; font-size: 0.7rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: inline-block;
+        }
+        .badge.active   { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .badge.inactive { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
+
+        /* Actions */
+        .actions { display: flex; gap: 8px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.edit:hover { color: var(--blue); border-color: var(--blue); }
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
+
+        /* ─── MODALS ─── */
+        .supplier-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
         .supplier-modal-overlay.active { display: flex; }
-        .supplier-modal-content { background: #1e293b; border: 1px solid #475569; border-radius: 16px; width: 100%; max-width: 500px; padding: 2rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); position: relative; }
-        .supplier-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .supplier-modal-title { font-size: 1.25rem; font-weight: bold; color: white; }
-        .supplier-close-btn { background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
-        .supplier-close-btn:hover { color: white; }
+        .supplier-modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 500px;
+            box-shadow: var(--shadow-md); overflow: hidden;
+            animation: modalZoom 0.2s ease-out;
+        }
+        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         
-        .supplier-form-group { margin-bottom: 1rem; }
-        .supplier-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .supplier-form-label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600; }
-        .supplier-form-input, .supplier-form-select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
-        .supplier-form-input:focus, .supplier-form-select:focus { border-color: #f43f5e; outline: none; }
-        
-        .supplier-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 2rem; }
-        .supplier-btn-cancel { background: #475569; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
-        .supplier-btn-cancel:hover { background: #334155; }
-        .supplier-btn-save { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
-        .supplier-btn-save:hover { transform: translateY(-2px); }
+        .supplier-modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .supplier-modal-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--rose); }
+        .supplier-close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
+        .supplier-close-btn:hover { color: var(--red); }
 
-        /* --- MOBILE RESPONSIVENESS --- */
+        .modal-body { padding: 1.5rem; }
+        .supplier-modal-actions {
+            padding: 1.25rem 1.5rem; border-top: 1px solid var(--border);
+            display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated);
+        }
+
+        .supplier-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
+        .supplier-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .supplier-form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .supplier-form-input, .supplier-form-select {
+            width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .supplier-form-input:focus, .supplier-form-select:focus { border-color: var(--rose); box-shadow: 0 0 0 3px var(--rose-glow); }
+        .supplier-form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            .container { padding: 1rem; }
-            .header-actions { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .page-title { font-size: 1.5rem; }
-            .btn-add { width: 100%; text-align: center; }
-            
-            .supplier-modal-content { margin: 1rem; padding: 1.5rem; width: auto; max-height: 90vh; overflow-y: auto;}
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-info { text-align: left; }
+            .btn-add { width: 100%; }
+
+            .table-wrap { border: none; background: transparent; }
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; }
+            .table thead { display: none; }
+            .table tbody tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
+            }
+            .table td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+            }
+            .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; }
+            .table td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0;
+            }
+            .actions { justify-content: flex-end; width: 100%; }
             .supplier-form-row { grid-template-columns: 1fr; gap: 0; }
-            .supplier-modal-actions { flex-direction: column; gap: 10px; }
-            .supplier-btn-cancel, .supplier-btn-save { width: 100%; text-align: center; }
+            .supplier-modal-actions { flex-direction: column; }
+            .supplier-modal-actions button { width: 100%; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="admin_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Dashboard
-    </a>
-
-    <div class="header-actions">
-        <h1 class="page-title">Supplier Management</h1>
-        <button class="btn-add" onclick="openModal()">+ Add Supplier</button>
+    
+    <div class="top-bar">
+        <a href="admin_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-truck-loading"></i> Supply Chain</span>
     </div>
 
-    <div class="table-area">
-        <div class="table-responsive">
-            <table class="w-table">
+    <div class="page-header">
+        <div class="header-info">
+            <h1>Supplier <span>Management</span></h1>
+            <p>Maintain reliable partnerships with your farm vendors and logistics providers.</p>
+        </div>
+        <button class="btn btn-primary btn-add" onclick="openModal()">
+            <i class="fa-solid fa-plus"></i> Add New Supplier
+        </button>
+    </div>
+
+    <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" class="search-input" placeholder="Search by company name, contact person, or location..." onkeyup="filterTable()">
+    </div>
+
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="table">
                 <thead>
                     <tr>
-                        <th>Supplier / Company Name</th>
+                        <th>Company Name</th>
                         <th>Contact Person</th>
-                        <th>Contact Number</th>
+                        <th>Contact Details</th>
                         <th>Email</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th style="text-align: center; width: 140px;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="supplier-table-body">
                     <?php if(empty($suppliers)): ?>
-                        <tr><td colspan="6" style="text-align: center; padding: 3rem; color: #64748b;">No suppliers found. Click "+ Add Supplier" to get started.</td></tr>
+                        <tr id="empty-row">
+                            <td colspan="6" style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
+                                <i class="fa-solid fa-building-circle-exclamation" style="font-size: 2.5rem; opacity: 0.2; margin-bottom: 1rem; display:block;"></i>
+                                No suppliers found. Start by adding a new vendor.
+                            </td>
+                        </tr>
                     <?php else: ?>
                         <?php foreach($suppliers as $s): ?>
                             <tr>
-                                <td style="font-weight: bold; color: white;"><?= htmlspecialchars($s['SUPPLIER_NAME']) ?></td>
-                                <td><?= htmlspecialchars($s['CONTACT_PERSON'] ?: 'N/A') ?></td>
-                                <td><?= htmlspecialchars($s['CONTACT_NUMBER'] ?: 'N/A') ?></td>
-                                <td><?= htmlspecialchars($s['EMAIL'] ?: 'N/A') ?></td>
-                                <td><span class="badge <?= strtolower($s['STATUS']) ?>"><?= htmlspecialchars($s['STATUS']) ?></span></td>
-                                <td style="display: flex; gap: 8px;">
-                                    <button class="action-btn" onclick='openModal(<?= json_encode($s) ?>)'>Edit</button>
-                                    <button class="action-btn" style="color: #f87171; border-color: rgba(239, 68, 68, 0.3);" onclick="deleteSupplier(<?= $s['SUPPLIER_ID'] ?>)">Delete</button>
+                                <td data-label="Company" class="col-name"><?= htmlspecialchars($s['SUPPLIER_NAME']) ?></td>
+                                <td data-label="Contact Person"><?= htmlspecialchars($s['CONTACT_PERSON'] ?: 'N/A') ?></td>
+                                <td data-label="Number" class="val-mono"><?= htmlspecialchars($s['CONTACT_NUMBER'] ?: 'N/A') ?></td>
+                                <td data-label="Email" class="val-mono" style="color:var(--rose);"><?= htmlspecialchars($s['EMAIL'] ?: 'N/A') ?></td>
+                                <td data-label="Status">
+                                    <span class="badge <?= strtolower($s['STATUS']) ?>">
+                                        <?= htmlspecialchars($s['STATUS']) ?>
+                                    </span>
+                                </td>
+                                <td data-label="Actions">
+                                    <div class="actions">
+                                        <button class="action-btn edit" onclick='openModal(<?= json_encode($s) ?>)' title="Edit Details"><i class="fa-solid fa-pen-to-square"></i></button>
+                                        <button class="action-btn delete" onclick="deleteSupplier(<?= $s['SUPPLIER_ID'] ?>)" title="Remove Supplier"><i class="fa-solid fa-trash-can"></i></button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -156,43 +323,47 @@ try {
             <button class="supplier-close-btn" onclick="closeModal()">&times;</button>
         </div>
         <form id="supplierForm" onsubmit="saveSupplier(event)">
-            <input type="hidden" id="supplier_id" name="supplier_id">
-            
-            <div class="supplier-form-group">
-                <label class="supplier-form-label">Company / Supplier Name *</label>
-                <input type="text" id="supplier_name" name="supplier_name" class="supplier-form-input" required>
-            </div>
-            <div class="supplier-form-group">
-                <label class="supplier-form-label">Contact Person</label>
-                <input type="text" id="contact_person" name="contact_person" class="supplier-form-input" placeholder="e.g., Jane Doe">
-            </div>
-            
-            <div class="supplier-form-row">
+            <div class="modal-body">
+                <input type="hidden" id="supplier_id" name="supplier_id">
+                
                 <div class="supplier-form-group">
-                    <label class="supplier-form-label">Contact Number</label>
-                    <input type="text" id="contact_number" name="contact_number" class="supplier-form-input" placeholder="+1 234 567 890">
+                    <label class="supplier-form-label">Company / Supplier Name *</label>
+                    <input type="text" id="supplier_name" name="supplier_name" class="supplier-form-input" required placeholder="e.g. AgriSupply Corp">
                 </div>
-                <div class="supplier-form-group">
-                    <label class="supplier-form-label">Email Address</label>
-                    <input type="email" id="email" name="email" class="supplier-form-input" placeholder="vendor@example.com">
-                </div>
-            </div>
 
-            <div class="supplier-form-group">
-                <label class="supplier-form-label">Address</label>
-                <input type="text" id="address" name="address" class="supplier-form-input" placeholder="Physical location or HQ">
-            </div>
-            <div class="supplier-form-group">
-                <label class="supplier-form-label">Status</label>
-                <select id="status" name="status" class="supplier-form-select">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                </select>
+                <div class="supplier-form-group">
+                    <label class="supplier-form-label">Contact Person</label>
+                    <input type="text" id="contact_person" name="contact_person" class="supplier-form-input" placeholder="e.g. John Smith">
+                </div>
+                
+                <div class="supplier-form-row">
+                    <div class="supplier-form-group">
+                        <label class="supplier-form-label">Contact Number</label>
+                        <input type="text" id="contact_number" name="contact_number" class="supplier-form-input" placeholder="09123456789">
+                    </div>
+                    <div class="supplier-form-group">
+                        <label class="supplier-form-label">Email Address</label>
+                        <input type="email" id="email" name="email" class="supplier-form-input" placeholder="name@company.com">
+                    </div>
+                </div>
+
+                <div class="supplier-form-group">
+                    <label class="supplier-form-label">Office Address</label>
+                    <input type="text" id="address" name="address" class="supplier-form-input" placeholder="City, Province, HQ location">
+                </div>
+
+                <div class="supplier-form-group">
+                    <label class="supplier-form-label">Operational Status</label>
+                    <select id="status" name="status" class="supplier-form-select">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
             </div>
 
             <div class="supplier-modal-actions">
-                <button type="button" class="supplier-btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="supplier-btn-save" id="saveBtn">Save Supplier</button>
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveBtn">Save Vendor</button>
             </div>
         </form>
     </div>
@@ -204,9 +375,8 @@ try {
 
     function openModal(data = null) {
         modal.classList.add('active');
-        
         if(data) {
-            document.getElementById('modalTitle').innerText = "Edit Supplier";
+            document.getElementById('modalTitle').innerText = "Edit Supplier Profile";
             document.getElementById('supplier_id').value = data.SUPPLIER_ID;
             document.getElementById('supplier_name').value = data.SUPPLIER_NAME;
             document.getElementById('contact_person').value = data.CONTACT_PERSON || '';
@@ -215,95 +385,75 @@ try {
             document.getElementById('address').value = data.ADDRESS || '';
             document.getElementById('status').value = data.STATUS;
         } else {
-            document.getElementById('modalTitle').innerText = "Add Supplier";
+            document.getElementById('modalTitle').innerText = "Add New Supplier";
             form.reset();
             document.getElementById('supplier_id').value = "";
             document.getElementById('status').value = "Active";
         }
     }
 
-    function closeModal() {
-        modal.classList.remove('active');
-    }
+    function closeModal() { modal.classList.remove('active'); }
 
     async function saveSupplier(e) {
         e.preventDefault();
         const btn = document.getElementById('saveBtn');
         const formData = new FormData(form);
-
         btn.disabled = true;
         btn.innerText = "Saving...";
 
         try {
-            const response = await fetch('../process/saveSupplier.php', {
-                method: 'POST',
-                body: formData
-            });
-
-            const rawText = await response.text();
-            let data;
-            
-            try {
-                data = JSON.parse(rawText);
-            } catch (err) {
-                console.error("Server returned HTML or an error instead of JSON:", rawText);
-                alert("ERROR: The system couldn't save. Please ensure '../process/saveSupplier.php' exists and has no errors. Check console for details.");
-                btn.disabled = false;
-                btn.innerText = "Save Supplier";
-                return;
-            }
+            const response = await fetch('../process/saveSupplier.php', { method: 'POST', body: formData });
+            const data = await response.json();
 
             if(data.success) {
-                alert("✅ " + data.message);
-                window.location.reload(); 
+                location.reload(); 
             } else {
-                alert("❌ Error: " + data.message);
+                alert("Error: " + data.message);
+                btn.disabled = false;
+                btn.innerText = "Save Vendor";
             }
         } catch (error) {
-            console.error(error);
-            alert("A network or system error occurred. Check the console.");
-        } finally {
+            alert("A system error occurred. Please check the console.");
             btn.disabled = false;
-            btn.innerText = "Save Supplier";
+            btn.innerText = "Save Vendor";
         }
     }
 
     async function deleteSupplier(supplierId) {
-        if (!confirm("Are you sure you want to delete this supplier? This action cannot be undone.")) {
-            return;
-        }
+        if (!confirm("Are you sure you want to delete this supplier? This action cannot be undone.")) return;
 
         try {
             const formData = new FormData();
             formData.append('supplier_id', supplierId);
-
-            const response = await fetch('../process/deleteSupplier.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const rawText = await response.text();
-            let data;
-
-            try {
-                data = JSON.parse(rawText);
-            } catch (err) {
-                console.error("Server returned HTML/error:", rawText);
-                alert("ERROR: System could not delete. Make sure '../process/deleteSupplier.php' exists.");
-                return;
-            }
+            const response = await fetch('../process/deleteSupplier.php', { method: 'POST', body: formData });
+            const data = await response.json();
 
             if (data.success) {
-                alert("✅ " + data.message);
-                window.location.reload();
+                location.reload();
             } else {
-                alert("❌ " + data.message);
+                alert(data.message);
             }
         } catch (error) {
-            console.error(error);
             alert("System Error. Check console.");
         }
     }
+
+    function filterTable() {
+        const term = document.querySelector('.search-input').value.toLowerCase();
+        const rows = document.querySelectorAll('#supplier-table-body tr:not(#empty-row)');
+        let count = 0;
+
+        rows.forEach(row => {
+            const match = row.innerText.toLowerCase().includes(term);
+            row.style.display = match ? '' : 'none';
+            if(match) count++;
+        });
+
+        const empty = document.getElementById('empty-row');
+        if(empty) empty.style.display = count === 0 ? '' : 'none';
+    }
+
+    window.onclick = function(e) { if (e.target == modal) closeModal(); }
 </script>
 
 </body>

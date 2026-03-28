@@ -9,7 +9,7 @@ checkAccess('purchases');
 $page="transactions";
 include '../common/navbar.php';
 include '../common/chat_support.php';
-include '../functions/getUsersLocation.php';
+include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
 
 // --- CONFIGURATION ---
 $ITEM_TYPE_ID = 7; // Administration & Records
@@ -117,229 +117,328 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Administration & Records Purchase Management</title>
+    <title>Administration & Records Management | FarmPro</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <style>
-        /* --- CORE STYLES --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; padding-bottom: 80px; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; width: 100%; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(100,116,139,0.5); /* Slate Accent */
+            --slate:          #64748b;
+            --slate-dim:      rgba(100,116,139,0.12);
+            --slate-glow:     rgba(100,116,139,0.25);
+            --indigo:         #6366f1; /* For secondary buttons */
+            --indigo-dim:     rgba(99,102,241,0.12);
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.12);
+            --amber-glow:     rgba(245,158,11,0.25);
+            --blue:           #3b82f6;
+            --blue-dim:       rgba(59,130,246,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
 
-        /* HEADER & BACK BUTTON */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1.5rem; }
-        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; line-height: 1.2; }
-        .header-info p { color: #cbd5e1; font-size: 0.95rem; }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(100,116,139,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 10px; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-
-        /* BUTTONS */
-        .add-btn { background: linear-gradient(135deg, #2563eb, #9333ea); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
-        .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: translateY(-2px); }
-
-        .confirm-all-btn {
-            background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-primary); background: var(--slate-dim); border: 1px solid rgba(100,116,139,0.2);
+            padding: 6px 12px; border-radius: 99px;
         }
-        .confirm-all-btn:hover { background: linear-gradient(135deg, #d97706, #b45309); transform: translateY(-1px); box-shadow: 0 6px 8px rgba(245, 158, 11, 0.4); }
 
-        /* SEARCH */
-        .search-container { position: relative; margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 14px 14px 14px 45px; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; backdrop-filter: blur(10px); outline: none; transition: border-color 0.2s; }
-        .search-input:focus { border-color: #3b82f6; }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
+        /* ─── HEADER ─── */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; gap: 1.5rem; flex-wrap: wrap; }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--slate), #cbd5e1);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
 
-        /* --- Reusing existing styles --- */
-        .autocomplete-wrapper { position: relative; }
-        .autocomplete-list { position: absolute; z-index: 1000; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #475569; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5); display: none; }
-        .autocomplete-list.show { display: block; }
-        .autocomplete-item { padding: 12px 15px; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid #334155; color: #e2e8f0; }
-        .autocomplete-item:last-child { border-bottom: none; }
-        .autocomplete-item:hover, .autocomplete-item.active { background-color: #334155; }
-        .autocomplete-item strong { color: #60a5fa; }
-        .autocomplete-loading, .autocomplete-no-results { padding: 12px 15px; text-align: center; color: #94a3b8; font-size: 14px; }
+        /* ─── BUTTONS ─── */
+        .header-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
         
-        input[readonly], select[disabled] { background-color: #1e293b; cursor: not-allowed; color: #94a3b8; }
-
-        /* --- CONFIRMATION STYLES --- */
-        .confirm-btn { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3); width: 100%; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-        .confirm-btn:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4); }
-
-        .confirmed-badge { display: inline-block; width: 100%; text-align: center; padding: 8px 0; background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; white-space: nowrap; }
-
-        /* Badges for Category */
-        .category-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-        .category-nonconsumable { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .category-consumable { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-
-        /* --- TABLE --- */
-        .table-container { width: 100%; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #475569; background: rgba(30, 41, 59, 0.5); overflow: hidden; overflow-x: auto; }
-        table.table { width: 100%; min-width: 1400px; border-collapse: collapse; }
-        table.table th { background: rgba(15, 23, 42, 0.5); color: #e2e8f0; font-size: 0.85rem; text-transform: uppercase; padding: 1rem 1.5rem; text-align: left; font-weight: 600; border-bottom: 1px solid #475569; white-space: nowrap; }
-        table.table td { padding: 1rem 1.5rem; vertical-align: middle; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap; }
-        table.table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
         
-        .ref-no { font-family: monospace; color: #93c5fd; font-size: 0.95rem; font-weight: 600; }
-        .supplier-name { color: #f1f5f9; font-size: 0.95rem; font-weight: 500; }
-        .item-name { font-weight: 600; color: #fff; font-size: 1rem; margin-bottom: 4px; }
-        .amount { color: #34d399; font-weight: 600; font-family: monospace; font-size: 1.1rem; }
+        .btn-primary { background: var(--indigo); color: #fff; }
+        .btn-primary:hover { background: #4f46e5; box-shadow: 0 0 16px var(--indigo-glow); transform: translateY(-1px); }
+        
+        .btn-amber { background: var(--amber); color: #000; }
+        .btn-amber:hover { background: #fbbf24; box-shadow: 0 0 16px var(--amber-glow); transform: translateY(-1px); }
 
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+
+        /* ─── SEARCH BAR ─── */
+        .search-container { position: relative; margin-bottom: 1.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; height: 18px; pointer-events: none; }
+        .search-input {
+            width: 100%; padding: 12px 12px 12px 2.8rem; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-primary);
+            font-size: 0.95rem; font-family: var(--font); outline: none; transition: all var(--transition);
+        }
+        .search-input:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-glow); }
+
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+        .table-wrap { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        .table thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        .table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        .table tbody tr:last-child { border-bottom: none; }
+        .table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .table td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
+
+        .ref-no { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; }
+        .supplier-name { color: var(--text-secondary); font-size: 0.9rem; }
+        .item-name { font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 2px; }
+        .item-unit { color: var(--text-secondary); font-size: 0.85rem; }
+        .val-mono { font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
+        .val-money { font-family: var(--font-mono); font-weight: 600; color: var(--amber); font-size: 0.95rem;}
+        
+        .confirmed-badge {
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+            background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2);
+            border-radius: 6px; padding: 6px 12px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; width: 100%;
+        }
+        .confirm-btn {
+            background: rgba(239, 68, 68, 0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.3);
+            padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; cursor: pointer;
+            transition: all var(--transition); width: 100%; text-transform: uppercase;
+        }
+        .confirm-btn:hover { background: var(--red); color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+
+        /* Categories */
+        .category-badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; text-transform: uppercase; }
+        .category-consumable { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+        .category-nonconsumable { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2); }
+
+        /* Actions */
         .actions { display: flex; gap: 8px; justify-content: center; }
-        .action-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-        .action-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-        .action-btn.view:hover { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: #3b82f6; }
-        .action-btn.edit:hover { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: #10b981; }
-        .action-btn.delete:hover { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: #ef4444; }
-        .icon { width: 18px; height: 18px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-elevated); display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary); text-decoration: none;
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.view:hover { color: var(--emerald); border-color: var(--emerald); }
+        .action-btn.edit:hover { color: var(--indigo); border-color: var(--indigo); }
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
 
-        /* MODAL */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block; }
+
+        /* ─── MODALS ─── */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 16px; width: 100%; max-width: 700px; border: 1px solid #475569; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column; max-height: 90vh; }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
-        .modal-header h2 { margin: 0; font-size: 1.4rem; color: #fff; }
-        .modal-body { padding: 1.5rem; overflow-y: auto; flex-grow: 1; }
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 10px; }
-
-        /* FORM ELEMENTS */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
-        .form-group label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 8px; font-weight: 500; }
-        .form-group label span { color: #ef4444; }
         
-        .form-group input, 
-        .form-group select, 
-        .form-group textarea { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; transition: border-color 0.2s; outline: none; }
-        .form-group input:focus, 
-        .form-group select:focus, 
-        .form-group textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 650px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            max-height: 90vh; animation: modalZoom 0.2s ease-out;
+        }
+        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); }
+
+        /* Form Elements inside Modal */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full-width { grid-column: 1 / -1; margin-bottom: 1.25rem;}
         
-        select[disabled], input[readonly] { opacity: 0.6; cursor: not-allowed; background: #1e293b; color: #94a3b8; }
+        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .form-label span { color: var(--red); }
+        
+        .form-control, .form-select {
+            width: 100%; padding: 10px 12px; background: var(--bg-elevated);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .form-control:focus, .form-select:focus, textarea.form-control:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-glow); background: var(--bg-hover); }
+        textarea.form-control { resize: vertical; min-height: 60px; line-height: 1.5; }
+        
+        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer; }
+        .form-select:disabled, input:disabled, input[readonly] { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); color: var(--text-muted); }
 
-        .info-group h3 { color: #93c5fd; font-size: 1.1rem; margin-bottom: 15px; margin-top: 20px; border-bottom: 1px solid #334155; padding-bottom: 5px; }
-        .info-group p { margin-bottom: 8px; color: #cbd5e1; }
-        .info-group strong { color: #94a3b8; width: 140px; display: inline-block; }
+        .info-group h3 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-primary); margin: 1.5rem 0 1rem 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 
-        .alert { padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; text-align: center; font-weight: 600; }
-        .alert.success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-        .alert.error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        /* Autocomplete UI */
+        .autocomplete-wrapper { position: relative; }
+        .autocomplete-list {
+            position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-top: none; border-radius: 0 0 8px 8px; max-height: 200px;
+            overflow-y: auto; box-shadow: var(--shadow-md); display: none;
+        }
+        .autocomplete-list.show { display: block; }
+        .autocomplete-item { padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 0.9rem;}
+        .autocomplete-item:last-child { border-bottom: none; }
+        .autocomplete-item:hover { background: var(--bg-hover); color: var(--indigo); }
+        .autocomplete-item strong { color: var(--indigo); }
+        .autocomplete-loading, .autocomplete-no-results { padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
 
-        .btn-cancel { padding: 12px 20px; background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
-        .btn-save { padding: 12px 20px; background: #2563eb; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
-        .btn-save:hover { background: #1d4ed8; }
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* Confirm Modals */
-        .confirm-content { text-align: center; padding: 20px; }
-        .confirm-icon { font-size: 4rem; margin-bottom: 15px; display: block; }
-        .warning-text { color: #f87171; font-size: 0.9rem; margin: 15px 0 25px 0; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); }
+        /* Confirm Modal specifics */
+        .confirm-content { text-align: center; padding: 1rem; }
+        .confirm-icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.8; }
+        .warning-text {
+            color: var(--red); font-size: 0.85rem; margin: 1.5rem 0;
+            background: var(--red-dim); padding: 12px; border-radius: 8px;
+            border: 1px solid rgba(239,68,68,0.2); line-height: 1.4; text-align: left;
+        }
 
-        /* ========================================= */
-        /* MOBILE RESPONSIVENESS OVERRIDES           */
-        /* ========================================= */
-        @media (max-width: 900px) {
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
             .container { padding: 1rem; }
-            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .header-info { text-align: left; }
-            .header-actions { flex-direction: column; width: 100%; gap: 10px; }
-            .btn-base, .confirm-all-btn { width: 100%; justify-content: center; }
-
-            /* Modal Adjustments */
-            .form-row { grid-template-columns: 1fr; gap: 0; }
-            .modal-footer { flex-direction: column; }
-            .modal-footer button { width: 100%; margin-left: 0; }
-            .info-group strong { width: 100%; display: block; margin-bottom: 4px; }
-            .info-group p { margin-bottom: 12px; }
-
-            /* Table to Card Layout */
-            .table-container { border: none; background: transparent; overflow: visible; box-shadow: none; }
-            table.table { min-width: 0; display: block; }
-            table.table thead { display: none; }
-            table.table tbody { display: block; width: 100%; }
-            table.table tr { 
-                display: block; 
-                background: rgba(30, 41, 59, 0.6); 
-                border: 1px solid #475569; 
-                border-radius: 12px; 
-                margin-bottom: 1rem; 
-                padding: 1rem; 
-            }
-            table.table td { 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                padding: 0.75rem 0; 
-                border-bottom: 1px dashed rgba(255,255,255,0.1); 
-                text-align: right; 
-                font-size: 0.95rem;
-                white-space: normal; /* Allow text wrap on mobile */
-            }
-            table.table td:last-child { border-bottom: none; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
+            .btn { width: 100%; justify-content: center; }
             
-            /* Inject Labels into Cards */
-            table.table td::before { 
-                content: attr(data-label); 
-                font-weight: 700; 
-                color: #94a3b8; 
-                font-size: 0.8rem; 
-                text-transform: uppercase; 
-                margin-right: 1rem; 
-                text-align: left;
-                flex-shrink: 0;
-            }
+            .search-container { max-width: none; }
+            .form-row { grid-template-columns: 1fr; gap: 1rem; }
+            .modal-footer { flex-direction: column; gap: 10px; }
+            .modal-footer button { width: 100%; margin: 0 !important; }
 
+            /* Mobile Table to Cards */
+            .table-wrap { border: none; background: transparent; overflow: visible; }
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; }
+            .table thead { display: none; }
+            .table tbody tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
+                box-shadow: var(--shadow-md);
+            }
+            .table td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+            }
+            .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
+            .table td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0;
+            }
+            .confirmed-badge, .confirm-btn { width: auto; padding: 4px 12px; }
             .actions { justify-content: flex-end; width: 100%; }
-            .item-name, .supplier-name { margin-bottom: 0; text-align: right; }
+            .item-name { text-align: right; margin-bottom: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+
+<div id="toastContainer"></div>
+
+<div class="container">
+    
+    <div class="top-bar">
         <a href="purchase_dashboard.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Purchase Dashboard
+            <i class="fa-solid fa-arrow-left"></i> Back to Purchases
         </a>
+        <span class="page-badge"><i class="fa-solid fa-folder-closed"></i> Admin Logistics</span>
+    </div>
 
-        <div class="header">
-            <div class="header-info">
-                <h1>Administration & Records</h1>
-                <p>Manage and track administration and records purchases</p>
-            </div>
-            
-            <div class="header-actions">
-                <button class="confirm-all-btn" onclick="openConfirmAllModal()">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Confirm All Pending
-                </button>
-
-                <button class="add-btn" onclick="openAddModal()">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Add Purchase
-                </button>
-            </div>
+    <div class="page-header">
+        <div class="header-info">
+            <h1>Administration <span>&amp; Records</span></h1>
+            <p>Log and manage incoming operational supplies, books, tags, and tools.</p>
         </div>
-
-        <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search by item name, unit, or category..." onkeyup="filterTable()">
+        
+        <div class="header-actions">
+            <button class="btn btn-amber" onclick="openConfirmAllModal()">
+                <i class="fa-solid fa-check-double"></i> Confirm All Pending
+            </button>
+            <button class="btn btn-primary" onclick="openAddModal()">
+                <i class="fa-solid fa-plus"></i> Add New Purchase
+            </button>
         </div>
+    </div>
 
-        <div class="table-container">
+    <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" class="search-input" id="searchInput" placeholder="Quick search by item name, supplier, or reference no..." onkeyup="filterTable()">
+    </div>
+
+    <div class="table-card">
+        <div class="table-wrap">
             <table class="table">
                 <thead>
                     <tr>
@@ -353,8 +452,8 @@ try {
                         <th>Total Cost</th> 
                         <th>Category</th>
                         <th>Purchase Date</th>
-                        <th style="text-align: center; width: 150px;">Confirmation</th>
-                        <th style="text-align: center;">Actions</th>
+                        <th style="text-align: center; width: 140px;">Status</th>
+                        <th style="text-align: center; width: 120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="item-table">
@@ -362,802 +461,699 @@ try {
                     $categoryLabels = [0 => 'Non-Consumable', 1 => 'Consumable'];
                     $categoryClasses = [0 => 'category-nonconsumable', 1 => 'category-consumable'];
 
-                    foreach($items_data as $item): 
-                        $status = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
-                        $isConfirmed = ($status === 1);
-                        
-                        // Calculate Total Cost
-                        $totalCost = $item['TOTAL_COST'] ?? ($item['QUANTITY'] * $item['UNIT_COST']);
-                    ?>
-                    <tr data-item-id="<?php echo $item['ITEM_ID']; ?>"
-                        data-item-name="<?php echo htmlspecialchars($item['ITEM_NAME']); ?>"
-                        data-item-desc="<?php echo htmlspecialchars($item['ITEM_DESCRIPTION'] ?? ''); ?>"
-                        data-unit-id="<?php echo $item['UNIT_ID']; ?>"
-                        data-unit-cost="<?php echo $item['UNIT_COST']; ?>"
-                        data-item-category="<?php echo $item['ITEM_CATEGORY']; ?>"
-                        data-unit-name="<?php echo htmlspecialchars($item['UNIT_NAME']); ?>"
-                        data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
-                        data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
-                        data-purchase-date-raw="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
-                        data-purchase-date-fmt="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? ''); ?>"
-                        data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
-                        data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
-                        data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
-                        data-supplier="<?php echo htmlspecialchars($item['SUPPLIER'] ?? ''); ?>"
-                        data-reference-no="<?php echo htmlspecialchars($item['REFERENCE_NO'] ?? ''); ?>"
-                        data-created-at="<?php echo $item['CREATED_AT_FMT']; ?>">
-                        
-                        <td data-label="Ref No">
-                            <div class="ref-no"><?php echo !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : '—'; ?></div>
-                        </td>
-                        <td data-label="Supplier">
-                            <div class="supplier-name"><?php echo !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier'; ?></div>
-                        </td>
-                        <td data-label="Item Name">
-                            <div class="item-name"><?php echo htmlspecialchars($item['ITEM_NAME']); ?></div>
-                        </td>
-                        <td data-label="Quantity">
-                            <div class="item-unit"><?php echo number_format($item['QUANTITY'] ?? 0, 2); ?></div>
-                        </td>
-                        <td data-label="Unit">
-                            <div class="item-unit"><?php echo htmlspecialchars($item['UNIT_NAME']); ?></div>
-                        </td>
-                        <td data-label="Net Weight">
-                            <div class="item-unit"><?php echo htmlspecialchars($item['ITEM_NET_WEIGHT'] ?? 'N/A'); ?></div>
-                        </td>
-                        <td data-label="Unit Cost">
-                            <div class="amount">₱<?php echo number_format($item['UNIT_COST'], 2); ?></div>
-                        </td>
-                        
-                        <td data-label="Total Cost">
-                            <div class="amount" style="font-weight:bold; color:#60a5fa;">₱<?php echo number_format($totalCost, 2); ?></div>
-                        </td>
-
-                        <td data-label="Category">
-                            <span class="category-badge <?php echo $categoryClasses[$item['ITEM_CATEGORY']]; ?>">
-                                <?php echo $categoryLabels[$item['ITEM_CATEGORY']]; ?>
-                            </span>
-                        </td>
-                        <td data-label="Purchase Date">
-                            <div class="item-unit"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A'); ?></div>
-                        </td>
-
-                        <td data-label="Confirmation" style="text-align: center;">
-                            <?php if(!$isConfirmed): ?>
-                                <button class="confirm-btn" onclick="openConfirmModal(this)">
-                                    Confirm
-                                </button>
-                            <?php else: ?>
-                                <div class="confirmed-badge">
-                                    Confirmed
+                    if(empty($items_data)): ?>
+                        <tr>
+                            <td colspan="12">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-folder-open"></i>
+                                    No administrative purchases recorded yet in this location.
                                 </div>
-                            <?php endif; ?>
-                        </td>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach($items_data as $item): 
+                            $status = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
+                            $isConfirmed = ($status === 1);
+                            $totalCost = $item['TOTAL_COST'] ?? ($item['QUANTITY'] * $item['UNIT_COST']);
+                        ?>
+                        <tr data-item-id="<?php echo $item['ITEM_ID']; ?>"
+                            data-item-name="<?php echo htmlspecialchars($item['ITEM_NAME']); ?>"
+                            data-item-desc="<?php echo htmlspecialchars($item['ITEM_DESCRIPTION'] ?? ''); ?>"
+                            data-unit-id="<?php echo $item['UNIT_ID']; ?>"
+                            data-unit-cost="<?php echo $item['UNIT_COST']; ?>"
+                            data-item-category="<?php echo $item['ITEM_CATEGORY']; ?>"
+                            data-unit-name="<?php echo htmlspecialchars($item['UNIT_NAME']); ?>"
+                            data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
+                            data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
+                            data-purchase-date-raw="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
+                            data-purchase-date-fmt="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? ''); ?>"
+                            data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
+                            data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
+                            data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
+                            data-supplier="<?php echo htmlspecialchars($item['SUPPLIER'] ?? ''); ?>"
+                            data-reference-no="<?php echo htmlspecialchars($item['REFERENCE_NO'] ?? ''); ?>"
+                            data-created-at="<?php echo htmlspecialchars($item['CREATED_AT_FMT'] ?? ''); ?>">
+                            
+                            <td data-label="Ref No">
+                                <div class="ref-no"><?php echo !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : '—'; ?></div>
+                            </td>
+                            <td data-label="Supplier">
+                                <div class="supplier-name"><?php echo !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier'; ?></div>
+                            </td>
+                            <td data-label="Item Name">
+                                <div class="item-name"><?php echo htmlspecialchars($item['ITEM_NAME']); ?></div>
+                            </td>
+                            <td data-label="Quantity">
+                                <div class="val-mono" style="color: #fff;">
+                                    <?php echo number_format($item['QUANTITY'] ?? 0, 2); ?>
+                                </div>
+                            </td>
+                            <td data-label="Unit">
+                                <div class="item-unit"><?php echo htmlspecialchars($item['UNIT_NAME']); ?></div>
+                            </td>
+                            <td data-label="Net Weight">
+                                <div class="item-unit"><?php echo htmlspecialchars($item['ITEM_NET_WEIGHT'] ?? 'N/A'); ?></div>
+                            </td>
+                            <td data-label="Unit Cost">
+                                <div class="val-money" style="color: var(--text-primary);">₱<?php echo number_format($item['UNIT_COST'], 2); ?></div>
+                            </td>
+                            <td data-label="Total Cost">
+                                <div class="val-money">₱<?php echo number_format($totalCost, 2); ?></div>
+                            </td>
+                            <td data-label="Category">
+                                <span class="category-badge <?php echo $categoryClasses[$item['ITEM_CATEGORY']]; ?>">
+                                    <?php echo $categoryLabels[$item['ITEM_CATEGORY']]; ?>
+                                </span>
+                            </td>
+                            <td data-label="Purchase Date">
+                                <div class="val-mono"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A'); ?></div>
+                            </td>
 
-                        <td data-label="Actions">
-                            <div class="actions">
-                                <button class="action-btn view" onclick="viewItem(this)" title="View Details">
-                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                </button>
-
+                            <td data-label="Status" style="text-align: center;">
                                 <?php if(!$isConfirmed): ?>
-                                    <button class="action-btn edit" onclick="editItem(this)" title="Edit">
-                                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                        </svg>
-                                    </button>
-                                    <button class="action-btn delete" onclick="deleteItem(this)" title="Delete">
-                                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                    </button>
+                                    <button class="confirm-btn" onclick="openConfirmModal(this)">Confirm</button>
                                 <?php else: ?>
-                                    <div style="width:70px;"></div>
+                                    <div class="confirmed-badge"><i class="fa-solid fa-check me-1"></i> Verified</div>
                                 <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
+                            </td>
+
+                            <td data-label="Actions">
+                                <div class="actions">
+                                    <button class="action-btn view" onclick="viewItem(this)" title="View Details">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+
+                                    <?php if(!$isConfirmed): ?>
+                                        <button class="action-btn edit" onclick="editItem(this)" title="Edit">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button class="action-btn delete" onclick="deleteItem(this)" title="Delete">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <span style="font-size: 1.1em; opacity: 0.3; cursor: not-allowed; margin-left: 5px; display: flex; align-items: center;"><i class="fa-solid fa-lock"></i></span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
-            <div id="empty-state" style="display:none; text-align:center; padding:3rem; color:#64748b;">
-                <h3>No items found</h3>
-                <p>Try adjusting your search terms</p>
+            <div id="empty-state-js" class="empty-state" style="display:none;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <p>No purchases found matching your search term.</p>
             </div>
         </div>
     </div>
+</div>
 
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title">Add Administration & Records Purchase</h2>
-            </div>
-            <div class="modal-body">
-                <div id="modal-alert" class="alert"></div>
-                <form id="item-form" method="POST">
-                    <input type="hidden" id="item-id" name="item_id">
-                    <input type="hidden" name="item_type_id" value="<?php echo $ITEM_TYPE_ID; ?>">
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Add Administrative Purchase</h2>
+        </div>
+        <div class="modal-body">
+            <form id="item-form" method="POST">
+                <input type="hidden" id="item-id" name="item_id">
+                <input type="hidden" name="item_type_id" value="<?php echo $ITEM_TYPE_ID; ?>">
+                
+                <div class="info-group" style="margin-top: 0;">
+                    <h3 style="margin-top:0;">Item Information</h3>
                     
-                    <div class="info-group">
-                        <h3 style="margin-top: 0;">Item Information</h3>
-                        
+                    <div class="form-group autocomplete-wrapper">
+                        <label class="form-label" for="item-name">Item Name <span>*</span></label>
+                        <input type="text" id="item-name" name="item_name" class="form-control" placeholder="e.g., Record Book, RFID Scanner" required maxlength="300" autocomplete="off">
+                        <div id="autocomplete-list" class="autocomplete-list"></div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group autocomplete-wrapper">
-                            <label for="item-name">Item Name <span>*</span></label>
-                            <input type="text" id="item-name" name="item_name" placeholder="e.g., Log Book" required maxlength="300" autocomplete="off">
-                            <div id="autocomplete-list" class="autocomplete-list"></div>
+                            <label class="form-label">Supplier</label>
+                            <input type="text" id="supplier" name="supplier" class="form-control" placeholder="e.g., National Bookstore" autocomplete="off">
+                            <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group autocomplete-wrapper">
-                                <label>Supplier</label>
-                                <input type="text" id="supplier" name="supplier" placeholder="e.g., National Bookstore" autocomplete="off">
-                                <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Reference No.</label>
-                                <input type="text" id="reference-no" name="reference_no" placeholder="e.g., OR-12345">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="net-weight">Net Weight</label>
-                                <input type="number" id="net-weight" name="item_net_weight" placeholder="e.g., 500" step="0.01" min="0">
-                            </div>
-
-                            <div class="form-group">
-                                <label for="unit">Unit of Measurement <span>*</span></label>
-                                <select id="unit" name="unit_id" required>
-                                    <option value="">Select Unit</option>
-                                    <?php foreach($units as $unit): ?>
-                                        <option value="<?php echo $unit['UNIT_ID']; ?>">
-                                            <?php echo htmlspecialchars($unit['UNIT_NAME']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-
                         <div class="form-group">
-                            <label for="item-quantity">Quantity <span>*</span></label>
-                            <input type="number" id="item-quantity" name="item_quantity" placeholder="e.g., 10" step="0.01" min="0" required>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="unit-cost">Unit Cost (₱) <span>*</span></label>
-                                <input type="number" id="unit-cost" name="unit_cost" placeholder="0.00" step="0.01" min="0" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="item-category">Item Category <span>*</span></label>
-                                <select id="item-category" name="item_category" required>
-                                    <option value="">Select Category</option>
-                                    <option value="0">Non-Consumable</option>
-                                    <option value="1">Consumable</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="purchase-date">Date of Purchase <span>*</span></label>
-                            <input type="text" id="purchase-date" name="date_of_purchase" class="form-input date-picker" placeholder="Date of Purchase" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="item-desc">Item Description</label>
-                            <textarea id="item-desc" name="item_description" placeholder="Enter detailed description, specifications, or notes" rows="3" maxlength="500"></textarea>
+                            <label class="form-label">Reference No.</label>
+                            <input type="text" id="reference-no" name="reference_no" class="form-control" placeholder="e.g., OR-12345">
                         </div>
                     </div>
 
-                    <div class="info-group">
-                        <h3>Initial Location</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="location_id">Location</label>
-                                <select id="location_id" name="location_id" onchange="filterBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #1e293b; pointer-events: none; color: #94a3b8;"' : ''; ?> required>
-                                    <?php if($USER_LOCATION_ == 1000): ?>
-                                        <option value="">Select Location</option>
-                                    <?php endif; ?>
-                                    <?php foreach($locations as $loc): ?>
-                                        <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="building_id">Building</label>
-                                <select id="building_id" name="building_id" onchange="filterPens()" disabled>
-                                    <option value="">Select Location First</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="pen_id">Pen</label>
-                                <select id="pen_id" name="pen_id" disabled>
-                                    <option value="">Select Building First</option>
-                                </select>
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="item-quantity">Quantity <span>*</span></label>
+                            <input type="number" id="item-quantity" name="item_quantity" class="form-control val-mono" placeholder="e.g., 5" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="unit">Unit of Measurement <span>*</span></label>
+                            <select id="unit" name="unit_id" class="form-select" required>
+                                <option value="">Select Unit</option>
+                                <?php foreach($units as $unit): ?>
+                                    <option value="<?php echo $unit['UNIT_ID']; ?>"><?php echo htmlspecialchars($unit['UNIT_NAME']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="button" class="btn-save" id="btn-save" onclick="saveItem()">Save Purchase</button>
-            </div>
-        </div>
-    </div>
 
-    <div id="view-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Purchase Details</h2>
-            </div>
-            <div class="modal-body" id="view-modal-body"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeViewModal()" style="width: 100%;">Close</button>
-            </div>
-        </div>
-    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="unit-cost">Unit Cost (₱) <span>*</span></label>
+                            <input type="number" id="unit-cost" name="unit_cost" class="form-control val-mono" placeholder="0.00" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="item-category">Item Category <span>*</span></label>
+                            <select id="item-category" name="item_category" class="form-select" required>
+                                <option value="">Select Category</option>
+                                <option value="0" selected>Non-Consumable</option>
+                                <option value="1">Consumable</option>
+                            </select>
+                        </div>
+                    </div>
 
-    <div id="confirm-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-body confirm-content">
-                <span class="confirm-icon">📊</span>
-                <h2 style="color: #fff; margin-bottom: 10px;">Confirm Purchase?</h2>
-                <p style="color: #94a3b8; margin-bottom: 5px;">You are about to confirm <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color: #38bdf8;"></span></strong>.</p>
-                <div class="warning-text">
-                    ⚠️ <strong>Warning:</strong> Once confirmed, this record will be locked and can no longer be edited or deleted.
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="purchase-date">Date of Purchase <span>*</span></label>
+                            <input type="text" id="purchase-date" name="date_of_purchase" class="form-control date-picker" placeholder="mm/dd/yyyy" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="net-weight">Net Weight <span style="color:var(--text-muted);">(Optional)</span></label>
+                            <input type="number" id="net-weight" name="item_net_weight" class="form-control val-mono" placeholder="e.g., 5.5" step="0.01" min="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label" for="item-desc">Item Description / Specs</label>
+                        <textarea id="item-desc" name="item_description" class="form-control" placeholder="Enter detailed specifications..." rows="2" maxlength="500"></textarea>
+                    </div>
                 </div>
-                <form id="confirmForm" method="POST">
-                    <input type="hidden" id="confirm_item_id" name="item_id">
-                </form>
-            </div>
-            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
-                <button type="button" class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitConfirmation()" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Yes, Confirm it!</button>
-            </div>
-        </div>
-    </div>
 
-    <div id="confirm-all-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-body confirm-content">
-                <span class="confirm-icon" style="font-size: 3rem;">📋</span>
-                <h2 style="color: #fff; margin-bottom: 10px;">Confirm All Pending?</h2>
-                <p style="color: #94a3b8;">This will confirm and lock <strong>ALL</strong> currently pending administration & records purchases.</p>
-                <div class="warning-text">
-                    ⚠️ <strong>Warning:</strong> This action cannot be undone.
+                <div class="info-group">
+                    <h3>Initial Location</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="location_id">Location</label>
+                            <select id="location_id" name="location_id" class="form-select" onchange="filterBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?> required>
+                                <?php if($USER_LOCATION_ == 1000): ?>
+                                    <option value="">Select Location</option>
+                                <?php endif; ?>
+                                <?php foreach($locations as $loc): ?>
+                                    <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($USER_LOCATION_ != 1000): ?>
+                                <input type="hidden" name="location_id" value="<?= $USER_LOCATION_ ?>">
+                            <?php endif; ?>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="building_id">Building</label>
+                            <select id="building_id" name="building_id" class="form-select" onchange="filterPens()" disabled>
+                                <option value="">Select Location First</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="pen_id">Pen</label>
+                            <select id="pen_id" name="pen_id" class="form-select" disabled>
+                                <option value="">Select Building First</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
-                <button type="button" class="btn-cancel" onclick="closeConfirmAllModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitConfirmAll()" style="background: linear-gradient(135deg, #f59e0b, #d97706);">Confirm All</button>
-            </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btn-save" onclick="saveItem()">Save Purchase</button>
         </div>
     </div>
+</div>
 
-    <form id="deleteItemForm" method="POST" action="../process/deleteAdministrationAndRecords.php" style="display: none;">
-        <input type="hidden" id="delete_item_id" name="item_id">
-    </form>
+<div id="view-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>Purchase Dossier</h2>
+        </div>
+        <div class="modal-body" id="view-modal-body"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeViewModal()" style="width: 100%;">Close Window</button>
+        </div>
+    </div>
+</div>
 
-    <script>
-        const allBuildings = <?php echo json_encode($buildings_raw); ?>;
-        const allPens = <?php echo json_encode($pens_raw); ?>;
-        const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+<div id="confirm-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-body confirm-content">
+            <span class="confirm-icon" style="color:var(--indigo);">📊</span>
+            <h2 style="color: #fff; margin-bottom: 10px;">Verify Acquisition?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 5px;">You are confirming the intake of <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color:var(--indigo);"></span></strong>.</p>
+            <div class="warning-text">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Critical:</strong> Once confirmed, this financial record is locked and cannot be edited or purged.
+            </div>
+            <form id="confirmForm" method="POST">
+                <input type="hidden" id="confirm_item_id" name="item_id">
+            </form>
+        </div>
+        <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px; background: transparent;">
+            <button type="button" class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitConfirmation()" style="background: var(--red); border-color: var(--red);">Yes, Lock Record</button>
+        </div>
+    </div>
+</div>
 
-        let fpPurchaseDate;
+<div id="confirm-all-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-body confirm-content">
+            <span class="confirm-icon" style="color:var(--amber);">📋</span>
+            <h2 style="color: #fff; margin-bottom: 10px;">Commit All Pending?</h2>
+            <p style="color: var(--text-secondary);">This function will verify and lock <strong>ALL</strong> currently pending administration/records purchases in this location.</p>
+            <div class="warning-text" style="background: var(--amber-dim); border-color: rgba(245,158,11,0.3); color: var(--amber);">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Irreversible Action:</strong> Please audit all pending items before executing this batch commit.
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px; background: transparent;">
+            <button type="button" class="btn btn-ghost" onclick="closeConfirmAllModal()">Cancel</button>
+            <button type="button" class="btn btn-amber" onclick="submitConfirmAll()">Commit All Now</button>
+        </div>
+    </div>
+</div>
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Flatpickr
-            fpPurchaseDate = flatpickr("#purchase-date", {
-                dateFormat: "Y-m-d", // Value submitted to PHP
-                altInput: true,      // Visual input
-                altFormat: "m/d/Y",  // mm/dd/yyyy format
-                allowInput: true
-            });
-            checkEmptyState();
+<form id="deleteItemForm" method="POST" action="../process/deleteAdministrationAndRecords.php" style="display: none;">
+    <input type="hidden" id="delete_item_id" name="item_id">
+</form>
+
+<script>
+    const allBuildings = <?php echo json_encode($buildings_raw); ?>;
+    const allPens = <?php echo json_encode($pens_raw); ?>;
+    const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+
+    let fpPurchaseDate;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fpPurchaseDate = flatpickr("#purchase-date", {
+            dateFormat: "Y-m-d", 
+            altInput: true,      
+            altFormat: "m/d/Y",  
+            allowInput: true
         });
 
-        // --- Confirmation Logic ---
-        function openConfirmModal(button) {
-            const row = button.closest('tr');
-            const itemId = row.dataset.itemId;
-            const itemName = row.dataset.itemName;
-            const itemQty = row.dataset.quantity;
-
-            document.getElementById('confirm_item_id').value = itemId;
-            document.getElementById('confirm-item-name').textContent = itemName;
-            document.getElementById('confirm-item-qty').textContent = itemQty;
-
-            document.getElementById('confirm-modal').classList.add('show');
+        if (USER_LOCATION != 1000) {
+            loadBuildings('src');
+            loadBuildings('dest');
         }
+    });
 
-        function closeConfirmModal() {
-            document.getElementById('confirm-modal').classList.remove('show');
-        }
-
-        function submitConfirmation() {
-            const form = document.getElementById('confirmForm');
-            const formData = new FormData(form);
-            const confirmBtn = document.querySelector('#confirm-modal .btn-save');
-            
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = 'Confirming...';
-
-            fetch('../purchase_confirmations/confirmAdministrationAndRecords.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
+    // --- CONFIRMATION ---
+    function openConfirmModal(button) {
+        const row = button.closest('tr');
+        document.getElementById('confirm_item_id').value = row.dataset.itemId;
+        document.getElementById('confirm-item-name').textContent = row.dataset.itemName;
+        document.getElementById('confirm-item-qty').textContent = row.dataset.quantity;
+        document.getElementById('confirm-modal').classList.add('show');
+    }
+    
+    function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
+    
+    function submitConfirmation() {
+        const formData = new FormData(document.getElementById('confirmForm'));
+        const btn = document.querySelector('#confirm-modal .btn-primary');
+        btn.disabled = true; btn.innerHTML = 'Confirming...';
+        
+        fetch('../purchase_confirmations/confirmAdministrationAndRecords.php', { method: 'POST', body: formData })
+            .then(r => r.json())
             .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    window.location.reload();
-                } else {
-                    alert(data.message);
-                    confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = 'Yes, Confirm it!';
-                }
+                if (data.success) { showToast(data.message, 'success'); setTimeout(() => window.location.reload(), 1000); } 
+                else { showToast(data.message, 'error'); btn.disabled = false; btn.innerHTML = 'Yes, Lock Record'; }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while confirming.');
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = 'Yes, Confirm it!';
+                showToast('An error occurred while confirming.', 'error');
+                btn.disabled = false; btn.innerHTML = 'Yes, Lock Record';
             });
-        }
+    }
 
-        function openConfirmAllModal() {
-            document.getElementById('confirm-all-modal').classList.add('show');
-        }
+    function openConfirmAllModal() { document.getElementById('confirm-all-modal').classList.add('show'); }
+    function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
 
-        function closeConfirmAllModal() {
-            document.getElementById('confirm-all-modal').classList.remove('show');
-        }
+    function submitConfirmAll() {
+        const btn = document.querySelector('#confirm-all-modal .btn-amber');
+        btn.disabled = true; btn.innerHTML = 'Processing...';
 
-        function submitConfirmAll() {
-            const confirmBtn = document.querySelector('#confirm-all-modal .btn-save');
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = 'Processing...';
-
-            fetch('../purchase_confirmations/confirmAllAdministrationAndRecords.php', {
-                method: 'POST'
-            })
-            .then(response => response.json())
+        fetch('../purchase_confirmations/confirmAllAdministrationAndRecords.php', { method: 'POST' })
+            .then(r => r.json())
             .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    window.location.reload();
-                } else {
-                    alert(data.message);
-                    confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = 'Confirm All';
-                }
+                if (data.success) { showToast(data.message, 'success'); setTimeout(() => window.location.reload(), 1000); } 
+                else { showToast(data.message, 'error'); btn.disabled = false; btn.innerHTML = 'Commit All Now'; }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while confirming all items.');
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = 'Confirm All';
+                showToast('An error occurred while confirming all items.', 'error');
+                btn.disabled = false; btn.innerHTML = 'Commit All Now';
             });
+    }
+
+    function filterBuildings() {
+        const locId = document.getElementById('location_id').value;
+        const bldgSel = document.getElementById('building_id');
+        const penSel = document.getElementById('pen_id');
+        
+        bldgSel.innerHTML = '<option value="">Select Building</option>';
+        penSel.innerHTML = '<option value="">Select Building First</option>';
+        penSel.disabled = true;
+
+        if (locId) {
+            bldgSel.disabled = false;
+            const filtered = allBuildings.filter(b => b.LOCATION_ID == locId);
+            filtered.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.BUILDING_ID; opt.textContent = b.BUILDING_NAME;
+                bldgSel.appendChild(opt);
+            });
+        } else { bldgSel.disabled = true; }
+    }
+
+    function filterPens() {
+        const bldgId = document.getElementById('building_id').value;
+        const penSel = document.getElementById('pen_id');
+        penSel.innerHTML = '<option value="">Select Pen</option>';
+
+        if (bldgId) {
+            penSel.disabled = false;
+            const filtered = allPens.filter(p => p.BUILDING_ID == bldgId);
+            filtered.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.PEN_ID; opt.textContent = p.PEN_NAME;
+                penSel.appendChild(opt);
+            });
+        } else { penSel.disabled = true; }
+    }
+
+    let autocompleteTimeout = null;
+    let currentFocus = -1;
+
+    function initAutocomplete() {
+        const itemNameInput = document.getElementById('item-name');
+        const autocompleteList = document.getElementById('autocomplete-list');
+        const newInput = itemNameInput.cloneNode(true);
+        itemNameInput.parentNode.replaceChild(newInput, itemNameInput);
+        const input = document.getElementById('item-name');
+        
+        input.addEventListener('input', function(e) {
+            const value = this.value.trim();
+            clearTimeout(autocompleteTimeout);
+            if (value.length < 2) { closeAutocomplete(); return; }
+            autocompleteList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
+            autocompleteList.classList.add('show');
+            autocompleteTimeout = setTimeout(() => { fetchAutocomplete(value); }, 300);
+        });
+        input.addEventListener('keydown', function(e) {
+            const items = autocompleteList.getElementsByClassName('autocomplete-item');
+            if (e.keyCode === 40) { e.preventDefault(); currentFocus++; addActive(items); } 
+            else if (e.keyCode === 38) { e.preventDefault(); currentFocus--; addActive(items); } 
+            else if (e.keyCode === 13) { if (currentFocus > -1 && items[currentFocus]) { e.preventDefault(); items[currentFocus].click(); } } 
+            else if (e.keyCode === 27) { closeAutocomplete(); }
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.autocomplete-wrapper')) { closeAutocomplete(); }
+        });
+    }
+
+    function fetchAutocomplete(searchTerm) {
+        fetch(`../process/searchAdministrationAndRecords.php?term=${encodeURIComponent(searchTerm)}`)
+            .then(response => response.json())
+            .then(data => { displayAutocomplete(data, searchTerm); })
+            .catch(error => { console.error('Autocomplete error:', error); closeAutocomplete(); });
+    }
+
+    function displayAutocomplete(results, searchTerm) {
+        const list = document.getElementById('autocomplete-list');
+        list.innerHTML = ''; currentFocus = -1;
+        if (results.length === 0) {
+            list.innerHTML = '<div class="autocomplete-no-results">No items found</div>';
+            list.classList.add('show'); return;
         }
-        // --------------------------
+        results.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = item.replace(new RegExp(`(${escapeRegex(searchTerm)})`, 'gi'), '<strong>$1</strong>');
+            div.addEventListener('click', function() {
+                document.getElementById('item-name').value = item;
+                closeAutocomplete();
+            });
+            list.appendChild(div);
+        });
+        list.classList.add('show');
+    }
 
-        function filterBuildings() {
-            const locationSelect = document.getElementById('location_id');
-            const buildingSelect = document.getElementById('building_id');
-            const penSelect = document.getElementById('pen_id');
+    function addActive(items) {
+        if (!items || items.length === 0) return;
+        removeActive(items);
+        if (currentFocus >= items.length) currentFocus = 0;
+        if (currentFocus < 0) currentFocus = items.length - 1;
+        items[currentFocus].classList.add('active');
+        items[currentFocus].scrollIntoView({ block: 'nearest' });
+    }
+    function removeActive(items) { for (let i = 0; i < items.length; i++) { items[i].classList.remove('active'); } }
+    function closeAutocomplete() {
+        const list = document.getElementById('autocomplete-list');
+        if (list) { list.classList.remove('show'); list.innerHTML = ''; }
+        currentFocus = -1;
+    }
+    function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    // --- Supplier Autocomplete Logic ---
+    let supplierTimeout = null;
+    const supplierInput = document.getElementById('supplier');
+    const supplierList = document.getElementById('supplier-autocomplete-list');
+
+    if (supplierInput) {
+        supplierInput.addEventListener('input', function() {
+            clearTimeout(supplierTimeout);
+            const val = this.value.trim();
             
-            const selectedLocId = locationSelect.value;
-
-            buildingSelect.innerHTML = '<option value="">Select Building</option>';
-            penSelect.innerHTML = '<option value="">Select Building First</option>';
-            penSelect.disabled = true;
-
-            if (selectedLocId) {
-                buildingSelect.disabled = false;
-                const filteredBuildings = allBuildings.filter(b => b.LOCATION_ID == selectedLocId);
-                filteredBuildings.forEach(b => {
-                    const option = document.createElement('option');
-                    option.value = b.BUILDING_ID;
-                    option.textContent = b.BUILDING_NAME;
-                    buildingSelect.appendChild(option);
-                });
-            } else {
-                buildingSelect.disabled = true;
+            if (val.length < 2) { 
+                supplierList.classList.remove('show'); 
+                return; 
             }
-        }
-
-        function filterPens() {
-            const buildingSelect = document.getElementById('building_id');
-            const penSelect = document.getElementById('pen_id');
-            const selectedBldgId = buildingSelect.value;
-
-            penSelect.innerHTML = '<option value="">Select Pen</option>';
-
-            if (selectedBldgId) {
-                penSelect.disabled = false;
-                const filteredPens = allPens.filter(p => p.BUILDING_ID == selectedBldgId);
-                filteredPens.forEach(p => {
-                    const option = document.createElement('option');
-                    option.value = p.PEN_ID;
-                    option.textContent = p.PEN_NAME;
-                    penSelect.appendChild(option);
-                });
-            } else {
-                penSelect.disabled = true;
-            }
-        }
-
-        let autocompleteTimeout = null;
-        let currentFocus = -1;
-
-        function initAutocomplete() {
-            const itemNameInput = document.getElementById('item-name');
-            const autocompleteList = document.getElementById('autocomplete-list');
             
-            const newInput = itemNameInput.cloneNode(true);
-            itemNameInput.parentNode.replaceChild(newInput, itemNameInput);
-            const input = document.getElementById('item-name');
+            supplierList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
+            supplierList.classList.add('show');
             
-            input.addEventListener('input', function(e) {
-                const value = this.value.trim();
-                clearTimeout(autocompleteTimeout);
-                if (value.length < 2) { closeAutocomplete(); return; }
-                autocompleteList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
-                autocompleteList.classList.add('show');
-                autocompleteTimeout = setTimeout(() => { fetchAutocomplete(value); }, 300);
-            });
-            
-            input.addEventListener('keydown', function(e) {
-                const items = autocompleteList.getElementsByClassName('autocomplete-item');
-                if (e.keyCode === 40) { e.preventDefault(); currentFocus++; addActive(items); } 
-                else if (e.keyCode === 38) { e.preventDefault(); currentFocus--; addActive(items); } 
-                else if (e.keyCode === 13) { if (currentFocus > -1 && items[currentFocus]) { e.preventDefault(); items[currentFocus].click(); } } 
-                else if (e.keyCode === 27) { closeAutocomplete(); }
-            });
-            
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.autocomplete-wrapper')) { closeAutocomplete(); }
-            });
-        }
-
-        function fetchAutocomplete(searchTerm) {
-            fetch(`../process/searchAdministrationAndRecords.php?term=${encodeURIComponent(searchTerm)}`)
-                .then(response => response.json())
-                .then(data => { displayAutocomplete(data, searchTerm); })
-                .catch(error => { console.error('Autocomplete error:', error); closeAutocomplete(); });
-        }
-
-        function displayAutocomplete(results, searchTerm) {
-            const list = document.getElementById('autocomplete-list');
-            list.innerHTML = ''; currentFocus = -1;
-            if (results.length === 0) {
-                list.innerHTML = '<div class="autocomplete-no-results">No items found</div>';
-                list.classList.add('show'); return;
-            }
-            results.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
-                const highlighted = item.replace(regex, '<strong>$1</strong>');
-                div.innerHTML = highlighted;
-                div.addEventListener('click', function() {
-                    document.getElementById('item-name').value = item;
-                    closeAutocomplete();
-                });
-                list.appendChild(div);
-            });
-            list.classList.add('show');
-        }
-
-        function addActive(items) {
-            if (!items || items.length === 0) return;
-            removeActive(items);
-            if (currentFocus >= items.length) currentFocus = 0;
-            if (currentFocus < 0) currentFocus = items.length - 1;
-            items[currentFocus].classList.add('active');
-            items[currentFocus].scrollIntoView({ block: 'nearest' });
-        }
-
-        function removeActive(items) {
-            for (let i = 0; i < items.length; i++) { items[i].classList.remove('active'); }
-        }
-
-        function closeAutocomplete() {
-            const list = document.getElementById('autocomplete-list');
-            if (list) { list.classList.remove('show'); list.innerHTML = ''; }
-            currentFocus = -1;
-        }
-
-        function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-        // --- Supplier Autocomplete Logic ---
-        let supplierTimeout = null;
-        const supplierInput = document.getElementById('supplier');
-        const supplierList = document.getElementById('supplier-autocomplete-list');
-
-        if (supplierInput) {
-            supplierInput.addEventListener('input', function() {
-                clearTimeout(supplierTimeout);
-                const val = this.value.trim();
-                
-                if (val.length < 2) { 
-                    supplierList.classList.remove('show'); 
-                    return; 
-                }
-                
-                supplierList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
-                supplierList.classList.add('show');
-                
-                supplierTimeout = setTimeout(() => {
-                    fetch(`../process/searchSuppliers.php?term=${encodeURIComponent(val)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        supplierList.innerHTML = '';
-                        if (data.length === 0) {
-                            supplierList.innerHTML = '<div class="autocomplete-no-results">No matches</div>';
-                            return;
-                        }
+            supplierTimeout = setTimeout(() => {
+                fetch(`../process/searchSuppliers.php?term=${encodeURIComponent(val)}`)
+                .then(r => r.json())
+                .then(data => {
+                    supplierList.innerHTML = '';
+                    if (data.length === 0) {
+                        supplierList.innerHTML = '<div class="autocomplete-no-results">No matches</div>';
+                        return;
+                    }
+                    
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        const regex = new RegExp(`(${val})`, 'gi');
+                        div.innerHTML = item.replace(regex, '<strong>$1</strong>');
                         
-                        data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = 'autocomplete-item';
-                            const regex = new RegExp(`(${val})`, 'gi');
-                            div.innerHTML = item.replace(regex, '<strong>$1</strong>');
-                            
-                            div.addEventListener('click', () => {
-                                supplierInput.value = item;
-                                supplierList.classList.remove('show');
-                            });
-                            supplierList.appendChild(div);
+                        div.addEventListener('click', () => {
+                            supplierInput.value = item;
+                            supplierList.classList.remove('show');
                         });
-                    }).catch(() => supplierList.classList.remove('show'));
-                }, 300);
-            });
+                        supplierList.appendChild(div);
+                    });
+                }).catch(() => supplierList.classList.remove('show'));
+            }, 300);
+        });
 
-            document.addEventListener('click', e => {
-                if (!supplierInput.parentElement.contains(e.target)) {
-                    supplierList.classList.remove('show');
-                }
-            });
-        }
-
-        // --- Modals ---
-        function openAddModal() {
-            document.getElementById('modal-title').textContent = 'Add Administration & Records Purchase';
-            document.querySelector('#modal .btn-save').textContent = 'Save Purchase';
-            document.getElementById('item-form').reset();
-            document.getElementById('item-id').value = '';
-            document.getElementById('item-category').value = '';
-            document.getElementById('unit').value = '';
-            
-            fpPurchaseDate.clear(); 
-            
-            const locSelect = document.getElementById('location_id');
-            
-            // Auto-select location logic based on admin vs regular user
-            if (USER_LOCATION != 1000) {
-                locSelect.value = USER_LOCATION;
-                filterBuildings(); 
-            } else {
-                locSelect.value = "";
-                document.getElementById('building_id').innerHTML = '<option value="">Select Location First</option>';
-                document.getElementById('building_id').disabled = true;
-                document.getElementById('pen_id').innerHTML = '<option value="">Select Building First</option>';
-                document.getElementById('pen_id').disabled = true;
+        document.addEventListener('click', e => {
+            if (!supplierInput.parentElement.contains(e.target)) {
+                supplierList.classList.remove('show');
             }
-            
-            hideAlert();
-            document.getElementById('modal').classList.add('show');
-            setTimeout(() => { initAutocomplete(); }, 100);
-        }
+        });
+    }
 
-        function viewItem(button) {
-            const row = button.closest('tr');
-            const data = {
-                item_id: row.dataset.itemId,
-                item_name: row.dataset.itemName,
-                item_description: row.dataset.itemDesc,
-                unit: row.dataset.unitName,
-                unit_cost: row.dataset.unitCost,
-                item_category: row.dataset.itemCategory,
-                net_weight: row.dataset.netWeight,
-                quantity: row.dataset.quantity,
-                purchase_date_fmt: row.dataset.purchaseDateFmt,
-                supplier: row.dataset.supplier,
-                reference_no: row.dataset.referenceNo,
-                created_at: row.dataset.createdAtFmt
-            };
-            displayItemDetails(data);
-        }
-
-        function displayItemDetails(data) {
-            const categoryLabels = {0: 'Non-Consumable', 1: 'Consumable'};
-            const html = `
-                <div class="info-group">
-                    <h3 style="border-bottom:1px solid #334155; padding-bottom:5px; color:#93c5fd;">Basic Information</h3>
-                    <p><strong>Item ID:</strong> ITEM-${String(data.item_id).padStart(4, '0')}</p>
-                    <p><strong>Item Name:</strong> ${data.item_name}</p>
-                    <p><strong>Description:</strong> ${data.item_description || 'N/A'}</p>
-                    <p><strong>Supplier:</strong> ${data.supplier || 'N/A'}</p>
-                    <p><strong>Reference No:</strong> ${data.reference_no || 'N/A'}</p>
-                    <p><strong>Recorded On:</strong> ${data.created_at}</p>
-                </div>
-                <div class="info-group" style="margin-top:20px;">
-                    <h3 style="border-bottom:1px solid #334155; padding-bottom:5px; color:#93c5fd;">Purchase Details</h3>
-                    <p><strong>Quantity:</strong> ${data.quantity || '0'}</p>
-                    <p><strong>Unit:</strong> ${data.unit}</p>
-                    <p><strong>Unit Cost:</strong> ₱${parseFloat(data.unit_cost).toLocaleString('en-PH', {minimumFractionDigits: 2})}</p>
-                    <p><strong>Net Weight:</strong> ${data.net_weight || 'N/A'}</p>
-                    <p><strong>Category:</strong> ${categoryLabels[data.item_category]}</p>
-                    <p><strong>Purchase Date:</strong> ${data.purchase_date_fmt || 'N/A'}</p>
-                </div>
-            `;
-            document.getElementById('view-modal-body').innerHTML = html;
-            document.getElementById('view-modal').classList.add('show');
-        }
-
-        function editItem(button) {
-            const row = button.closest('tr');
-            const data = {
-                item_id: row.dataset.itemId,
-                item_name: row.dataset.itemName,
-                item_description: row.dataset.itemDesc,
-                unit_id: row.dataset.unitId,
-                unit_cost: row.dataset.unitCost,
-                item_category: row.dataset.itemCategory,
-                net_weight: row.dataset.netWeight,
-                quantity: row.dataset.quantity,
-                purchase_date_raw: row.dataset.purchaseDateRaw,
-                location_id: row.dataset.locationId,
-                building_id: row.dataset.buildingId,
-                pen_id: row.dataset.penId,
-                supplier: row.dataset.supplier,
-                reference_no: row.dataset.referenceNo
-            };
-            populateEditForm(data);
-        }
-
-        function populateEditForm(data) {
-            document.getElementById('modal-title').textContent = 'Edit Administration & Records Purchase';
-            document.querySelector('#modal .btn-save').textContent = 'Update Purchase';
-            document.getElementById('item-id').value = data.item_id;
-            document.getElementById('item-name').value = data.item_name;
-            document.getElementById('item-desc').value = data.item_description || '';
-            document.getElementById('unit').value = data.unit_id;
-            document.getElementById('unit-cost').value = data.unit_cost;
-            document.getElementById('item-category').value = data.item_category;
-            document.getElementById('net-weight').value = data.net_weight || '';
-            document.getElementById('item-quantity').value = data.quantity || '0';
-            document.getElementById('supplier').value = data.supplier || '';
-            document.getElementById('reference-no').value = data.reference_no || '';
-
-            fpPurchaseDate.setDate(data.purchase_date_raw || ''); 
-
-            const locSelect = document.getElementById('location_id');
-            locSelect.value = data.location_id || ""; 
+    function openAddModal() {
+        document.getElementById('modal-title').textContent = 'Add Administrative Purchase';
+        document.getElementById('btn-save').innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i> Save Purchase';
+        document.getElementById('item-form').reset();
+        document.getElementById('item-id').value = '';
+        document.getElementById('item-category').value = '0'; // Default Non-Consumable
+        document.getElementById('unit').value = '';
+        
+        fpPurchaseDate.setDate(new Date()); 
+        
+        const locSelect = document.getElementById('location_id');
+        
+        if (USER_LOCATION != 1000) {
+            locSelect.value = USER_LOCATION;
             filterBuildings(); 
-
-            const bldgSelect = document.getElementById('building_id');
-            if(data.building_id) {
-                bldgSelect.value = data.building_id;
-                filterPens();
-                const penSelect = document.getElementById('pen_id');
-                if(data.pen_id) {
-                    penSelect.value = data.pen_id;
-                }
-            }
-            
-            hideAlert();
-            document.getElementById('modal').classList.add('show');
-            
-            setTimeout(() => {
-                initAutocomplete();
-            }, 100);
+        } else {
+            locSelect.value = "";
+            document.getElementById('building_id').innerHTML = '<option value="">Select Location First</option>';
+            document.getElementById('building_id').disabled = true;
+            document.getElementById('pen_id').innerHTML = '<option value="">Select Building First</option>';
+            document.getElementById('pen_id').disabled = true;
         }
 
-        function deleteItem(button) {
-            const row = button.closest('tr');
-            const itemId = row.dataset.itemId;
-            const itemName = row.dataset.itemName;
-            
-            if (confirm(`Are you sure you want to delete "${itemName}"? This action cannot be undone.`)) {
-                document.getElementById('delete_item_id').value = itemId;
-                document.getElementById('deleteItemForm').submit();
-            }
+        document.getElementById('modal').classList.add('show');
+        setTimeout(() => { initAutocomplete(); }, 100);
+    }
+
+    function viewItem(button) {
+        const row = button.closest('tr');
+        const data = row.dataset;
+        const categoryLabels = {0: 'Non-Consumable', 1: 'Consumable'};
+        const html = `
+            <div class="info-group">
+                <h3>Acquisition Overview</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <p style="color:var(--text-secondary); margin:0;"><strong>System ID:</strong> <br><span class="val-mono">PCH-${String(data.itemId).padStart(5, '0')}</span></p>
+                    <p style="color:var(--text-secondary); margin:0;"><strong>Reference No:</strong> <br><span class="val-mono">${data.referenceNo || 'N/A'}</span></p>
+                </div>
+                <p style="margin-top:15px; color:var(--text-primary);"><strong>Item Nomenclature:</strong> <br>${data.itemName}</p>
+                <p style="margin-top:10px; color:var(--text-secondary);"><strong>Supplier Origin:</strong> <br>${data.supplier || 'N/A'}</p>
+                <p style="margin-top:10px; color:var(--text-secondary);"><strong>Remarks:</strong> <br>${data.itemDesc || 'None'}</p>
+            </div>
+            <div class="info-group" style="margin-top:20px;">
+                <h3>Financials & Metrics</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <p style="color:var(--text-secondary); margin:0;"><strong>Batch Size:</strong> <br><span style="color:#fff;">${data.quantity || '0'} ${data.unitName}</span></p>
+                    <p style="color:var(--text-secondary); margin:0;"><strong>Net Weight:</strong> <br><span class="val-mono">${data.netWeight || '0'}</span></p>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+                    <p style="color:var(--text-secondary); margin:0;"><strong>Unit Cost:</strong> <br><span class="val-money">₱${parseFloat(data.unitCost).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span></p>
+                    <p style="color:var(--text-secondary); margin:0;"><strong>Category:</strong> <br><span style="color:#fff;">${categoryLabels[data.itemCategory]}</span></p>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+                    <p style="color:var(--text-secondary); margin:0;"><strong>Date Logged:</strong> <br><span class="val-mono">${data.purchaseDateFmt || 'N/A'}</span></p>
+                </div>
+            </div>
+        `;
+        document.getElementById('view-modal-body').innerHTML = html;
+        document.getElementById('view-modal').classList.add('show');
+    }
+
+    function editItem(button) {
+        const row = button.closest('tr');
+        const data = row.dataset;
+        
+        document.getElementById('modal-title').textContent = 'Edit Administrative Purchase';
+        document.getElementById('btn-save').innerHTML = '<i class="fa-solid fa-arrows-rotate me-2"></i> Update Purchase';
+        document.getElementById('item-id').value = data.itemId;
+        document.getElementById('item-name').value = data.itemName;
+        document.getElementById('item-desc').value = data.itemDesc || '';
+        document.getElementById('unit').value = data.unitId;
+        document.getElementById('unit-cost').value = data.unitCost;
+        document.getElementById('item-category').value = data.itemCategory;
+        document.getElementById('net-weight').value = data.netWeight || '';
+        document.getElementById('item-quantity').value = data.quantity || '0';
+        document.getElementById('supplier').value = data.supplier || '';
+        document.getElementById('reference-no').value = data.referenceNo || '';
+
+        fpPurchaseDate.setDate(data.purchaseDateRaw || ''); 
+
+        const locSelect = document.getElementById('location_id');
+        locSelect.value = data.locationId || ""; 
+        filterBuildings(); 
+
+        if(data.buildingId) {
+            document.getElementById('building_id').value = data.buildingId;
+            filterPens();
+            if(data.penId) document.getElementById('pen_id').value = data.penId;
         }
+        document.getElementById('modal').classList.add('show');
+        setTimeout(() => { initAutocomplete(); }, 100);
+    }
 
-        function saveItem() {
-            const form = document.getElementById('item-form');
-            if (!form.checkValidity()) { form.reportValidity(); return; }
-            const formData = new FormData(form);
-            const isEdit = document.getElementById('item-id').value !== '';
-            const url = isEdit ? '../process/editAdministrationAndRecords.php' : '../process/addAdministrationAndRecords.php';
-            const saveBtn = document.getElementById('btn-save');
-            
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<span class="loading"></span> ' + (isEdit ? 'Updating...' : 'Saving...');
+    function saveItem() {
+        const form = document.getElementById('item-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        const formData = new FormData(form);
+        const isEdit = document.getElementById('item-id').value !== '';
+        const url = isEdit ? '../process/editAdministrationAndRecords.php' : '../process/addAdministrationAndRecords.php';
+        const saveBtn = document.getElementById('btn-save');
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> ' + (isEdit ? 'Updating...' : 'Saving...');
 
-            fetch(url, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
+        fetch(url, { method: 'POST', body: formData })
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    showAlert(data.message, 'success');
-                    setTimeout(() => { window.location.reload(); }, 1500);
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1500);
                 } else {
-                    showAlert(data.message || 'Error saving item', 'error');
+                    showToast(data.message || 'Error saving item', 'error');
                     saveBtn.disabled = false;
-                    saveBtn.textContent = isEdit ? 'Update Purchase' : 'Save Purchase';
+                    saveBtn.innerHTML = isEdit ? '<i class="fa-solid fa-arrows-rotate me-2"></i> Update Purchase' : '<i class="fa-solid fa-floppy-disk me-2"></i> Save Purchase';
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                showAlert('An error occurred while saving the item', 'error');
+            .catch(err => {
+                console.error(err);
+                showToast('An error occurred', 'error');
                 saveBtn.disabled = false;
-                saveBtn.textContent = isEdit ? 'Update Purchase' : 'Save Purchase';
+                saveBtn.innerHTML = isEdit ? '<i class="fa-solid fa-arrows-rotate me-2"></i> Update Purchase' : '<i class="fa-solid fa-floppy-disk me-2"></i> Save Purchase';
             });
+    }
+
+    function deleteItem(button) {
+        const row = button.closest('tr');
+        const itemId = row.dataset.itemId;
+        const itemName = row.dataset.itemName;
+        if (confirm(`Are you sure you want to delete "${itemName}"? This action cannot be undone.`)) {
+            document.getElementById('delete_item_id').value = itemId;
+            document.getElementById('deleteItemForm').submit();
+        }
+    }
+
+    // --- UTILS ---
+    function showToast(msg, type = 'success') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--indigo)'}`;
+        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+    
+    function closeModal() { closeAutocomplete(); document.getElementById('modal').classList.remove('show'); }
+    function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
+    function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
+    function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
+    
+    function filterTable() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#item-table tr');
+        
+        if (rows.length === 1 && rows[0].children.length === 1) {
+            document.getElementById('empty-state-js').style.display = 'none';
+            return;
         }
 
-        function showAlert(message, type) {
-            const alert = document.getElementById('modal-alert');
-            alert.textContent = message;
-            alert.className = 'alert ' + type;
-            alert.style.display = 'block';
-        }
+        let visible = 0;
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if(text.includes(term)) { row.style.display = ''; visible++; } 
+            else { row.style.display = 'none'; }
+        });
+        const emptyState = document.getElementById('empty-state-js');
+        if (visible === 0) { emptyState.style.display = 'block'; } else { emptyState.style.display = 'none'; }
+    }
+    
+    function checkEmptyState() { filterTable(); }
 
-        function hideAlert() {
-            const alert = document.getElementById('modal-alert');
-            alert.style.display = 'none';
-        }
+    document.getElementById('view-modal').addEventListener('click', function(e) { if(e.target===this) closeViewModal(); });
+    document.getElementById('confirm-modal').addEventListener('click', function(e) { if(e.target===this) closeConfirmModal(); });
+    document.getElementById('confirm-all-modal').addEventListener('click', function(e) { if(e.target===this) closeConfirmAllModal(); });
+    
+    document.getElementById('item-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveItem();
+    });
 
-        function closeModal() {
-            closeAutocomplete();
-            document.getElementById('modal').classList.remove('show');
-        }
-
-        function closeViewModal() {
-            document.getElementById('view-modal').classList.remove('show');
-        }
-
-        function filterTable() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            const table = document.getElementById('item-table');
-            const rows = table.getElementsByTagName('tr');
-            let visibleCount = 0;
-
-            for (let i = 0; i < rows.length; i++) {
-                // skip empty state
-                if (rows[i].children.length === 1) continue;
-
-                const row = rows[i];
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchValue)) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            }
-            
-            const emptyState = document.getElementById('empty-state');
-            if (visibleCount === 0) { emptyState.style.display = 'block'; } 
-            else { emptyState.style.display = 'none'; }
-        }
-
-        function checkEmptyState() {
-            filterTable(); // Run filter table to verify empty states on load
-        }
-    </script>
+    document.addEventListener('DOMContentLoaded', function() {
+        checkEmptyState();
+    });
+</script>
 </body>
 </html>

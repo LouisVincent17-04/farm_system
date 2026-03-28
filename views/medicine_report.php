@@ -98,6 +98,12 @@ try {
     $medicines = [];
     error_log($e->getMessage());
 }
+
+// Count active filters for badge
+$active_filters = 0;
+if ($date_from || $date_to) $active_filters++;
+if ($stock_status !== '') $active_filters++;
+if ($search_term !== '') $active_filters++;
 ?>
 
 <!DOCTYPE html>
@@ -107,6 +113,10 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Medicine Inventory Report</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -117,299 +127,605 @@ try {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
-        /* --- GLOBAL STYLES --- */
-        * { box-sizing: border-box; }
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
-            color: #e2e8f0; margin: 0; padding-bottom: 40px;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(244,114,182,0.5); /* Pink Accent */
+            --green:          #22c55e;
+            --green-dim:      rgba(34,197,94,0.12);
+            --green-glow:     rgba(34,197,94,0.25);
+            --gold:           #f59e0b;
+            --gold-dim:       rgba(245,158,11,0.12);
+            --blue:           #38bdf8;
+            --blue-dim:       rgba(56,189,248,0.12);
+            --pink:           #f472b6;
+            --pink-dim:       rgba(244,114,182,0.12);
+            --pink-glow:      rgba(244,114,182,0.25);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-sm:      6px;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
         }
-        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; width: 100%; }
-        
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(244,114,182,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 85% 10%, rgba(34,197,94,0.04) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1560px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* ─── TOP BAR ─── */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 8px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .header { text-align: center; margin-bottom: 2rem; }
-        .title { 
-            font-size: clamp(1.8rem, 4vw, 2.5rem); 
-            font-weight: 800; 
-            background: linear-gradient(135deg, #f472b6, #db2777); 
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
-            margin-bottom: 0.5rem;
-            line-height: 1.2;
+        .page-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--pink);
+            background: var(--pink-dim);
+            border: 1px solid rgba(244,114,182,0.2);
+            padding: 6px 12px;
+            border-radius: 99px;
         }
-        .subtitle { color: #94a3b8; font-size: 1rem; margin: 0; }
 
-        /* --- STATS CARDS --- */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-        .stat-card { 
-            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); 
-            border-radius: 16px; padding: 1.5rem; text-align: center; backdrop-filter: blur(10px); 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        /* ─── PAGE HEADER ─── */
+        .page-header { margin-bottom: 2rem; }
+        .page-title {
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+            line-height: 1.1;
         }
-        .stat-val { font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; color: #fff; }
-        .stat-lbl { color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .page-title span {
+            background: linear-gradient(135deg, var(--pink), #db2777);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 6px;
+        }
+
+        /* ─── STAT CARDS ─── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: border-color var(--transition), transform var(--transition);
+        }
+        .stat-card::before {
+            content: ''; position: absolute; inset: 0; opacity: 0;
+            transition: opacity var(--transition);
+        }
+        .stat-card:hover { transform: translateY(-1px); }
+        .stat-card:hover::before { opacity: 1; }
+
+        .stat-card.blue::before  { background: linear-gradient(135deg, rgba(56,189,248,0.04), transparent); }
+        .stat-card.green::before { background: linear-gradient(135deg, rgba(34,197,94,0.04), transparent); }
+        .stat-card.pink::before  { background: linear-gradient(135deg, rgba(244,114,182,0.04), transparent); }
+        .stat-card.red::before   { background: linear-gradient(135deg, rgba(248,113,113,0.04), transparent); }
+
+        .stat-card.blue { border-color: rgba(56,189,248,0.15); }
+        .stat-card.green{ border-color: rgba(34,197,94,0.15); }
+        .stat-card.pink { border-color: rgba(244,114,182,0.15); }
+        .stat-card.red  { border-color: rgba(248,113,113,0.15); }
+
+        .stat-icon {
+            width: 32px; height: 32px; border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; margin-bottom: 0.75rem;
+        }
+        .stat-icon.blue  { background: var(--blue-dim);  color: var(--blue); }
+        .stat-icon.green { background: var(--green-dim); color: var(--green); }
+        .stat-icon.pink  { background: var(--pink-dim);  color: var(--pink); }
+        .stat-icon.red   { background: var(--red-dim);   color: var(--red); }
+
+        .stat-val {
+            font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em;
+            line-height: 1; margin-bottom: 4px;
+        }
+        .stat-val.blue  { color: var(--blue); }
+        .stat-val.green { color: var(--green); }
+        .stat-val.pink  { color: var(--pink); }
+        .stat-val.red   { color: var(--red); }
+
+        .stat-lbl {
+            font-size: 0.75rem; color: var(--text-muted); font-weight: 500;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* ─── FILTER PANEL ─── */
+        .filter-panel {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); margin-bottom: 2rem; overflow: hidden;
+        }
+
+        .filter-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+            gap: 1rem; flex-wrap: wrap; cursor: pointer; user-select: none;
+        }
+        .filter-header-left { display: flex; align-items: center; gap: 10px; }
+        .filter-header-title { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+        .filter-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700;
+            background: var(--pink); color: #000; border-radius: 99px; padding: 0 6px;
+        }
+        .filter-toggle-btn {
+            display: flex; align-items: center; gap: 6px; font-size: 0.8rem;
+            font-weight: 500; color: var(--text-secondary); background: none;
+            border: none; cursor: pointer; transition: color var(--transition);
+        }
+        .filter-toggle-btn:hover { color: var(--text-primary); }
+        .filter-toggle-btn i { transition: transform 0.25s ease; }
+        .filter-toggle-btn.collapsed i { transform: rotate(-90deg); }
+
+        .filter-body { padding: 1.5rem; display: grid; transition: all 0.25s ease; }
+        .filter-body.hidden { display: none; }
+
+        .filter-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 1rem; align-items: start;
+        }
+
+        /* ─── FORM CONTROLS ─── */
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+        .form-label {
+            font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--text-secondary);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .form-label.accent { color: var(--pink); }
+        .form-label i { font-size: 0.65rem; opacity: 0.7; }
+
+        .form-control {
+            width: 100%; padding: 0 12px; height: 40px; background: var(--bg-elevated);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: var(--radius-md); font-size: 0.875rem; font-family: var(--font);
+            outline: none; transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+            appearance: none; -webkit-appearance: none;
+        }
+        select.form-control {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            padding-right: 36px; cursor: pointer;
+        }
+        .form-control:focus {
+            border-color: var(--border-active); box-shadow: 0 0 0 3px var(--pink-glow);
+            background: var(--bg-hover);
+        }
+        .form-control::placeholder { color: var(--text-muted); }
+        .form-control option { background: #1e293b; color: var(--text-primary); }
+
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+        /* ─── FILTER ACTIONS ─── */
+        .filter-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.5rem; border-top: 1px solid var(--border);
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .filter-footer-left, .filter-footer-right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 0 16px; height: 38px; border-radius: var(--radius-md);
+            font-size: 0.8rem; font-weight: 600; font-family: var(--font);
+            border: 1px solid transparent; cursor: pointer; transition: all var(--transition);
+            text-decoration: none; white-space: nowrap; letter-spacing: 0.01em;
+        }
+        .btn i { font-size: 0.75rem; }
+
+        .btn-primary { background: var(--pink); color: #000; border-color: var(--pink); }
+        .btn-primary:hover { background: #db2777; box-shadow: 0 0 16px var(--pink-glow); color: #fff; }
+
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+
+        .btn-pdf   { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+        .btn-pdf:hover { background: #1e40af; box-shadow: 0 0 12px rgba(29,78,216,0.4); }
+
+        .btn-excel { background: #059669; color: #fff; border-color: #059669; }
+        .btn-excel:hover { background: #047857; box-shadow: 0 0 12px rgba(5,150,105,0.4); }
+
+        .btn-sm { height: 32px; padding: 0 12px; font-size: 0.75rem; }
+
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+        }
+
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+
+        thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 10px 14px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+
+        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        td {
+            padding: 10px 14px; font-size: 0.825rem; color: var(--text-primary);
+            white-space: nowrap; vertical-align: middle;
+        }
+
+        /* ─── BADGES ─── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+            border-radius: 99px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em;
+        }
+        .b-good { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .b-low  { background: var(--gold-dim);  color: var(--gold);   border: 1px solid rgba(245,158,11,0.2); }
+        .b-out  { background: var(--red-dim);   color: var(--red);    border: 1px solid rgba(248,113,113,0.2); }
+
+        /* ─── VALUE CELLS ─── */
+        .val-id    { font-family: var(--font-mono); color: var(--text-secondary); font-size: 0.8rem; }
+        .val-money { font-family: var(--font-mono); color: var(--green); font-size: 0.8rem; font-weight: 600; }
+        .val-cost  { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.8rem; }
+        .val-count { font-family: var(--font-mono); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; }
         
-        .text-pink { color: #f472b6; } .text-red { color: #ef4444; } .text-gold { color: #fbbf24; }
-
-        /* --- FILTER BAR --- */
-        .filter-box { background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; }
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
-        .form-group label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase; }
-        .form-input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; }
-        .form-input:focus { border-color: #f472b6; outline: none; }
-
-        /* Buttons */
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        .action-bar { margin-top: 1.5rem; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 0.9rem; transition: transform 0.1s; white-space: nowrap; }
-        .btn:active { transform: scale(0.98); }
-        .btn-primary { background: #db2777; color: white; }
-        .btn-outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
-        
-        .btn-pdf { background: #3b82f6; color: white; } 
-        .btn-excel { background: #10b981; color: white; } 
-
-        .btn-view-ledger {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 16px; background: rgba(219, 39, 119, 0.15); 
-            border: 1px solid rgba(219, 39, 119, 0.4); color: #f472b6;
-            border-radius: 8px; font-size: 0.85rem; font-weight: 600;
-            text-decoration: none; transition: all 0.2s; white-space: nowrap;
+        /* ─── LEDGER BUTTON ─── */
+        .btn-ledger {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 10px; background: var(--pink-dim);
+            border: 1px solid rgba(244,114,182,0.25); color: var(--pink);
+            border-radius: var(--radius-sm); font-size: 0.72rem; font-weight: 600;
+            text-decoration: none; transition: all var(--transition); white-space: nowrap;
         }
-        .btn-view-ledger:hover { background: rgba(219, 39, 119, 0.3); color: #fff; transform: translateY(-1px); border-color: #db2777; }
+        .btn-ledger:hover {
+            background: rgba(244,114,182,0.22); color: #fff; border-color: var(--pink);
+            transform: translateY(-1px); box-shadow: 0 4px 12px var(--pink-glow);
+        }
 
-        /* --- TABLE --- */
-        .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { background: rgba(15, 23, 42, 0.9); color: #f472b6; text-align: left; padding: 1rem; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; white-space: nowrap; }
-        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: #e2e8f0; vertical-align: middle; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover { background: rgba(255,255,255,0.02); }
+        /* ─── EMPTY STATE ─── */
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; display: block; }
+        .empty-state p { font-size: 0.875rem; }
 
-        /* Badges */
-        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block;}
-        .b-good { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-        .b-low { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
-        .b-out { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        /* ─── UTILITIES ─── */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .col-name { font-weight: 600; color: var(--text-primary); }
 
-        /* --- RESPONSIVE OVERRIDES --- */
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 900px) {
-            .container { padding: 1rem; }
-            .header { text-align: left; }
-            
-            .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
-            .stat-card { padding: 1rem; display: flex; justify-content: space-between; align-items: center; text-align: left; }
-            .stat-val { font-size: 1.5rem; margin: 0; order: 2; }
-            .stat-lbl { order: 1; }
-
             .filter-grid { grid-template-columns: 1fr; }
-            .date-flex-mobile { flex-direction: column; gap: 10px; } 
-            
-            .btn-group { display: flex; flex-direction: column; }
-            .btn { width: 100%; }
+        }
 
-            .action-bar { flex-direction: column; }
-            .action-bar .btn { width: 100%; justify-content: center; }
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .filter-footer { flex-direction: column; align-items: stretch; }
+            .filter-footer-left, .filter-footer-right { justify-content: stretch; }
+            .filter-footer .btn { flex: 1; }
 
-            /* Table to Card Layout */
-            .table-wrap { border: none; background: transparent; overflow: visible; }
+            /* Mobile card layout for table */
+            .table-card { background: transparent; border: none; overflow: visible; }
+            .table-wrap { overflow: visible; }
             table { min-width: 0; display: block; }
-            thead { display: none; } 
-            tbody { display: block; width: 100%; }
-            
-            tr { 
-                display: block; 
-                background: rgba(30, 41, 59, 0.6); 
-                border: 1px solid #475569; 
-                border-radius: 12px; 
-                margin-bottom: 1rem; 
-                padding: 1rem; 
+            thead { display: none; }
+            tbody { display: block; }
+            tbody tr {
+                display: block; background: var(--bg-surface);
+                border: 1px solid var(--border); border-radius: var(--radius-lg);
+                margin-bottom: 0.75rem; padding: 1rem; box-shadow: var(--shadow-sm);
             }
-            
-            td { 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                padding: 0.5rem 0; 
-                border-bottom: 1px dashed rgba(255,255,255,0.1); 
-                text-align: right !important; 
+            td {
+                display: flex; justify-content: space-between; align-items: flex-start;
+                gap: 1rem; padding: 7px 0; border-bottom: 1px solid var(--border); white-space: normal;
+                text-align: right;
             }
             td:last-child { border-bottom: none; }
-            
-            /* Inject Data Labels via pseudo-elements */
-            td::before { 
-                content: attr(data-label); 
-                font-weight: 700; 
-                color: #94a3b8; 
-                font-size: 0.8rem; 
-                text-transform: uppercase; 
-                margin-right: 1rem; 
-                text-align: left;
+            td::before {
+                content: attr(data-label); font-size: 0.7rem; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+                white-space: nowrap; flex-shrink: 0; padding-top: 2px; text-align: left;
             }
+            .btn-ledger { width: 100%; justify-content: center; margin-top: 4px; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="reports.php" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i> Back to Reports Dashboard
-    </a>
 
-    <div class="header">
-        <h1 class="title">Medicine Inventory Report</h1>
-        <p class="subtitle">Track stock levels, valuation, and individual supply history.</p>
+    <div class="top-bar">
+        <a href="reports.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Reports
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-kit-medical"></i> Medical Supplies</span>
+    </div>
+
+    <div class="page-header">
+        <h1 class="page-title">Medicine <span>Inventory</span> Report</h1>
+        <p class="page-subtitle">Track stock levels, valuation, and individual supply history.</p>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card blue">
+            <div class="stat-icon blue"><i class="fa-solid fa-pills"></i></div>
+            <div class="stat-val blue"><?= number_format($total_items) ?></div>
             <div class="stat-lbl">Total Medicines</div>
-            <div class="stat-val"><?= number_format($total_items) ?></div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card green">
+            <div class="stat-icon green"><i class="fa-solid fa-peso-sign"></i></div>
+            <div class="stat-val green">₱<?= number_format($total_value, 2) ?></div>
             <div class="stat-lbl">Total Valuation</div>
-            <div class="stat-val text-gold">₱<?= number_format($total_value, 2) ?></div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card pink">
+            <div class="stat-icon pink"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div class="stat-val pink"><?= number_format($low_stock_count) ?></div>
             <div class="stat-lbl">Low Stock Items</div>
-            <div class="stat-val text-pink"><?= number_format($low_stock_count) ?></div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card red">
+            <div class="stat-icon red"><i class="fa-solid fa-ban"></i></div>
+            <div class="stat-val red"><?= number_format($out_stock_count) ?></div>
             <div class="stat-lbl">Out of Stock</div>
-            <div class="stat-val text-red"><?= number_format($out_stock_count) ?></div>
         </div>
     </div>
 
-    <div class="filter-box">
-        <form method="GET">
-            <div class="filter-grid">
-                <div class="form-group">
-                    <label>Last Updated Range</label>
-                    <div class="date-flex-mobile" style="display: flex; gap: 5px;">
-                        <input type="text" name="date_from" class="form-input date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
-                        <input type="text" name="date_to" class="form-input date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Search Name</label>
-                    <input type="text" name="search" class="form-input" placeholder="e.g., Vitamin A" value="<?= htmlspecialchars($search_term) ?>">
-                </div>
-
-                <div class="form-group">
-                    <label>Stock Status</label>
-                    <select name="stock_status" class="form-input">
-                        <option value="">All Statuses</option>
-                        <option value="good" <?= $stock_status === 'good' ? 'selected' : '' ?>>Good Stock</option>
-                        <option value="low" <?= $stock_status === 'low' ? 'selected' : '' ?>>Low Stock (≤50)</option>
-                        <option value="out" <?= $stock_status === 'out' ? 'selected' : '' ?>>Out of Stock</option>
-                    </select>
-                </div>
-                
-                <div class="btn-group">
-                    <button type="submit" class="btn btn-primary">Apply Filters</button>
-                    <a href="medicine_report.php" class="btn btn-outline">Reset</a>
-                </div>
-            </div>
-            
-            <div class="action-bar">
-                <button type="button" class="btn btn-pdf" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                <button type="button" class="btn btn-excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Supply Name</th>
-                    <th style="text-align:right;">Stock</th>
-                    <th style="text-align:right;">Total Value</th>
-                    <th style="text-align:right;">Avg Unit Cost</th>
-                    <th>Status</th>
-                    <th style="text-align:center;">History</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if(empty($medicines)): ?>
-                    <tr><td colspan="7" style="text-align:center; padding:3rem; color:#64748b;">No medicine records found.</td></tr>
-                <?php else: ?>
-                    <?php foreach($medicines as $m): 
-                        $badgeClass = 'b-good';
-                        if ($m['STATUS_LABEL'] == 'Low Stock') $badgeClass = 'b-low';
-                        else if ($m['STATUS_LABEL'] == 'Out of Stock') $badgeClass = 'b-out';
-                    ?>
-                    <tr>
-                        <td data-label="ID" style="font-family:monospace; color:#64748b;">MED-<?= str_pad($m['SUPPLY_ID'], 3, '0', STR_PAD_LEFT) ?></td>
-                        <td data-label="Supply Name" style="font-weight:bold; color:#fff;"><?= htmlspecialchars($m['SUPPLY_NAME']) ?></td>
-                        <td data-label="Stock" style="text-align:right; font-weight:bold;">
-                            <?= number_format($m['TOTAL_STOCK']) ?> <small style="color:#64748b; font-weight:normal;"><?= htmlspecialchars($m['UNIT_NAME'] ?? '') ?></small>
-                        </td>
-                        <td data-label="Total Value" style="text-align:right; color:#fbbf24;">₱<?= number_format($m['TOTAL_COST'], 2) ?></td>
-                        <td data-label="Avg Unit Cost" style="text-align:right; color:#94a3b8;">₱<?= number_format($m['CALC_UNIT_COST'], 2) ?></td>
-                        <td data-label="Status"><span class="badge <?= $badgeClass ?>"><?= $m['STATUS_LABEL'] ?></span></td>
-                        <td data-label="History" style="text-align:center;">
-                            <a href="viewMedicinesLedger.php?id=<?= $m['SUPPLY_ID']."&currpage=med_report" ?>" class="btn-view-ledger">
-                                <i class="fa-solid fa-clock-rotate-left"></i> Ledger
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
+    <div class="filter-panel">
+        <div class="filter-header" onclick="toggleFilters()" id="filterHeader">
+            <div class="filter-header-left">
+                <i class="fa-solid fa-sliders" style="color:var(--text-secondary); font-size:0.85rem;"></i>
+                <span class="filter-header-title">Filters &amp; Search</span>
+                <?php if($active_filters > 0): ?>
+                    <span class="filter-badge"><?= $active_filters ?></span>
                 <?php endif; ?>
-            </tbody>
-        </table>
+            </div>
+            <button class="filter-toggle-btn" id="filterToggleBtn" type="button">
+                <span id="filterToggleLabel">Collapse</span>
+                <i class="fa-solid fa-chevron-down" id="filterChevron"></i>
+            </button>
+        </div>
+
+        <div class="filter-body" id="filterBody">
+            <form method="GET" id="filterForm">
+                <div class="filter-grid">
+
+                    <div class="form-group">
+                        <label class="form-label accent"><i class="fa-solid fa-magnifying-glass"></i> Search Name</label>
+                        <input type="text" name="search" class="form-control" placeholder="e.g., Vitamin A" value="<?= htmlspecialchars($search_term) ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-boxes-stacked"></i> Stock Status</label>
+                        <select name="stock_status" class="form-control">
+                            <option value="">All Statuses</option>
+                            <option value="good" <?= $stock_status === 'good' ? 'selected' : '' ?>>Good Stock</option>
+                            <option value="low" <?= $stock_status === 'low' ? 'selected' : '' ?>>Low Stock (≤50)</option>
+                            <option value="out" <?= $stock_status === 'out' ? 'selected' : '' ?>>Out of Stock</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-calendar-days"></i> Last Updated Range</label>
+                        <div class="input-row">
+                            <input type="text" name="date_from" class="form-control date-picker" value="<?= htmlspecialchars($date_from) ?>" placeholder="Start Date">
+                            <input type="text" name="date_to" class="form-control date-picker" value="<?= htmlspecialchars($date_to) ?>" placeholder="End Date">
+                        </div>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+
+        <div class="filter-footer">
+            <div class="filter-footer-left">
+                <a href="medicine_report.php" class="btn btn-ghost btn-sm">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </a>
+                <button type="submit" form="filterForm" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-filter"></i> Apply Filters
+                </button>
+            </div>
+            <div class="filter-footer-right">
+                <button type="button" class="btn btn-pdf btn-sm" onclick="exportPDF()">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+                <button type="button" class="btn btn-excel btn-sm" onclick="exportExcel()">
+                    <i class="fa-solid fa-file-excel"></i> Excel
+                </button>
+            </div>
+        </div>
     </div>
+
+    <div class="table-card">
+        <div class="table-wrap">
+            <table id="medTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Supply Name</th>
+                        <th class="text-right">Stock</th>
+                        <th class="text-right">Total Value</th>
+                        <th class="text-right">Avg Unit Cost</th>
+                        <th>Status</th>
+                        <th class="text-center">History</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($medicines)): ?>
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-kit-medical"></i>
+                                    <p>No medicine records found matching your filters.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach($medicines as $m): 
+                            $badgeClass = 'b-good';
+                            if ($m['STATUS_LABEL'] == 'Low Stock') $badgeClass = 'b-low';
+                            else if ($m['STATUS_LABEL'] == 'Out of Stock') $badgeClass = 'b-out';
+                        ?>
+                        <tr>
+                            <td data-label="ID" class="val-id">MED-<?= str_pad($m['SUPPLY_ID'], 3, '0', STR_PAD_LEFT) ?></td>
+                            <td data-label="Supply Name" class="col-name"><?= htmlspecialchars($m['SUPPLY_NAME']) ?></td>
+                            <td data-label="Stock" class="text-right val-count">
+                                <?= number_format($m['TOTAL_STOCK']) ?> <small style="color:var(--text-muted); font-weight:normal;"><?= htmlspecialchars($m['UNIT_NAME'] ?? '') ?></small>
+                            </td>
+                            <td data-label="Total Value" class="text-right val-money">₱<?= number_format($m['TOTAL_COST'], 2) ?></td>
+                            <td data-label="Avg Unit Cost" class="text-right val-cost">₱<?= number_format($m['CALC_UNIT_COST'], 2) ?></td>
+                            <td data-label="Status"><span class="badge <?= $badgeClass ?>"><?= $m['STATUS_LABEL'] ?></span></td>
+                            <td data-label="History" class="text-center">
+                                <a href="viewMedicinesLedger.php?id=<?= $m['SUPPLY_ID']."&currpage=med_report" ?>" class="btn-ledger">
+                                    <i class="fa-solid fa-clock-rotate-left"></i> Ledger
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 
 <script>
-    // Initialize Flatpickr for Date Inputs
+    // ─── Filter Panel Toggle ───
+    let filterOpen = true;
+    function toggleFilters() {
+        filterOpen = !filterOpen;
+        const body = document.getElementById('filterBody');
+        const btn  = document.getElementById('filterToggleBtn');
+        const label = document.getElementById('filterToggleLabel');
+
+        body.classList.toggle('hidden', !filterOpen);
+        btn.classList.toggle('collapsed', !filterOpen);
+        label.textContent = filterOpen ? 'Collapse' : 'Expand';
+    }
+
+    // ─── Date Picker ───
     document.addEventListener('DOMContentLoaded', () => {
         flatpickr(".date-picker", {
-            dateFormat: "Y-m-d", // Value submitted to PHP
-            altInput: true,      // Visual input
-            altFormat: "m/d/Y",  // mm/dd/yyyy format
+            dateFormat: "Y-m-d", 
+            altInput: true,      
+            altFormat: "m/d/Y",  
             allowInput: true
         });
     });
 
+    // ─── Exports ───
     const jsPDF = window.jspdf.jsPDF;
     const records = <?php echo json_encode($medicines); ?>;
     const stats = { total: "<?= number_format($total_items) ?>", value: "<?= number_format($total_value, 2) ?>" };
     
     function exportPDF() {
         const doc = new jsPDF('landscape');
-        doc.setFontSize(18); doc.setTextColor(219, 39, 119); doc.text("Medicine Inventory Report", 14, 15);
+        doc.setFontSize(16); doc.setTextColor(244, 114, 182); // Pink
+        doc.text("Medicine Inventory Report", 14, 14);
         
         let now = new Date();
         let formattedNow = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
         
-        doc.setFontSize(10); doc.setTextColor(100); doc.text(`Generated: ${formattedNow}`, 14, 22);
-        doc.text(`Total Valuation: PHP ${stats.value}`, 200, 22);
+        doc.setFontSize(9); doc.setTextColor(120); 
+        doc.text(`Generated: ${formattedNow}`, 14, 21);
+        doc.text(`Total Valuation: PHP ${stats.value}`, 235, 21);
 
         const rows = records.map(r => [
-            r.SUPPLY_NAME, r.TOTAL_STOCK + ' ' + (r.UNIT_NAME || ''), parseFloat(r.TOTAL_COST).toFixed(2),
-            parseFloat(r.CALC_UNIT_COST).toFixed(2), r.LAST_UPDATED_FMT, r.STATUS_LABEL
+            r.SUPPLY_NAME, 
+            r.TOTAL_STOCK + ' ' + (r.UNIT_NAME || ''), 
+            parseFloat(r.TOTAL_COST).toFixed(2),
+            parseFloat(r.CALC_UNIT_COST).toFixed(2), 
+            r.LAST_UPDATED_FMT, 
+            r.STATUS_LABEL
         ]);
 
         doc.autoTable({
-            head: [['Name', 'Stock', 'Total Value', 'Unit Cost', 'Updated', 'Status']],
-            body: rows, startY: 30, styles: { fontSize: 9 }, headStyles: { fillColor: [219, 39, 119] } 
+            head: [['Name', 'Stock', 'Total Value (PHP)', 'Unit Cost (PHP)', 'Updated', 'Status']],
+            body: rows, startY: 26, 
+            styles: { fontSize: 8, cellPadding: 1.5 }, 
+            headStyles: { fillColor: [219, 39, 119] } // Darker pink for table header
         });
         doc.save('Medicine_Report.pdf');
     }
 
     function exportExcel() {
         const excelData = records.map(r => ({
-            'Name': r.SUPPLY_NAME, 'Stock': r.TOTAL_STOCK, 'Unit': r.UNIT_NAME || '',
-            'Total Value': parseFloat(r.TOTAL_COST), 'Avg Unit Cost': parseFloat(r.CALC_UNIT_COST),
-            'Last Updated': r.LAST_UPDATED_FMT, 'Status': r.STATUS_LABEL
+            'Name': r.SUPPLY_NAME, 
+            'Stock': r.TOTAL_STOCK, 
+            'Unit': r.UNIT_NAME || '',
+            'Total Value (PHP)': parseFloat(r.TOTAL_COST), 
+            'Avg Unit Cost (PHP)': parseFloat(r.CALC_UNIT_COST),
+            'Last Updated': r.LAST_UPDATED_FMT, 
+            'Status': r.STATUS_LABEL
         }));
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();

@@ -175,107 +175,207 @@ foreach ($data as $row) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animal Net Worth</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Animal Net Worth | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        /* --- CORE STYLES --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; }
-        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
-        
-        /* Back Link Style */
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(16,185,129,0.5); /* Emerald Accent */
+            
+            --emerald:        #10b981; --emerald-dim: rgba(16,185,129,0.12); --emerald-glow: rgba(16,185,129,0.25);
+            --blue:           #3b82f6; --blue-dim: rgba(59,130,246,0.12);
+            --amber:          #f59e0b; --amber-dim: rgba(245,158,11,0.12);
+            --purple:         #a855f7; --purple-dim: rgba(168,85,247,0.12);
+            --pink:           #f472b6; --pink-dim: rgba(244,114,182,0.12);
+            --red:            #f87171; --red-dim: rgba(248,113,113,0.12);
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(16,185,129,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        /* DASHBOARD */
-        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 2rem; }
-        .stat-card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; }
-        .stat-title { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-        .stat-value { font-size: 1.8rem; font-weight: 800; color: white; }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--emerald); background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        /* ─── HEADER ─── */
+        .page-header { text-align: center; margin-bottom: 2.5rem; margin-top: 1rem; }
+        .page-title {
+            font-size: clamp(2rem, 4vw, 3rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.5rem;
+        }
+        .page-title span {
+            background: linear-gradient(135deg, var(--emerald), #047857);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .page-subtitle { color: var(--text-secondary); font-size: 1.05rem; margin: 0; }
+
+        /* ─── DASHBOARD STATS ─── */
+        .dashboard-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 1.5rem; margin-bottom: 2.5rem; 
+        }
+        .stat-card { 
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
         
-        .text-green { color: #34d399; }
-        .text-teal { color: #2dd4bf; }
-        .text-yellow { color: #fbbf24; }
-        .text-pink { color: #f472b6; }
-        .text-purple { color: #a78bfa; }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .stat-green::before { background: var(--emerald); }
+        .stat-blue::before { background: var(--blue); }
+        .stat-purple::before { background: var(--purple); }
+        .stat-yellow::before { background: var(--amber); }
+        .stat-pink::before { background: var(--pink); }
 
-        /* FILTER BAR */
+        .stat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .stat-title { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;}
+        .stat-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #fff;}
+        .stat-green .stat-icon { background: linear-gradient(135deg, var(--emerald), #047857); }
+        .stat-blue .stat-icon { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .stat-purple .stat-icon { background: linear-gradient(135deg, var(--purple), #7e22ce); }
+        .stat-yellow .stat-icon { background: linear-gradient(135deg, var(--amber), #b45309); }
+        .stat-pink .stat-icon { background: linear-gradient(135deg, var(--pink), #be185d); }
+
+        .stat-value { font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; }
+        .stat-green .stat-value { color: var(--emerald); }
+        .stat-blue .stat-value { color: var(--blue); }
+        .stat-purple .stat-value { color: var(--purple); }
+        .stat-yellow .stat-value { color: var(--amber); }
+        .stat-pink .stat-value { color: var(--pink); }
+
+        /* ─── FILTER BAR ─── */
         .filter-bar { 
-            background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 12px; 
-            margin-bottom: 2rem; border: 1px solid rgba(255,255,255,0.05); 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;
+            background: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-xl); 
+            margin-bottom: 2rem; border: 1px solid var(--border); box-shadow: var(--shadow-md);
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; align-items: flex-end;
         }
-        .form-group label { display: block; color: #94a3b8; font-size: 0.8rem; margin-bottom: 0.4rem; text-transform: uppercase; }
-        .form-select, .form-input { width: 100%; padding: 10px; background: #1e293b; border: 1px solid #475569; color: white; border-radius: 6px; }
-        .btn-filter { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; height: 40px; }
-        .btn-reset { background: transparent; color: #94a3b8; border: 1px solid #475569; padding: 10px 20px; border-radius: 6px; text-decoration: none; text-align: center; height: 40px; display: inline-block; line-height: 18px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .form-select, .form-input { 
+            width: 100%; padding: 12px 14px; background: var(--bg-elevated); border: 1px solid var(--border); 
+            color: var(--text-primary); border-radius: var(--radius-md); font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: var(--transition); box-sizing: border-box;
+        }
+        .form-select {
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+        }
+        .form-select:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); border-color: transparent;}
+        .form-select:focus, .form-input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); background: var(--bg-hover); }
+        
+        .or-divider { text-align: center; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; padding-top: 25px; text-transform: uppercase; letter-spacing: 0.1em;}
 
-        /* TABLE */
-        .table-container { 
-            background: rgba(30, 41, 59, 0.5); 
-            border-radius: 12px; 
-            overflow-x: auto; 
-            border: 1px solid #475569; 
-            position: relative;
+        .btn-group { display: flex; gap: 10px; }
+        .btn-filter { 
+            background: var(--emerald); color: #000; border: none; padding: 12px 24px; 
+            border-radius: var(--radius-md); cursor: pointer; font-weight: 700; font-family: var(--font);
+            transition: var(--transition); font-size: 0.95rem; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .btn-filter:hover { background: #34d399; box-shadow: 0 4px 15px var(--emerald-glow); transform: translateY(-1px); }
+        
+        .btn-reset { 
+            background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); 
+            padding: 12px 24px; border-radius: var(--radius-md); text-decoration: none; display: inline-flex;
+            align-items: center; justify-content: center; font-weight: 700; font-family: var(--font); transition: var(--transition);
+        }
+        .btn-reset:hover { background: var(--bg-hover); color: #fff; border-color: var(--text-muted); }
+
+        /* ─── DATA TABLE ─── */
+        .table-container { 
+            background: var(--bg-surface); border-radius: var(--radius-xl); 
+            overflow-x: auto; border: 1px solid var(--border); position: relative; box-shadow: var(--shadow-md);
+        }
+        /* Custom Scrollbar */
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: var(--bg-surface); }
+        .table-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        
         .cost-table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-        .cost-table th { background: rgba(15, 23, 42, 0.8); padding: 15px; text-align: left; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #475569; }
-        .cost-table td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; vertical-align: top; font-size: 0.9rem; }
+        .cost-table th { 
+            background: var(--bg-elevated); padding: 16px; text-align: left; color: var(--text-muted); 
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); font-weight: 700;
+        }
+        .cost-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-primary); vertical-align: top; font-size: 0.95rem; }
         .cost-table tr:hover { background: rgba(255,255,255,0.02); }
         
-        .cost-col { font-family: 'Courier New', monospace; font-weight: 600; text-align: right; }
-        .total-col-op { color: #60a5fa; font-weight: 700; text-align: right; background: rgba(59, 130, 246, 0.05); }
-        .total-col-final { color: #34d399; font-weight: 800; text-align: right; background: rgba(52, 211, 153, 0.05); font-size: 1rem; border-left: 2px solid #334155; }
+        /* Table Columns */
+        .cost-col { font-family: var(--font-mono); font-weight: 600; text-align: right; }
+        .total-col-op { color: var(--blue); font-weight: 700; text-align: right; background: rgba(59, 130, 246, 0.05); }
+        .total-col-final { color: var(--emerald); font-weight: 800; text-align: right; background: rgba(16, 185, 129, 0.05); font-size: 1.1rem; border-left: 2px solid var(--border); }
         
-        .tag-pill { background: rgba(96, 165, 250, 0.1); color: #60a5fa; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-        .detail-row { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+        /* Badges & Elements */
+        .tag-pill { background: var(--bg-elevated); color: #fff; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-family: var(--font-mono); border: 1px solid var(--border);}
+        .detail-row { font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; display: flex; align-items: center; gap: 6px; white-space: nowrap;}
         
         /* Breakdown Tooltip/Mini-table */
-        .breakdown-grid { display: grid; grid-template-columns: 1fr auto; gap: 5px; font-size: 0.8rem; color: #94a3b8; margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); }
-        .cost-val { text-align: right; color: #e2e8f0; }
-        
-        /* OR Divider for search */
-        .or-divider { text-align: center; color: #64748b; font-size: 0.8rem; font-weight: bold; padding-top: 25px; }
+        .breakdown-grid { 
+            display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); 
+            margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); 
+        }
+        .cost-val { text-align: right; color: var(--text-primary); font-family: var(--font-mono); font-weight: 600;}
 
-        /* ========================================= */
-        /* MOBILE SWIPE ANIMATION OVERLAY            */
-        /* ========================================= */
+        /* Empty State */
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); font-style: italic; }
+
+        /* ─── MOBILE SWIPE ANIMATION OVERLAY ─── */
         .scroll-hint-overlay {
-            position: fixed; /* Fix to viewport so it centers on screen */
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(3px);
-            display: none; /* Controlled by JS */
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999; /* Place above everything, including navbars */
-            color: #fff;
-            transition: opacity 0.5s ease;
-            pointer-events: none; /* Let clicks/scrolls pass through to the page */
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(5px);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; color: #fff; transition: opacity 0.4s ease; pointer-events: none;
         }
         .scroll-hint-icon {
-            font-size: 4rem;
-            display: inline-block;
-            animation: swipeHand 1.8s infinite ease-in-out;
-            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+            font-size: 3rem; display: inline-block; animation: swipeHand 1.8s infinite ease-in-out;
+            color: var(--emerald); filter: drop-shadow(0 4px 15px rgba(16,185,129,0.5));
         }
         .scroll-hint-text {
-            margin-top: 1.5rem;
-            font-weight: 700;
-            font-size: 1.2rem;
-            letter-spacing: 0.5px;
-            color: #38bdf8;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
-            background: rgba(15, 23, 42, 0.9);
-            padding: 10px 20px;
-            border-radius: 20px;
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            margin-top: 1.5rem; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; color: #fff;
+            background: var(--bg-elevated); padding: 12px 24px; border-radius: 99px;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: var(--font);
         }
         
         @keyframes swipeHand {
@@ -284,47 +384,78 @@ foreach ($data as $row) {
             80% { opacity: 1; }
             100% { transform: translateX(-40px) rotate(-15deg); opacity: 0; }
         }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .filter-bar { grid-template-columns: 1fr; gap: 1rem; }
+            .btn-group { flex-direction: column; }
+            .btn-filter, .btn-reset { width: 100%; height: auto;}
+            .or-divider { padding-top: 10px; }
+            .page-header h1 { font-size: 2rem; }
+        }
     </style>
 </head>
 <body>
 
 <div class="scroll-hint-overlay" id="mobileScrollHint">
-    <div class="scroll-hint-icon">👆</div>
-    <div class="scroll-hint-text">Swipe left on the table for more info</div>
+    <div class="scroll-hint-icon"><i class="fa-solid fa-hand-pointer"></i></div>
+    <div class="scroll-hint-text">Swipe left on the table for financial details</div>
 </div>
 
 <div class="container">
     
-    <a href="costing_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Costing Dashboard
-    </a>
-
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #34d399, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Animal Net Worth</h1>
-        <p style="color: #94a3b8;">Financial breakdown of livestock value and operating expenses</p>
+    <div class="top-bar">
+        <a href="costing_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Costing Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-money-bill-trend-up"></i> Financial Overview</span>
     </div>
 
+    <header class="page-header">
+        <h1 class="page-title">Animal <span>Net Worth</span></h1>
+        <p>Comprehensive financial breakdown of livestock value and operating expenses.</p>
+    </header>
+
     <div class="dashboard-grid">
-        <div class="stat-card" style="border-top: 4px solid #34d399;">
-            <div class="stat-title">Total Net Worth (Incl. Acq)</div>
-            <div class="stat-value text-green">₱<?php echo number_format($total_net_worth, 2); ?></div>
+        <div class="stat-card stat-green">
+            <div class="stat-header">
+                <div class="stat-title">Total Net Worth</div>
+                <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+            <div class="stat-value">₱<?php echo number_format($total_net_worth, 2); ?></div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #60a5fa;">
-            <div class="stat-title">Operating Expenses (Excl. Acq)</div>
-            <div class="stat-value text-blue">₱<?php echo number_format($total_operating, 2); ?></div>
+        
+        <div class="stat-card stat-blue">
+            <div class="stat-header">
+                <div class="stat-title">Operating Expenses</div>
+                <div class="stat-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+            </div>
+            <div class="stat-value">₱<?php echo number_format($total_operating, 2); ?></div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #a78bfa;">
-            <div class="stat-title">Total Acquisition</div>
-            <div class="stat-value text-purple">₱<?php echo number_format($total_acquisition, 2); ?></div>
+        
+        <div class="stat-card stat-purple">
+            <div class="stat-header">
+                <div class="stat-title">Total Acquisition</div>
+                <div class="stat-icon"><i class="fa-solid fa-cart-shopping"></i></div>
+            </div>
+            <div class="stat-value">₱<?php echo number_format($total_acquisition, 2); ?></div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #fbbf24;">
-            <div class="stat-title">Feed Consumed</div>
-            <div class="stat-value text-yellow">₱<?php echo number_format($total_feed, 2); ?></div>
+        
+        <div class="stat-card stat-yellow">
+            <div class="stat-header">
+                <div class="stat-title">Feed Consumed</div>
+                <div class="stat-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+            </div>
+            <div class="stat-value">₱<?php echo number_format($total_feed, 2); ?></div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #f472b6;">
-            <div class="stat-title">Medical & Health</div>
-            <div class="stat-value text-pink">₱<?php echo number_format($total_health, 2); ?></div>
+        
+        <div class="stat-card stat-pink">
+            <div class="stat-header">
+                <div class="stat-title">Medical & Health</div>
+                <div class="stat-icon"><i class="fa-solid fa-syringe"></i></div>
+            </div>
+            <div class="stat-value">₱<?php echo number_format($total_health, 2); ?></div>
         </div>
     </div>
 
@@ -356,22 +487,22 @@ foreach ($data as $row) {
         </div>
 
         <div class="form-group">
-            <label>4. Select Animal (Dropdown)</label>
+            <label>4. Select Animal (Tag No)</label>
             <select name="animal_id" id="animal_id" class="form-select" <?php echo empty($pen_id) ? 'disabled' : ''; ?>>
                 <option value="">-- Select Specific Tag --</option>
             </select>
         </div>
 
-        <div class="or-divider">OR</div>
+        <div class="or-divider">OR DIRECT SEARCH</div>
 
         <div class="form-group">
-            <label>Search (Tag No)</label>
+            <label>Search (Tag No or Type)</label>
             <input type="text" name="search" class="form-input" placeholder="e.g. A001" value="<?php echo htmlspecialchars($search); ?>">
         </div>
 
-        <div style="display: flex; gap: 10px;">
-            <button type="submit" class="btn-filter">Apply Filters</button>
-            <a href="animal_cost.php" class="btn-reset">Reset</a>
+        <div class="btn-group">
+            <button type="submit" class="btn-filter"><i class="fa-solid fa-filter"></i> Filter</button>
+            <a href="animal_cost.php" class="btn-reset"><i class="fa-solid fa-rotate-right"></i> Reset</a>
         </div>
     </form>
 
@@ -383,13 +514,18 @@ foreach ($data as $row) {
                     <th style="text-align:right;">Acquisition</th>
                     <th style="text-align:right;">Feed Cost</th>
                     <th style="text-align:right;">Health Breakdown</th>
-                    <th style="text-align:right; color:#60a5fa;">Operating Cost<br><span style="font-size:0.7em">(Without Acquisition)</span></th>
-                    <th style="text-align:right; color:#34d399;">Total Net Worth<br><span style="font-size:0.7em">(With Acquisition)</span></th>
+                    <th style="text-align:right; color:var(--blue);">Operating Cost<br><span style="font-size:0.8em; font-weight:normal; color:var(--text-muted);">(Without Acquisition)</span></th>
+                    <th style="text-align:right; color:var(--emerald);">Total Net Worth<br><span style="font-size:0.8em; font-weight:normal; color:var(--text-muted);">(With Acquisition)</span></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data)): ?>
-                    <tr><td colspan="6" style="text-align:center; padding: 3rem;">No animals found matching criteria.</td></tr>
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <i class="fa-solid fa-ghost" style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            No animals found matching your criteria.
+                        </td>
+                    </tr>
                 <?php else: ?>
                     <?php foreach ($data as $row): 
                         $health_subtotal = $row['COST_MEDS'] + $row['COST_VACCINE'] + $row['COST_VITAMINS'] + $row['COST_CHECKUP'];
@@ -398,28 +534,36 @@ foreach ($data as $row) {
                     ?>
                     <tr>
                         <td>
-                            <span class="tag-pill"><?php echo $row['TAG_NO']; ?></span>
-                            <span style="font-weight:bold; margin-left:8px;"><?php echo $row['ANIMAL_TYPE_NAME']; ?></span>
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                                <span class="tag-pill"><i class="fa-solid fa-tag me-1"></i> <?php echo $row['TAG_NO']; ?></span>
+                                <span style="font-weight:700; color:#fff;"><?php echo $row['ANIMAL_TYPE_NAME']; ?></span>
+                            </div>
                             <div class="detail-row">
+                                <i class="fa-solid fa-location-dot"></i> 
                                 <?php echo $row['LOCATION_NAME']; ?> &bull; 
                                 <?php echo $row['BUILDING_NAME'] ?? '-'; ?> &bull; 
                                 <?php echo $row['PEN_NAME'] ?? '-'; ?>
                             </div>
-                            <div class="detail-row" style="color:<?php echo $row['CURRENT_STATUS']=='Active'?'#34d399':'#f87171'; ?>">
-                                ● <?php echo $row['CURRENT_STATUS']; ?>
+                            <div class="detail-row" style="color:<?php echo $row['CURRENT_STATUS']=='Active'?'var(--emerald)':'var(--red)'; ?>; font-weight:600;">
+                                <?php if ($row['CURRENT_STATUS'] == 'Active'): ?>
+                                    <i class="fa-solid fa-circle-check"></i>
+                                <?php else: ?>
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                <?php endif; ?>
+                                <?php echo $row['CURRENT_STATUS']; ?>
                             </div>
                         </td>
                         
-                        <td class="cost-col" style="color:#a78bfa;">
+                        <td class="cost-col" style="color:var(--purple);">
                             ₱<?php echo number_format($row['COST_ACQUISITION'], 2); ?>
                         </td>
                         
-                        <td class="cost-col" style="color:#fbbf24;">
+                        <td class="cost-col" style="color:var(--amber);">
                             ₱<?php echo number_format($row['COST_FEED'], 2); ?>
                         </td>
                         
                         <td class="cost-col">
-                            <div style="font-weight:bold; color:#f472b6;">₱<?php echo number_format($health_subtotal, 2); ?></div>
+                            <div style="font-weight:700; color:var(--pink); font-size:1.05rem;">₱<?php echo number_format($health_subtotal, 2); ?></div>
                             <div class="breakdown-grid">
                                 <span>Checkup:</span> <span class="cost-val"><?php echo number_format($row['COST_CHECKUP'], 2); ?></span>
                                 <span>Meds:</span> <span class="cost-val"><?php echo number_format($row['COST_MEDS'], 2); ?></span>
@@ -432,7 +576,7 @@ foreach ($data as $row) {
                             ₱<?php echo number_format($operating_total, 2); ?>
                         </td>
 
-                        <td class="total-col-final">
+                        <td class="cost-col total-col-final">
                             ₱<?php echo number_format($grand_total, 2); ?>
                         </td>
                     </tr>
@@ -458,7 +602,7 @@ foreach ($data as $row) {
                 scrollHint.style.opacity = '0';
                 setTimeout(() => {
                     scrollHint.style.display = 'none';
-                }, 500); // Wait for CSS transition
+                }, 400); // Wait for CSS transition
                 
                 // Cleanup listeners
                 tableContainer.removeEventListener('scroll', dismissHint);
@@ -466,10 +610,10 @@ foreach ($data as $row) {
                 window.removeEventListener('click', dismissHint);
             };
 
-            // Auto dismiss after 4 seconds
-            setTimeout(dismissHint, 4000);
+            // Auto dismiss after 3 seconds
+            setTimeout(dismissHint, 3000);
 
-            // Instant dismiss if user starts interacting (scrolls table, touches screen, or clicks)
+            // Instant dismiss if user starts interacting
             tableContainer.addEventListener('scroll', dismissHint, { once: true });
             window.addEventListener('touchstart', dismissHint, { once: true });
             window.addEventListener('click', dismissHint, { once: true });

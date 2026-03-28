@@ -1,5 +1,5 @@
 <?php
-// reports/medication_analytics.php
+// reports/analytics_medicines.php
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "analytics";
@@ -9,7 +9,6 @@ include '../security/checkAccess.php';
 checkAccess('medicine_analytics');
 include '../common/navbar.php';
 include '../common/chat_support.php';
-
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
@@ -81,146 +80,236 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medication Analytics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Medication Analytics | FarmPro</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     
     <style>
-        /* --- THEME: ROSE / RED --- */
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
-            color: #e2e8f0; 
-            margin: 0; padding-bottom: 40px; 
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(244,63,94,0.5); /* Rose Accent */
+            
+            --rose:           #f43f5e;
+            --rose-dim:       rgba(244,63,94,0.12);
+            --rose-glow:      rgba(244,63,94,0.25);
+            --blue:           #3b82f6;
+            --emerald:        #10b981;
+            --amber:          #f59e0b;
+            --red:            #ef4444;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        
-        /* Navigation Style */
-        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(244,63,94,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: #f43f5e; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .header { text-align: center; margin-bottom: 2rem; }
-        .title { 
-            font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #f43f5e, #e11d48); 
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
-            margin-bottom: 0.5rem;
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--rose); background: var(--rose-dim); border: 1px solid rgba(244,63,94,0.2);
+            padding: 6px 12px; border-radius: 99px;
         }
-        .subtitle { color: #94a3b8; font-size: 1rem; margin: 0; }
 
-        /* KPI Grid */
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        /* ─── HEADER ─── */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1.5rem; flex-wrap: wrap; }
+        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em;}
+        .header-info h1 span { background: linear-gradient(135deg, var(--rose), #be123c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
+
+        .btn-view {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px 24px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-weight: 700; font-size: 0.95rem; font-family: var(--font);
+            cursor: pointer; transition: var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-view:hover { background: var(--rose-dim); border-color: var(--rose); color: var(--rose); transform: translateY(-2px);}
+
+        /* ─── DASHBOARD STATS ─── */
+        .kpi-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 1.5rem; margin-bottom: 2.5rem; 
+        }
         .kpi-card { 
-            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
-            border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(10px); 
-            position: relative; overflow: hidden;
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
-        .kpi-card::after { 
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
-            background: linear-gradient(90deg, #f43f5e, #be123c); 
-        }
-        .kpi-label { color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-        .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
-        .kpi-sub { font-size: 0.85rem; color: #64748b; }
+        
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .stat-rose::before { background: var(--rose); }
+        .stat-blue::before { background: var(--blue); }
+        .stat-red::before { background: var(--red); }
+        .stat-yellow::before { background: var(--amber); }
 
-        .text-rose { color: #fb7185; }
-        .text-red { color: #f87171; }
+        .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .kpi-title { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;}
+        .kpi-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #fff;}
+        .stat-rose .kpi-icon { background: linear-gradient(135deg, var(--rose), #be123c); }
+        .stat-blue .kpi-icon { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .stat-red .kpi-icon { background: linear-gradient(135deg, var(--red), #991b1b); }
+        .stat-yellow .kpi-icon { background: linear-gradient(135deg, var(--amber), #b45309); }
 
-        /* Chart Grid */
+        .kpi-value { font-size: 2.5rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; margin-bottom: 0.5rem;}
+        .stat-rose .kpi-value { color: var(--rose); }
+        .stat-blue .kpi-value { color: var(--blue); }
+        .stat-red .kpi-value { color: var(--red); }
+        .stat-yellow .kpi-value { color: var(--amber); }
+
+        .kpi-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
+
+        /* ─── CHARTS GRID ─── */
         .charts-container { 
-            display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem; 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem; 
+            width: 100%; overflow: hidden; /* Prevent container blowout */
         }
+
         .chart-box { 
-            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.05); 
-            border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            display: flex; flex-direction: column; width: 100%; max-width: 100%; 
+            overflow: hidden; box-sizing: border-box; box-shadow: var(--shadow-md);
         }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
-        /* Buttons */
-        .btn-group { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
-        .btn { 
-            padding: 10px 20px; background: rgba(244, 63, 94, 0.1); 
-            color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); 
-            border-radius: 8px; text-decoration: none; font-weight: 600; 
-            transition: all 0.2s; 
+        .chart-title { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 10px;}
+
+        /* Chart canvas wrapper */
+        .chart-canvas-wrapper {
+            position: relative; width: 100%; max-width: 100%; height: 300px; margin: 0 auto;
         }
-        .btn:hover { background: rgba(244, 63, 94, 0.2); transform: translateY(-2px); }
 
-        @media (max-width: 1024px) { .charts-container { grid-template-columns: 1fr; } }
+        .chart-canvas-wrapper canvas {
+            width: 100% !important; /* Force canvas to respect wrapper */
+            height: 100% !important;
+        }
+
+        /* ===== MOBILE OVERRIDES ===== */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .btn-view { width: 100%; }
+            .charts-container { grid-template-columns: 1fr; }
+            .chart-canvas-wrapper { height: 250px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="nav-header">
+    <div class="top-bar">
         <a href="analytics_dashboard.php" class="back-link">
             <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
         </a>
+        <span class="page-badge"><i class="fa-solid fa-chart-line"></i> Performance Data</span>
     </div>
 
-    <div class="header">
-        <h1 class="title">Medication Analytics</h1>
-        <p class="subtitle">Treatment costs, inventory valuation, and health trends.</p>
-    </div>
+    <header class="page-header">
+        <div class="header-info">
+            <h1>Medication <span>Analytics</span></h1>
+            <p>Treatment costs, inventory valuation, and clinical health trends.</p>
+        </div>
+        <a href="medication_report.php" class="btn-view"><i class="fa-solid fa-file-invoice"></i> View Detailed Report</a>
+    </header>
 
     <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-hand-holding-medical"></i> Total Cost</div>
-            <div class="kpi-value text-rose">₱<?= number_format($usage['total_spent'] / 1000, 1) ?>k</div>
+        <div class="kpi-card stat-rose">
+            <div class="kpi-header">
+                <div class="kpi-title">Total Cost</div>
+                <div class="kpi-icon"><i class="fa-solid fa-hand-holding-medical"></i></div>
+            </div>
+            <div class="kpi-value">₱<?= number_format($usage['total_spent'] / 1000, 1) ?>k</div>
             <div class="kpi-sub">Lifetime Expenses</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-syringe"></i> Treatments</div>
+
+        <div class="kpi-card stat-blue">
+            <div class="kpi-header">
+                <div class="kpi-title">Treatments</div>
+                <div class="kpi-icon"><i class="fa-solid fa-syringe"></i></div>
+            </div>
             <div class="kpi-value"><?= number_format($usage['total_treatments']) ?></div>
             <div class="kpi-sub">Individual Applications</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-pills"></i> Inventory Value</div>
+
+        <div class="kpi-card stat-yellow">
+            <div class="kpi-header">
+                <div class="kpi-title">Inventory Value</div>
+                <div class="kpi-icon"><i class="fa-solid fa-pills"></i></div>
+            </div>
             <div class="kpi-value">₱<?= number_format($inv['inventory_value'] / 1000, 1) ?>k</div>
             <div class="kpi-sub"><?= number_format($inv['active_medicines']) ?> Items in Stock</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-triangle-exclamation"></i> Low Stock</div>
-            <div class="kpi-value text-red"><?= number_format($inv['low_stock_count']) ?></div>
+
+        <div class="kpi-card stat-red">
+            <div class="kpi-header">
+                <div class="kpi-title">Low Stock Alerts</div>
+                <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+            <div class="kpi-value"><?= number_format($inv['low_stock_count']) ?></div>
             <div class="kpi-sub">Items below 20 units</div>
         </div>
     </div>
 
-    <div class="btn-group">
-        <a href="medication_report.php" class="btn">View Detailed Report →</a>
-    </div>
-
     <div class="charts-container">
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Treatment Costs (Last 12 Months)</div>
-            <div style="flex-grow: 1; position: relative;">
+            <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:var(--rose);"></i> Treatment Costs (Last 12 Months)</div>
+            <div class="chart-canvas-wrapper">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Stock Value by Medicine</div>
-            <div style="flex-grow: 1; position: relative;">
+            <div class="chart-title"><i class="fa-solid fa-chart-pie" style="color:var(--amber);"></i> Stock Value by Medicine</div>
+            <div class="chart-canvas-wrapper">
                 <canvas id="stockChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-flask"></i> Top 5 Medicines Used (Frequency)</div>
-            <div style="flex-grow: 1; position: relative;">
+            <div class="chart-title"><i class="fa-solid fa-flask" style="color:var(--blue);"></i> Top 5 Medicines Used (Frequency)</div>
+            <div class="chart-canvas-wrapper">
                 <canvas id="topMedsChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-piggy-bank"></i> Animals Requiring Most Care</div>
-            <div style="flex-grow: 1; position: relative;">
+            <div class="chart-title"><i class="fa-solid fa-piggy-bank" style="color:var(--red);"></i> Animals Requiring Most Care</div>
+            <div class="chart-canvas-wrapper">
                 <canvas id="animalChart"></canvas>
             </div>
         </div>
@@ -228,11 +317,22 @@ try {
 </div>
 
 <script>
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    Chart.defaults.font.family = 'system-ui';
-
     const trendData = <?= json_encode($trend_data) ?>;
+    const stockData = <?= json_encode($stock_val) ?>;
+    const topMeds = <?= json_encode($top_meds) ?>;
+    const animalData = <?= json_encode($sick_animals) ?>;
+
+    /* ---- Global Chart.js defaults ---- */
+    Chart.defaults.color       = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+    Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+
+    /* Responsive legend helper: bottom on small screens, right on large */
+    function legendPos() {
+        return window.innerWidth < 640 ? 'bottom' : 'right';
+    }
+
+    /* ---- Trend Line Chart ---- */
     new Chart(document.getElementById('trendChart'), {
         type: 'line',
         data: {
@@ -244,18 +344,23 @@ try {
                 backgroundColor: 'rgba(244, 63, 94, 0.1)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false, // CRITICAL: Allows wrapper CSS to dictate height/width
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: { 
+                y: { beginAtZero: true },
+                x: { ticks: { maxRotation: 45, minRotation: 0 } }
+            }
         }
     });
 
-    const stockData = <?= json_encode($stock_val) ?>;
+    /* ---- Stock Value Doughnut ---- */
     new Chart(document.getElementById('stockChart'), {
         type: 'doughnut',
         data: {
@@ -263,17 +368,23 @@ try {
             datasets: [{
                 data: stockData.map(d => d.TOTAL_COST),
                 backgroundColor: ['#f43f5e', '#ec4899', '#db2777', '#be123c', '#881337'],
-                borderWidth: 0
+                borderWidth: 0,
+                hoverOffset: 6
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
+            maintainAspectRatio: false, // CRITICAL
+            plugins: { 
+                legend: { 
+                    position: legendPos(),
+                    labels: { boxWidth: 12, padding: 14, font: { size: 12, family: "'DM Sans', sans-serif" } }
+                } 
+            }
         }
     });
 
-    const topMeds = <?= json_encode($top_meds) ?>;
+    /* ---- Top Meds Bar ---- */
     new Chart(document.getElementById('topMedsChart'), {
         type: 'bar',
         data: {
@@ -281,21 +392,24 @@ try {
             datasets: [{
                 label: 'Times Administered',
                 data: topMeds.map(d => d.usage_count),
-                backgroundColor: 'rgba(251, 113, 133, 0.7)',
-                borderColor: '#fb7185',
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: '#3b82f6',
                 borderWidth: 1,
                 borderRadius: 4
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false, // CRITICAL
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: { 
+                y: { beginAtZero: true },
+                x: { ticks: { maxRotation: 45, minRotation: 0 } }
+            }
         }
     });
 
-    const animalData = <?= json_encode($sick_animals) ?>;
+    /* ---- Sick Animals Horizontal Bar ---- */
     new Chart(document.getElementById('animalChart'), {
         type: 'bar',
         data: {
@@ -303,8 +417,8 @@ try {
             datasets: [{
                 label: 'Treatments Received',
                 data: animalData.map(d => d.treatment_count),
-                backgroundColor: 'rgba(225, 29, 72, 0.7)',
-                borderColor: '#e11d48',
+                backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                borderColor: '#ef4444',
                 borderWidth: 1,
                 borderRadius: 4
             }]
@@ -312,9 +426,18 @@ try {
         options: {
             indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false, // CRITICAL
             plugins: { legend: { display: false } },
             scales: { x: { beginAtZero: true } }
+        }
+    });
+
+    // Optional: Re-render chart legend position if user rotates phone
+    window.addEventListener('resize', () => {
+        const doughnutChart = Chart.getChart('stockChart');
+        if (doughnutChart) {
+            doughnutChart.options.plugins.legend.position = legendPos();
+            doughnutChart.update();
         }
     });
 </script>

@@ -15,247 +15,291 @@ include '../common/chat_support.php';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmPro Feed Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Single Feed Management | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        /* --- GLOBAL STYLES --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(245,158,11,0.5); /* Amber Accent */
+            
+            /* Theme Colors */
+            --amber:          #f59e0b; --amber-dim: rgba(245,158,11,0.12); --amber-glow: rgba(245,158,11,0.25);
+            --orange:         #f97316;
+            --emerald:        #10b981;
+            --blue:           #3b82f6; --blue-dim: rgba(59,130,246,0.12);
+            --cyan:           #06b6d4;
+            --purple:         #a855f7;
+            --red:            #f87171;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
-            min-height: 100vh;
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245,158,11,0.06) 0%, transparent 60%);
         }
-        .feed-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        /* --- BACK LINK --- */
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        /* --- HEADER --- */
-        .feed-header { text-align: center; margin-bottom: 3rem; }
-        .feed-title {
-            font-size: 3rem; font-weight: bold; margin-bottom: 1rem;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        }
-        .feed-subtitle { color: #94a3b8; font-size: 1.2rem; margin-bottom: 0.5rem; }
-        .feed-description { color: #64748b; font-size: 1rem; }
-
-        /* --- GRID & CARDS --- */
-        .feed-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--amber); background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.2);
+            padding: 6px 12px; border-radius: 99px;
         }
 
-        .feed-card {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2.5rem;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
+        /* ─── HEADER ─── */
+        .page-header { text-align: center; margin-bottom: 3.5rem; margin-top: 1rem; }
+        .page-title {
+            font-size: clamp(2rem, 4vw, 3rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.75rem;
         }
-
-        .feed-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            border-color: rgba(34, 197, 94, 0.4);
-            box-shadow: 0 25px 50px rgba(34, 197, 94, 0.15);
+        .page-title span {
+            background: linear-gradient(135deg, var(--amber), #b45309);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
+        .page-subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .page-description { color: var(--text-muted); font-size: 0.95rem; max-width: 600px; margin: 0 auto; }
 
-        .card-icon {
-            width: 80px; height: 80px; border-radius: 20px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2.5rem; color: white; margin-bottom: 2rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-        .card-icon.transaction { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-        .card-icon.availability { background: linear-gradient(135deg, #f59e0b, #d97706); }
-
-        .card-title { font-size: 1.8rem; font-weight: 600; color: #22c55e; margin-bottom: 1rem; }
-        .card-description { color: #94a3b8; font-size: 1rem; line-height: 1.6; margin-bottom: 2rem; }
-
-        .card-features { list-style: none; margin-bottom: 2rem; }
-        .card-features li {
-            display: flex; align-items: center; gap: 0.75rem;
-            color: #cbd5e1; font-size: 0.95rem; margin-bottom: 0.75rem;
-        }
-        .card-features li::before { content: '✓'; color: #22c55e; font-weight: bold; font-size: 1.1rem; }
-
-        .card-stats {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
-            margin-bottom: 2rem; padding-top: 1.5rem;
-            border-top: 1px solid rgba(30, 41, 59, 0.8);
-        }
-
-        .stat-item {
-            text-align: center; padding: 1rem;
-            background: rgba(15, 23, 42, 0.5); border-radius: 12px;
-            transition: all 0.3s ease;
-        }
-        .stat-number { font-size: 1.5rem; font-weight: bold; color: #22c55e; margin-bottom: 0.25rem; }
-        .stat-label { font-size: 0.85rem; color: #64748b; }
-
-        .card-action {
-            display: flex; align-items: center; justify-content: center; gap: 0.75rem;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white; padding: 1rem 2rem; border-radius: 12px;
-            font-weight: 600; font-size: 1rem; border: none;
-            cursor: pointer; transition: all 0.3s ease; width: 100%;
-        }
-        .card-action:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
-            background: linear-gradient(135deg, #16a34a, #15803d);
-        }
-
-        /* --- QUICK STATS --- */
+        /* ─── QUICK STATS ─── */
         .quick-stats {
-            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px; padding: 2rem; backdrop-filter: blur(10px); margin-bottom: 2rem;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; margin-bottom: 3.5rem;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            animation: fadeInUp 0.5s ease-out;
         }
-        .quick-title {
-            font-size: 1.5rem; font-weight: 600; color: #22c55e; margin-bottom: 1.5rem; text-align: center;
-        }
+        .stats-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1.5rem; text-align: center; text-transform: uppercase; letter-spacing: 0.05em; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-        .quick-stat-item {
-            display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-            padding: 1.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 12px; transition: all 0.3s ease;
+        
+        .stat-card { 
+            text-align: center; padding: 1.5rem 1rem; background: var(--bg-elevated); 
+            border: 1px solid var(--border); border-radius: var(--radius-lg); 
+            transition: all var(--transition); display: flex; flex-direction: column; align-items: center; gap: 8px;
         }
-        .quick-stat-item:hover { transform: translateY(-2px); background: rgba(15, 23, 42, 0.7); }
+        .stat-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.15); background: var(--bg-hover); }
         
         .stat-icon {
-            width: 50px; height: 50px; border-radius: 12px;
+            width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; color: #fff; margin-bottom: 0.5rem;
+        }
+        .stat-icon.total { background: linear-gradient(135deg, var(--purple), #7c3aed); }
+        .stat-icon.today { background: linear-gradient(135deg, var(--cyan), #0891b2); }
+        .stat-icon.low { background: linear-gradient(135deg, var(--red), #dc2626); }
+        .stat-icon.types { background: linear-gradient(135deg, var(--amber), #d97706); }
+
+        .stat-value { font-size: 2.2rem; font-weight: 700; color: var(--amber); font-family: var(--font-mono); line-height: 1;}
+        .stat-desc { color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* ─── MANAGEMENT GRID ─── */
+        .management-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem; margin-bottom: 3rem;
+        }
+
+        .management-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2.5rem; position: relative;
+            overflow: hidden; display: flex; flex-direction: column;
+            text-decoration: none; color: inherit; transition: all var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); min-height: 380px;
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+        .management-card::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+            transition: left 0.8s ease; pointer-events: none;
+        }
+        .management-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); }
+        .management-card:hover::before { left: 100%; }
+
+        /* Card Specific Hover Borders */
+        .management-card.c-add:hover { border-color: rgba(59,130,246,0.4); }
+        .management-card.c-stock:hover { border-color: rgba(245,158,11,0.4); }
+
+        .card-icon {
+            width: 72px; height: 72px; border-radius: var(--radius-lg);
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; color: white;
+            font-size: 2rem; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.3); 
+            margin-bottom: 2rem; flex-shrink: 0; position: relative;
         }
-        .stat-icon.total { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .stat-icon.today { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-        .stat-icon.low { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .stat-icon.types { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .card-icon.blue { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .card-icon.amber { background: linear-gradient(135deg, var(--amber), #d97706); }
 
-        .stat-value { font-size: 1.8rem; font-weight: bold; color: #22c55e; }
-        .stat-label-text { color: #94a3b8; font-size: 0.9rem; text-align: center; }
+        .card-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; }
+        .card-description { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; }
 
-        @media (max-width: 768px) {
-            .feed-grid { grid-template-columns: 1fr; }
-            .feed-title { font-size: 2rem; }
+        .card-features { list-style: none; margin-bottom: 2.5rem; padding: 0; flex-grow: 1; }
+        .card-features li {
+            display: flex; align-items: flex-start; gap: 10px;
+            color: var(--text-primary); font-size: 0.9rem; margin-bottom: 12px; line-height: 1.4;
         }
+        .card-features li i { color: var(--emerald); font-size: 1rem; margin-top: 2px;}
+
+        .card-stats {
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 1.5rem 0 0 0; border-top: 1px solid var(--border); margin-bottom: 1.5rem;
+        }
+        .c-stat-group { display: flex; flex-direction: column; gap: 4px; text-align: center;}
+        .c-stat-group .num { font-size: 1.5rem; font-weight: 700; color: #fff; font-family: var(--font-mono); line-height: 1; }
+        .c-stat-group .lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        
+        .card-action {
+            font-size: 1rem; font-weight: 700; color: #000; background: var(--amber);
+            transition: all var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 14px; border-radius: var(--radius-md); border: none; font-family: var(--font); width: 100%;
+        }
+        .management-card.c-add .card-action { background: var(--blue); color: #fff; }
+        .management-card.c-add:hover .card-action { background: #60a5fa; box-shadow: 0 4px 15px rgba(59,130,246,0.3);}
+        .management-card.c-stock:hover .card-action { background: #fbbf24; box-shadow: 0 4px 15px var(--amber-glow);}
 
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .feed-card, .quick-stats { animation: fadeInUp 0.6s ease-out; }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-header { margin-bottom: 2rem;}
+            .management-grid { grid-template-columns: 1fr; gap: 1.5rem;}
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .management-card { padding: 1.5rem; min-height: auto;}
+        }
     </style>
 </head>
 <body>
-    <div class="feed-container">
+    
+    
+    <div class="container">
         
-        <a href="transactions.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Transactions
-        </a>
+        <div class="top-bar">
+            <a href="transactions.php" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i> Back to Transactions
+            </a>
+            <span class="page-badge"><i class="fa-solid fa-bowl-food"></i> Nutrition Control</span>
+        </div>
 
-        <header class="feed-header">
-            <h1 class="feed-title">Single Feed Management</h1>
-            <p class="feed-subtitle">Track feeding transactions and monitor feed inventory</p>
-            <p class="feed-description">Manage all aspects of livestock feeding and feed stock levels</p>
+        <header class="page-header">
+            <h1 class="page-title">Single Feed <span>Management</span></h1>
+            <p class="page-subtitle">Track targeted feeding transactions and monitor inventory.</p>
+            <p class="page-description">Record specialized diets or monitored feed consumption for specific high-value livestock.</p>
         </header>
 
         <div class="quick-stats">
-            <h2 class="quick-title">Feed Overview</h2>
+            <h2 class="stats-title">System Inventory Overview</h2>
             <div class="stats-grid">
-                <div class="quick-stat-item">
-                    <div class="stat-icon total">📊</div>
-                    <div class="stat-value">2,450</div>
-                    <div class="stat-label-text">Total Transactions</div>
+                <div class="stat-card">
+                    <div class="stat-icon total"><i class="fa-solid fa-chart-column"></i></div>
+                    <div class="stat-value" data-target="2450">0</div>
+                    <div class="stat-desc">Total Trans.</div>
                 </div>
-                <div class="quick-stat-item">
-                    <div class="stat-icon today">📅</div>
-                    <div class="stat-value">12</div>
-                    <div class="stat-label-text">Today's Feedings</div>
+                <div class="stat-card">
+                    <div class="stat-icon today"><i class="fa-solid fa-calendar-day"></i></div>
+                    <div class="stat-value" data-target="12">0</div>
+                    <div class="stat-desc">Today's Feeds</div>
                 </div>
-                <div class="quick-stat-item">
-                    <div class="stat-icon low">⚠️</div>
-                    <div class="stat-value">3</div>
-                    <div class="stat-label-text">Low Stock Items</div>
+                <div class="stat-card">
+                    <div class="stat-icon low"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-value" data-target="3">0</div>
+                    <div class="stat-desc">Low Stock Items</div>
                 </div>
-                <div class="quick-stat-item">
-                    <div class="stat-icon types">🌾</div>
-                    <div class="stat-value">15</div>
-                    <div class="stat-label-text">Feed Types</div>
+                <div class="stat-card">
+                    <div class="stat-icon types"><i class="fa-solid fa-wheat-awn"></i></div>
+                    <div class="stat-value" data-target="15">0</div>
+                    <div class="stat-desc">Feed Types</div>
                 </div>
             </div>
         </div>
 
-        <div class="feed-grid">
-            <div class="feed-card" onclick="window.location.href='single_feed_transaction.php'">
-                <div class="card-icon transaction">📝</div>
+        <div class="management-grid">
+            
+            <a href="single_feed_transaction.php" class="management-card c-add">
+                <div class="card-icon blue"><i class="fa-solid fa-pen-to-square"></i></div>
                 <h3 class="card-title">Add Single Feeding</h3>
-                <p class="card-description">Record new feeding activities, track feed consumption, and maintain detailed feeding logs for all livestock.</p>
+                <p class="card-description">Record new targeted feeding activities, log specific diets, and maintain detailed consumption histories for individual animals.</p>
                 
                 <ul class="card-features">
-                    <li>Record Feed Distribution</li>
-                    <li>Track Animal Groups</li>
-                    <li>Log Feed Quantities</li>
-                    <li>Add Notes & Comments</li>
-                    <li>Real-time Stock Updates</li>
+                    <li><i class="fa-solid fa-check"></i> Assign precise feed quantities to a single Tag No.</li>
+                    <li><i class="fa-solid fa-check"></i> Attach notes, conditions, and dietary remarks.</li>
+                    <li><i class="fa-solid fa-check"></i> Automatically deduct from central warehouse inventory.</li>
                 </ul>
 
                 <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Today</div>
+                    <div class="c-stat-group">
+                        <span class="num" style="color:var(--blue);">12</span>
+                        <span class="lbl">Logs Today</span>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number">387</div>
-                        <div class="stat-label">This Month</div>
+                    <div class="c-stat-group">
+                        <span class="num">387</span>
+                        <span class="lbl">This Month</span>
                     </div>
                 </div>
 
                 <button class="card-action">
-                    ➕ Add Transaction
+                    <i class="fa-solid fa-plus"></i> Record Transaction
                 </button>
-            </div>
+            </a>
 
-            <div class="feed-card" onclick="window.location.href='available_feeds.php'">
-                <div class="card-icon availability">📦</div>
+            <a href="available_feeds.php" class="management-card c-stock">
+                <div class="card-icon amber"><i class="fa-solid fa-boxes-stacked"></i></div>
                 <h3 class="card-title">Check Feeds Availability</h3>
-                <p class="card-description">Monitor feed inventory levels, check stock availability, and receive alerts for low stock items.</p>
+                <p class="card-description">Monitor current silo and warehouse inventory levels, verify stock availability, and preemptively manage shortages.</p>
                 
                 <ul class="card-features">
-                    <li>View Current Stock Levels</li>
-                    <li>Check Feed Expiry Dates</li>
-                    <li>Low Stock Alerts</li>
-                    <li>Feed Type Categories</li>
-                    <li>Reorder Recommendations</li>
+                    <li><i class="fa-solid fa-check"></i> View real-time kilogram and sack volumes.</li>
+                    <li><i class="fa-solid fa-check"></i> Track specific nutritional types (Starter, Grower, etc).</li>
+                    <li><i class="fa-solid fa-check"></i> Identify low stock warnings before depletion.</li>
                 </ul>
 
                 <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">15</div>
-                        <div class="stat-label">Feed Types</div>
+                    <div class="c-stat-group">
+                        <span class="num">15</span>
+                        <span class="lbl">Feed Types</span>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-number">3</div>
-                        <div class="stat-label">Low Stock</div>
+                    <div class="c-stat-group">
+                        <span class="num" style="color:var(--red);">3</span>
+                        <span class="lbl">Low Stock</span>
                     </div>
                 </div>
 
                 <button class="card-action">
-                    🔍 Check Availability
+                    <i class="fa-solid fa-magnifying-glass"></i> Check Inventory
                 </button>
-            </div>
+            </a>
+
         </div>
     </div>
 
@@ -267,20 +311,24 @@ include '../common/chat_support.php';
 
             loadRecentStats() {
                 const statValues = document.querySelectorAll('.stat-value');
+                
                 statValues.forEach(stat => {
-                    const finalValue = parseInt(stat.textContent);
+                    const finalValue = parseInt(stat.getAttribute('data-target'));
                     let currentValue = 0;
-                    const increment = Math.ceil(finalValue / 20);
+                    
+                    // Determine increment based on final number to ensure smooth animation
+                    const increment = Math.ceil(finalValue / 30); 
                     
                     const counter = setInterval(() => {
                         currentValue += increment;
                         if (currentValue >= finalValue) {
-                            stat.textContent = finalValue;
+                            // Ensure final value is exact and formatted with commas
+                            stat.textContent = finalValue.toLocaleString('en-US');
                             clearInterval(counter);
                         } else {
-                            stat.textContent = currentValue;
+                            stat.textContent = currentValue.toLocaleString('en-US');
                         }
-                    }, 50);
+                    }, 40);
                 });
             }
         }

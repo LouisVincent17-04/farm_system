@@ -13,6 +13,15 @@ if (ini_get("session.use_cookies")) {
     );
 }
 
-header('Location: login.php');
-exit;
+if(isset($page))
+{
+    header('Location: ../globalxadminzportal/login.php');
+    exit;
+}
+else
+{
+    header('Location: login.php');
+    exit;
+}
+
 ?>

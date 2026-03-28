@@ -2,7 +2,7 @@
 // views/edit_animal_tags.php
 error_reporting(0);
 ini_set('display_errors', 0);
-$page = "farm"; // Active Tab
+$page = "farm"; 
 include '../config/Connection.php';
 
 include '../security/checkAccess.php';
@@ -47,7 +47,6 @@ try {
         $filter_pens = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Only fetch animals if at least a location is selected to prevent massive load
     if (!empty($filter_loc)) {
         $sql = "SELECT 
                     a.ANIMAL_ID, a.TAG_NO, a.SEX, a.CURRENT_STATUS,
@@ -66,7 +65,7 @@ try {
         if ($filter_loc) { $sql .= " AND a.LOCATION_ID = ?"; $params[] = $filter_loc; }
         if ($filter_bld) { $sql .= " AND a.BUILDING_ID = ?"; $params[] = $filter_bld; }
         if ($filter_pen) { $sql .= " AND a.PEN_ID = ?";      $params[] = $filter_pen; }
-        $sql .= " ORDER BY a.ANIMAL_ID ASC"; // Order by ID so numbering makes sense chronologically
+        $sql .= " ORDER BY a.ANIMAL_ID ASC"; 
 
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
@@ -82,81 +81,210 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Batch Tag Editor - FarmPro</title>
+    <title>Batch Tag Editor | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); min-height:100vh; color:white; padding-bottom:100px; }
-        .container { max-width:1200px; margin:0 auto; padding:2rem; width:100%; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(14,165,233,0.5); /* Blue Accent */
+            --sky:            #0ea5e9;
+            --sky-dim:        rgba(14,165,233,0.12);
+            --sky-glow:       rgba(14,165,233,0.25);
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --emerald-glow:   rgba(16,185,129,0.25);
+            --red:            #f87171;
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
 
-        .back-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:#94a3b8; font-weight:600; font-size:0.95rem; margin-bottom:20px; transition:color 0.2s; }
-        .back-link:hover { color:white; }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 120px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14,165,233,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; gap:1rem; flex-wrap:wrap; }
-        .header-info h1 { font-size:clamp(1.8rem,4vw,2.5rem); font-weight:bold; margin-bottom:0.5rem; color:#0ea5e9; }
-        .header-info p  { color:#cbd5e1; font-size:0.95rem; }
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .filter-bar { background:rgba(30,41,59,0.6); border:1px solid #475569; padding:1.5rem; border-radius:12px; margin-bottom:1.5rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; align-items:end; }
-        .filter-group { display:flex; flex-direction:column; gap:0.4rem; }
-        .filter-group label { font-size:0.85rem; text-transform:uppercase; color:#94a3b8; font-weight:600; }
-        .filter-select { width:100%; padding:12px; background:#0f172a; border:1px solid #334155; color:white; border-radius:8px; font-size:0.95rem; outline:none; transition:border-color 0.2s; }
-        .filter-select:focus { border-color:#0ea5e9; }
-        .btn-reset { padding:12px 24px; background:transparent; border:1px solid #475569; color:#94a3b8; border-radius:8px; text-decoration:none; font-weight:600; display:flex; align-items:center; justify-content:center; white-space:nowrap; transition:0.2s; }
-        .btn-reset:hover { background:rgba(255,255,255,0.05); color:white; border-color:white; }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--sky); background: var(--sky-dim); border: 1px solid rgba(14,165,233,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
 
-        /* Inline Table Filters */
-        .inline-filters { display:flex; gap:10px; margin-bottom:1.5rem; flex-wrap:wrap; }
-        .search-input { flex:1; min-width:200px; padding:12px 15px; background:rgba(30,41,59,0.5); border:1px solid #475569; border-radius:8px; color:white; font-size:1rem; outline:none; }
-        .search-input:focus { border-color:#0ea5e9; }
-        .inline-select { width:160px; padding:12px; background:rgba(30,41,59,0.8); border:1px solid #475569; border-radius:8px; color:white; font-size:0.95rem; outline:none; }
-        .inline-select:focus { border-color:#0ea5e9; }
+        /* ─── HEADER ─── */
+        .page-header { margin-bottom: 2rem; }
+        .page-title {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .page-title span {
+            background: linear-gradient(135deg, var(--sky), #0284c7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .page-subtitle { color: var(--text-secondary); font-size: 0.95rem; }
 
-        /* Table */
-        .table-container { background:rgba(30,41,59,0.5); border-radius:12px; border:1px solid #475569; overflow-x:auto; min-height:200px; margin-bottom: 2rem;}
-        .table { width:100%; border-collapse:collapse; min-width:800px; }
-        .table thead { background:rgba(15,23,42,0.5); }
-        .table th { padding:1rem 1.5rem; text-align:left; color:#e2e8f0; text-transform:uppercase; font-size:0.85rem; font-weight:600; border-bottom:1px solid #475569; }
-        .table td { padding:0.75rem 1.5rem; vertical-align:middle; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.95rem; color:#cbd5e1; }
-        .table tbody tr:hover { background:rgba(255,255,255,0.02); }
+        /* ─── FILTER BAR ─── */
+        .filter-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 1.5rem; margin-bottom: 2rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-group label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .form-select {
+            width: 100%; padding: 0 12px; height: 42px; background: var(--bg-elevated);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: var(--radius-md); font-size: 0.9rem; font-family: var(--font);
+            outline: none; transition: all var(--transition); appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+        }
+        .form-select:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); }
+        .form-select:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* Tag Input */
-        .tag-input { width: 100%; max-width: 250px; padding: 10px 15px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; color: #fff; font-weight: bold; font-size: 1.1rem; font-family: monospace; outline: none; transition: 0.2s; }
-        .tag-input:focus { border-color: #38bdf8; background: #1e293b; box-shadow: 0 0 0 3px rgba(14,165,233,0.2); }
-        .tag-input.changed { border-color: #22c55e; color: #4ade80; background: rgba(34,197,94,0.1); }
+        .btn-reset { 
+            height: 42px; padding: 0 20px; background: transparent; border: 1px solid var(--border);
+            color: var(--text-secondary); border-radius: var(--radius-md); text-decoration: none;
+            font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; justify-content: center;
+            transition: all var(--transition);
+        }
+        .btn-reset:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--text-muted); }
 
-        .animal-type-info  { color:#cbd5e1; font-size:0.875rem; }
+        /* ─── INLINE TABLE FILTERS ─── */
+        .inline-filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .search-input {
+            flex: 1; min-width: 250px; padding: 12px 16px; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            color: var(--text-primary); font-size: 1rem; font-family: var(--font); outline: none;
+        }
+        .search-input:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); }
+        .inline-select { width: 180px; }
 
-        .status-badge { padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:700; text-transform:uppercase; }
-        .status-badge.active   { background:rgba(34,197,94,0.1);  color:#34d399; border:1px solid rgba(34,197,94,0.2); }
-        .status-badge.sold     { background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.2); }
-        .status-badge.deceased { background:rgba(107,114,128,0.1); color:#94a3b8; border:1px solid rgba(107,114,128,0.2); }
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+        }
+        .table-wrap { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        .table thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        .table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .table td { padding: 12px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
 
-        .empty-state { text-align:center; padding:3rem 1rem; display:block; color:#94a3b8; }
+        /* ─── TAG INPUT ─── */
+        .tag-input {
+            width: 100%; max-width: 220px; padding: 10px 14px; background: var(--bg-base);
+            border: 2px solid var(--border); border-radius: 8px; color: #fff;
+            font-weight: 700; font-size: 1rem; font-family: var(--font-mono);
+            outline: none; transition: all var(--transition);
+        }
+        .tag-input:focus { border-color: var(--sky); background: var(--bg-elevated); box-shadow: 0 0 12px var(--sky-glow); }
+        .tag-input.changed { border-color: var(--emerald); color: var(--emerald); background: var(--emerald-dim); }
 
-        /* Sticky Footer */
-        .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(15, 23, 42, 0.95); border-top: 1px solid #334155; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 100; backdrop-filter: blur(10px); }
-        .changes-tracker { color: #34d399; font-weight: bold; font-size: 1.1rem; display: none;}
-        .btn-save-all { background: #22c55e; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(34,197,94,0.3);}
-        .btn-save-all:hover { background: #16a34a; transform: translateY(-2px); }
-        .btn-save-all:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; box-shadow: none; transform: none; }
+        .col-path { color: var(--text-secondary); font-size: 0.8rem; }
+        .col-path strong { color: var(--text-primary); font-weight: 600; }
 
-        @media (max-width:900px) {
-            .container { padding:1rem; }
-            .filter-bar { grid-template-columns:1fr; }
-            .btn-reset { width:100%; }
+        .status-badge {
+            padding: 4px 10px; border-radius: 99px; font-size: 0.7rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+        }
+        .status-badge.active   { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2); }
+        .status-badge.sold     { background: var(--sky-dim); color: var(--sky); border: 1px solid rgba(14,165,233,0.2); }
+        .status-badge.deceased { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border); }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+
+        /* ─── STICKY FOOTER ─── */
+        .sticky-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(13, 24, 41, 0.95); backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-active); padding: 1.25rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100; box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+        }
+        .changes-tracker { 
+            color: var(--emerald); font-weight: 700; font-family: var(--font-mono); 
+            font-size: 1rem; display: none; align-items: center; gap: 8px;
+        }
+        .changes-tracker::before {
+            content: ''; width: 8px; height: 8px; background: var(--emerald); 
+            border-radius: 50%; box-shadow: 0 0 10px var(--emerald);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        .btn-save-all {
+            background: var(--sky); color: #000; border: none; padding: 12px 36px;
+            border-radius: var(--radius-md); font-weight: 700; font-size: 1rem;
+            cursor: pointer; transition: all var(--transition); box-shadow: 0 4px 15px var(--sky-glow);
+        }
+        .btn-save-all:hover { background: #38bdf8; transform: translateY(-2px); box-shadow: 0 8px 25px var(--sky-glow); }
+        .btn-save-all:disabled { opacity: 0.4; transform: none; box-shadow: none; cursor: not-allowed; }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 900px) {
+            .container { padding: 1rem; }
+            .filter-card { grid-template-columns: 1fr; }
             .inline-filters { flex-direction: column; }
             .inline-select { width: 100%; }
-            
-            .table-container { border:none; background:transparent; }
-            .table { min-width:0; display:block; }
-            .table thead { display:none; }
-            .table tbody { display:block; width:100%; }
-            .table tr  { display:block; background:rgba(30,41,59,0.6); border:1px solid #475569; border-radius:12px; margin-bottom:1rem; padding:1rem; }
-            .table td  { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 0; border-bottom:1px dashed rgba(255,255,255,0.1); text-align:right; font-size:0.95rem; }
-            .table td:last-child { border-bottom:none; flex-direction: column; align-items: flex-end; gap: 10px;}
-            .table td::before { content:attr(data-label); font-weight:700; color:#94a3b8; font-size:0.8rem; text-transform:uppercase; margin-right:1rem; text-align:left; flex-shrink:0; }
-            
-            .sticky-footer { padding: 1rem; flex-direction: column; gap: 10px; text-align: center;}
+
+            .table-wrap { border: none; background: transparent; }
+            .table, .table thead, .table tbody, .table tr, .table td { display: block; }
+            .table thead { display: none; }
+            .table tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
+            }
+            .table td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+            }
+            .table td:last-child { border-bottom: none; }
+            .table td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+            }
+            .sticky-footer { flex-direction: column; gap: 12px; padding: 1.5rem; text-align: center; }
             .btn-save-all { width: 100%; }
         }
     </style>
@@ -164,31 +292,36 @@ try {
 <body>
 <div class="container">
 
-    <a href="farm_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Farm Dashboard
-    </a>
+    <div class="top-bar">
+        <a href="farm_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Farm Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-tags"></i> Batch Processing</span>
+    </div>
 
-    <div class="header">
+    <div class="page-header">
         <div class="header-info">
-            <h1>Batch Tag Editor</h1>
-            <p>Rapidly update tag numbers for animals in a specific location.</p>
+            <h1>Batch <span>Tag Editor</span></h1>
+            <p>Modify and reconcile identification numbers for the active herd across specific sites.</p>
         </div>
     </div>
 
-    <form method="GET" class="filter-bar">
+    <form method="GET" class="filter-card">
         <div class="filter-group">
-            <label>1. Location</label>
-            <select name="f_loc" class="filter-select" onchange="this.form.submit()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events:none;opacity:0.7;background-color:#1e293b;"' : ''; ?>>
-                <?php if ($USER_LOCATION_ == 1000): ?><option value="">-- Select Location --</option><?php endif; ?>
+            <label>1. Location Registry</label>
+            <select name="f_loc" class="form-select" onchange="this.form.submit()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
+                <?php if ($USER_LOCATION_ == 1000): ?><option value="">-- Choose Location --</option><?php endif; ?>
                 <?php foreach ($locations as $loc): ?>
                     <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>><?= htmlspecialchars($loc['LOCATION_NAME']) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php if ($USER_LOCATION_ != 1000): ?>
+                <input type="hidden" name="f_loc" value="<?= $USER_LOCATION_ ?>">
+            <?php endif; ?>
         </div>
         <div class="filter-group">
-            <label>2. Building</label>
-            <select name="f_bld" class="filter-select" onchange="this.form.submit()" <?= empty($filter_loc) ? 'disabled' : '' ?>>
+            <label>2. Structural Unit</label>
+            <select name="f_bld" class="form-select" onchange="this.form.submit()" <?= empty($filter_loc) ? 'disabled' : '' ?>>
                 <option value="">-- All Buildings --</option>
                 <?php foreach ($filter_buildings as $bld): ?>
                     <option value="<?= $bld['BUILDING_ID'] ?>" <?= $filter_bld == $bld['BUILDING_ID'] ? 'selected' : '' ?>><?= htmlspecialchars($bld['BUILDING_NAME']) ?></option>
@@ -196,95 +329,99 @@ try {
             </select>
         </div>
         <div class="filter-group">
-            <label>3. Pen</label>
-            <select name="f_pen" class="filter-select" onchange="this.form.submit()" <?= empty($filter_bld) ? 'disabled' : '' ?>>
+            <label>3. Target Pen</label>
+            <select name="f_pen" class="form-select" onchange="this.form.submit()" <?= empty($filter_bld) ? 'disabled' : '' ?>>
                 <option value="">-- All Pens --</option>
                 <?php foreach ($filter_pens as $pen): ?>
                     <option value="<?= $pen['PEN_ID'] ?>" <?= $filter_pen == $pen['PEN_ID'] ? 'selected' : '' ?>><?= htmlspecialchars($pen['PEN_NAME']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <a href="edit_animal_tags.php" class="btn-reset">Reset</a>
+        <a href="edit_animal_tags.php" class="btn-reset">
+            <i class="fa-solid fa-rotate-left me-2"></i> Reset View
+        </a>
     </form>
 
     <?php if (!empty($animal_data)): ?>
         <div class="inline-filters">
             <input type="text" class="search-input" id="search_term" placeholder="Search rows by tag, breed, or classification..." onkeyup="filterTable()">
             
-            <select class="inline-select" id="filter_sex" onchange="filterTable()">
+            <select class="form-select inline-select" id="filter_sex" onchange="filterTable()">
                 <option value="">All Sexes</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
-                <option value="unknown">Unknown</option>
             </select>
 
-            <select class="inline-select" id="filter_status" onchange="filterTable()">
+            <select class="form-select inline-select" id="filter_status" onchange="filterTable()">
                 <option value="">All Statuses</option>
                 <option value="active">Active</option>
                 <option value="pregnant">Pregnant</option>
-                <option value="service">Service</option>
                 <option value="dry">Dry</option>
             </select>
         </div>
     <?php endif; ?>
 
-    <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Current Tag No.</th>
-                    <th>Class / Breed</th>
-                    <th>Sex</th>
-                    <th>Status</th>
-                    <th>Location</th>
-                </tr>
-            </thead>
-            <tbody id="animal-table">
-                <?php foreach ($animal_data as $data): ?>
-                    <?php 
-                        $sexLabel = 'Unknown';
-                        if ($data['SEX'] == 'M') $sexLabel = 'Male';
-                        if ($data['SEX'] == 'F') $sexLabel = 'Female';
-                    ?>
-                    <tr class="animal-row" data-id="<?= $data['ANIMAL_ID'] ?>">
-                        <td data-label="ID" style="color: #94a3b8; font-family: monospace;">#<?= $data['ANIMAL_ID'] ?></td>
-                        <td data-label="Tag No">
-                            <input type="text" class="tag-input" 
-                                   value="<?= htmlspecialchars($data['TAG_NO']) ?>" 
-                                   data-original="<?= htmlspecialchars($data['TAG_NO']) ?>"
-                                   onkeyup="checkInputChanges(this)">
-                        </td>
-                        <td data-label="Class / Breed">
-                            <div class="animal-type-info">
-                                <span style="color:#fff;font-weight:600;"><?= htmlspecialchars($data['STAGE_NAME'] ?? 'Unclassified') ?></span><br>
-                                <small style="color:#94a3b8"><?= htmlspecialchars($data['BREED_NAME']) ?></small>
-                            </div>
-                        </td>
-                        <td data-label="Sex" class="col-sex"><?= $sexLabel ?></td>
-                        <td data-label="Status" class="col-status">
-                            <span class="status-badge <?= strtolower($data['CURRENT_STATUS']) ?>"><?= htmlspecialchars($data['CURRENT_STATUS']) ?></span>
-                        </td>
-                        <td data-label="Location"><?= htmlspecialchars($data['BUILDING_NAME']) ?> - <?= htmlspecialchars($data['PEN_NAME']) ?></td>
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">System ID</th>
+                        <th>Interactive Tag No.</th>
+                        <th>Life Stage / Breed</th>
+                        <th>Gender</th>
+                        <th>Current Status</th>
+                        <th>Physical Placement</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="animal-table">
+                    <?php foreach ($animal_data as $data): ?>
+                        <tr class="animal-row" data-id="<?= $data['ANIMAL_ID'] ?>">
+                            <td data-label="ID" style="color: var(--text-muted); font-family: var(--font-mono);">#<?= $data['ANIMAL_ID'] ?></td>
+                            <td data-label="Tag Input">
+                                <input type="text" class="tag-input" 
+                                       value="<?= htmlspecialchars($data['TAG_NO']) ?>" 
+                                       data-original="<?= htmlspecialchars($data['TAG_NO']) ?>"
+                                       onkeyup="checkInputChanges(this)"
+                                       spellcheck="false">
+                            </td>
+                            <td data-label="Breed">
+                                <div class="breed-info">
+                                    <span style="font-weight:700; color:#fff;"><?= htmlspecialchars($data['STAGE_NAME'] ?? 'Unclassified') ?></span><br>
+                                    <small style="color:var(--text-secondary);"><?= htmlspecialchars($data['BREED_NAME']) ?></small>
+                                </div>
+                            </td>
+                            <td data-label="Gender" class="col-sex"><?= ($data['SEX'] == 'M') ? 'Male' : (($data['SEX'] == 'F') ? 'Female' : 'Unknown') ?></td>
+                            <td data-label="Status" class="col-status">
+                                <span class="status-badge <?= strtolower($data['CURRENT_STATUS']) ?>"><?= htmlspecialchars($data['CURRENT_STATUS']) ?></span>
+                            </td>
+                            <td data-label="Location" class="col-path">
+                                <strong><?= htmlspecialchars($data['BUILDING_NAME']) ?></strong><br>
+                                <?= htmlspecialchars($data['PEN_NAME']) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        
         <div id="empty-state" class="empty-state" style="display:<?= empty($animal_data) ? 'block' : 'none' ?>;">
-            <h3><?= empty($filter_loc) ? 'Please select a Location to load animals' : 'No records found matching criteria' ?></h3>
+            <i class="fa-solid fa-folder-open" style="font-size: 3rem; opacity: 0.2; margin-bottom: 1.5rem; display:block;"></i>
+            <h3><?= empty($filter_loc) ? 'Select a location to initialize the editor' : 'No records found matching these criteria' ?></h3>
         </div>
     </div>
 </div>
 
-<div class="sticky-footer">
+<div class="sticky-footer" id="stickyFooter">
     <div id="changes-tracker" class="changes-tracker">0 tags modified</div>
-    <button type="button" class="btn-save-all" id="btnSave" onclick="saveAllTags()" disabled>Save All Changes</button>
+    <button type="button" class="btn-save-all" id="btnSave" onclick="saveAllTags()" disabled>
+        <i class="fa-solid fa-floppy-disk me-2"></i> Save Changes
+    </button>
 </div>
 
 <script>
     let changesCount = 0;
 
-    // Checks individual inputs as the user types
     function checkInputChanges(input) {
         const orig = input.getAttribute('data-original').trim().toUpperCase();
         const current = input.value.trim().toUpperCase();
@@ -305,7 +442,7 @@ try {
         const btnSave = document.getElementById('btnSave');
 
         if (changesCount > 0) {
-            tracker.style.display = 'block';
+            tracker.style.display = 'flex';
             tracker.innerText = `${changesCount} tag(s) modified`;
             btnSave.disabled = false;
         } else {
@@ -314,7 +451,6 @@ try {
         }
     }
 
-    // Dynamic Filter Table (Search + Sex + Status)
     function filterTable() {
         const term = document.getElementById('search_term').value.toLowerCase();
         const sexFilter = document.getElementById('filter_sex').value.toLowerCase();
@@ -343,16 +479,15 @@ try {
         document.getElementById('empty-state').style.display = (visible === 0) ? 'block' : 'none';
     }
 
-    // Save Logic
     async function saveAllTags() {
         const changedInputs = document.querySelectorAll('.tag-input.changed');
         if (changedInputs.length === 0) return;
 
-        if (!confirm(`Are you sure you want to update ${changedInputs.length} tags?`)) return;
+        if (!confirm(`Are you sure you want to commit updates for ${changedInputs.length} record(s)?`)) return;
 
         const btnSave = document.getElementById('btnSave');
         btnSave.disabled = true;
-        btnSave.innerText = "Saving...";
+        btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Processing...';
 
         const payload = [];
         let hasEmpty = false;
@@ -360,7 +495,6 @@ try {
         changedInputs.forEach(input => {
             const val = input.value.trim();
             if (val === '') hasEmpty = true;
-            
             payload.push({
                 animal_id: input.closest('tr').getAttribute('data-id'),
                 tag_no: val
@@ -368,9 +502,9 @@ try {
         });
 
         if (hasEmpty) {
-            alert("Error: One or more tags are empty. Please fill them out before saving.");
+            alert("Error: Tag numbers cannot be empty. Please correct the highlighted rows.");
             btnSave.disabled = false;
-            btnSave.innerText = "Save All Changes";
+            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i> Save Changes';
             return;
         }
 
@@ -384,21 +518,20 @@ try {
             const result = await response.json();
 
             if (result.success) {
-                alert(result.message);
-                // Update 'original' dataset on inputs so they turn back to normal styling
+                alert("Success: " + result.message);
                 changedInputs.forEach(input => {
                     input.setAttribute('data-original', input.value.trim().toUpperCase());
                     input.classList.remove('changed');
                 });
                 updateGlobalChangeCount();
             } else {
-                alert("Error: " + result.message);
+                alert("Database Error: " + result.message);
             }
         } catch (error) {
             console.error(error);
-            alert("A system error occurred while trying to save.");
+            alert("Network Error: Could not reach the server.");
         } finally {
-            btnSave.innerText = "Save All Changes";
+            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i> Save Changes';
             updateGlobalChangeCount();
         }
     }

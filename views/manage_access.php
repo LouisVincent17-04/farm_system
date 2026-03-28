@@ -68,85 +68,191 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Manage Access | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        .access-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .grid-wrapper { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
-
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
-        .card-header { background: rgba(15,23,42,0.5); padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        .card-title { color: #f43f5e; font-weight: 700; margin: 0; font-size: 0.95rem; text-transform: uppercase; }
-        .card-body { padding: 1rem; }
-
-        .chk-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 6px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        .chk-item:hover { background: rgba(255,255,255,0.05); }
-        .chk-item input { width: 18px; height: 18px; accent-color: #f43f5e; cursor: pointer; }
-        .chk-item span { color: #cbd5e1; font-size: 0.9rem; }
-
-        /* Locked/restricted checkbox styling */
-        .chk-item.is-restricted { opacity: 0.4; cursor: not-allowed; }
-        .chk-item.is-restricted:hover { background: transparent; }
-        .chk-item.is-restricted input { cursor: not-allowed; }
-        .chk-item.is-restricted span::after {
-            content: ' 🔒';
-            font-size: 0.75rem;
-            opacity: 0.7;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            
+            --rose:           #f43f5e;
+            --emerald:        #10b981;
+            --blue:           #3b82f6;
+            --amber:          #f59e0b;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .select-all-link { color: #60a5fa; font-size: 0.75rem; text-decoration: none; cursor: pointer; }
-        .select-all-link:hover { text-decoration: underline; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            margin: 0; padding-bottom: 80px; /* Space for sticky footer */
+        }
+        .access-container { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
+        
+        .page-title { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 1.5rem 0; color: #fff; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px;}
 
-        .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #0f172a; border-top: 1px solid #334155; padding: 1rem; text-align: center; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); z-index: 100; }
+        /* ─── CONTROL PANEL ─── */
+        .control-panel {
+            background: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg);
+            border: 1px solid var(--border); margin-bottom: 2rem; display: flex; gap: 20px;
+            align-items: flex-start; flex-wrap: wrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        .control-panel.active-panel { background: var(--bg-elevated); border-color: rgba(59,130,246,0.3); }
 
-        .control-panel { background: #1e293b; padding: 1.5rem; border-radius: 12px; border: 1px solid #334155; margin-bottom: 2rem; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
         .form-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 250px; }
-        .form-group label { color: #94a3b8; font-weight: bold; font-size: 0.9rem; }
-        .form-control { background: #0f172a; border: 1px solid #334155; color: white; padding: 10px; border-radius: 8px; width: 100%; }
-        .form-control:focus { outline: none; border-color: #3b82f6; }
+        .form-group label { color: var(--text-secondary); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .form-control {
+            background: var(--bg-base); border: 1px solid var(--border); color: white;
+            padding: 12px 16px; border-radius: var(--radius-md); width: 100%; font-family: var(--font); font-size: 0.95rem;
+            outline: none; transition: var(--transition); appearance: none;
+        }
+        select.form-control {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 16px center; cursor: pointer;
+        }
+        .form-control:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .hint-text { color: var(--text-muted); font-size: 0.8rem; }
 
-        .btn-save { background: #22c55e; color: #064e3b; border: none; padding: 12px 40px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: transform 0.2s, background 0.2s; }
-        .btn-save:hover { background: #16a34a; transform: translateY(-2px); color: white; }
-
-        /* Restriction notice banner */
+        /* ─── RESTRICTION BANNER ─── */
         .restriction-notice {
-            display: none;
-            background: rgba(251,191,36,0.08);
-            border: 1px solid rgba(251,191,36,0.3);
-            border-radius: 8px;
-            padding: 0.65rem 1rem;
-            font-size: 0.82rem;
-            color: #fcd34d;
-            margin-bottom: 1.25rem;
-            align-items: center;
-            gap: 8px;
+            display: none; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md); padding: 1rem 1.25rem; font-size: 0.9rem; color: #fcd34d;
+            margin-bottom: 1.5rem; align-items: center; gap: 10px; font-weight: 500;
         }
         .restriction-notice.show { display: flex; }
 
-        /* Modal */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
+        /* ─── PERMISSION CARDS ─── */
+        .grid-wrapper { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+
+        .card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; transition: var(--transition); }
+        .card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.3); transform: translateY(-2px);}
+        
+        .card-header {
+            background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .card-title { color: var(--rose); font-weight: 700; margin: 0; font-size: 1rem; }
+        .card-body { padding: 1rem 1.5rem; }
+
+        .select-all-link { color: var(--blue); font-size: 0.8rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: var(--transition); }
+        .select-all-link:hover { color: #93c5fd; }
+
+        /* Checkbox Items */
+        .chk-item {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 8px; padding: 8px 10px;
+            border-radius: 8px; cursor: pointer; transition: var(--transition); border: 1px solid transparent;
+        }
+        .chk-item:hover:not(.is-restricted) { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.05); }
+        
+        .chk-item input {
+            appearance: none; width: 18px; height: 18px; border: 2px solid var(--text-muted); border-radius: 4px;
+            margin: 0; cursor: pointer; position: relative; transition: var(--transition); background: var(--bg-base); flex-shrink: 0;
+        }
+        .chk-item input:checked { background: var(--rose); border-color: var(--rose); }
+        .chk-item input:checked::after {
+            content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+            color: #fff; font-size: 11px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+        .chk-item span { color: var(--text-primary); font-size: 0.95rem; font-weight: 500; user-select: none; }
+
+        /* Locked/restricted checkbox styling */
+        .chk-item.is-restricted { opacity: 0.5; cursor: not-allowed; }
+        .chk-item.is-restricted input { cursor: not-allowed; background: rgba(255,255,255,0.05); border-color: transparent;}
+        .chk-item.is-restricted span { color: var(--text-muted); }
+        .chk-item.is-restricted span::after { content: '\f023'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.75rem; margin-left: 8px; color: var(--amber); opacity: 0.8; }
+
+        /* ─── STICKY FOOTER ─── */
+        .sticky-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(15,23,42,0.9);
+            backdrop-filter: blur(10px); border-top: 1px solid var(--border); padding: 1.25rem;
+            display: flex; justify-content: center; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); z-index: 100;
+        }
+        .btn-save {
+            background: var(--emerald); color: #000; border: none; padding: 14px 40px;
+            border-radius: var(--radius-md); font-weight: 800; cursor: pointer; font-size: 1rem; font-family: var(--font);
+            transition: var(--transition); display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(16,185,129,0.2);
+        }
+        .btn-save:hover { background: #34d399; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16,185,129,0.4); }
+
+        /* ─── PROFESSIONAL MODAL ─── */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+            z-index: 2000; display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         .modal-overlay.show { display: flex; opacity: 1; }
-        .modal-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; width: 100%; max-width: 450px; padding: 2rem; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s ease; }
-        .modal-overlay.show .modal-card { transform: translateY(0); }
-        .modal-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
-        .modal-title { color: white; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .modal-text { color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5; }
-        .modal-text strong { color: #38bdf8; }
+        
+        .modal-card {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl);
+            width: 100%; max-width: 450px; padding: 2.5rem 2rem; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); transform: scale(0.95); opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;
+        }
+        .modal-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--amber), #d97706); }
+        .modal-overlay.show .modal-card { transform: scale(1); opacity: 1; }
+        
+        .modal-icon-wrapper {
+            width: 72px; height: 72px; border-radius: 50%; background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem auto; color: var(--amber); font-size: 2rem; box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+        }
+        
+        .modal-title { color: white; font-size: 1.5rem; font-weight: 700; margin: 0 0 0.75rem 0; letter-spacing: -0.02em;}
+        .modal-text { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5; }
+        .modal-highlight { color: var(--rose); font-size: 1.1rem; display: inline-block; margin-top: 8px; font-weight: 700; font-family: var(--font-mono);}
+        
         .modal-actions { display: flex; gap: 1rem; justify-content: center; }
-        .btn-cancel { background: transparent; color: #94a3b8; border: 1px solid #475569; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
-        .btn-confirm { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(59,130,246,0.3); }
-        .btn-confirm:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); transform: translateY(-1px); }
+        .btn-cancel {
+            background: transparent; color: var(--text-secondary); border: 1px solid var(--border);
+            padding: 12px 24px; border-radius: var(--radius-md); font-weight: 700; font-family: var(--font);
+            cursor: pointer; transition: var(--transition); flex: 1;
+        }
+        .btn-cancel:hover { background: var(--bg-hover); color: white; border-color: var(--text-muted); }
+        .btn-confirm {
+            background: var(--blue); color: white; border: none; padding: 12px 24px; flex: 1;
+            border-radius: var(--radius-md); font-weight: 700; font-family: var(--font); cursor: pointer;
+            transition: var(--transition); box-shadow: 0 4px 15px rgba(59,130,246,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-confirm:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.4);}
+
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
+<div id="toastContainer"></div>
 
 <div class="access-container">
-    <h1 style="color:white; margin-bottom:1.5rem;">🛡️ User Access Control</h1>
+    <h1 class="page-title"><i class="fa-solid fa-shield-halved" style="color:var(--rose);"></i> User Access Control</h1>
 
-    <!-- User selector -->
     <div class="control-panel">
-        <form method="GET" style="display:flex; gap:20px; align-items:flex-end; width:100%;">
-            <div class="form-group" style="max-width:400px;">
+        <form method="GET" style="display:flex; gap:20px; align-items:flex-end; width:100%; flex-wrap: wrap;">
+            <div class="form-group" style="max-width:400px; margin:0;">
                 <label>Select User to Configure:</label>
                 <select name="user_id" class="form-control" onchange="this.form.submit()" required>
                     <option value="">-- Choose User --</option>
@@ -167,12 +273,12 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
 
     <?php if ($selected_user): ?>
     <?php if (!isset($permission_map)): ?>
-        <div style="color:var(--danger);padding:20px;border:1px solid red;">CRITICAL ERROR: config/PageList.php is missing.</div>
+        <div style="color:var(--red); padding:20px; border:1px solid var(--red); background:var(--red-dim); border-radius:var(--radius-md); font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> CRITICAL ERROR: config/PageList.php is missing.</div>
     <?php else: ?>
 
-    <!-- Restriction notice — shown for basic roles or non-superadmins -->
     <div class="restriction-notice <?= in_array((int)$current_role, [1, 2, 3]) ? 'show' : '' ?>" id="restrictionNotice">
-        🔒 <span id="restrictionText">
+        <i class="fa-solid fa-lock"></i>
+        <span id="restrictionText">
             <?php if (in_array((int)$current_role, [1, 2])): ?>
                 Some permissions are disabled for this role. Promote to Admin or Super Admin to unlock them.
             <?php elseif ((int)$current_role === 3): ?>
@@ -184,31 +290,31 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
     <form id="accessForm" action="../process/saveAccess.php" method="POST">
         <input type="hidden" name="user_id" value="<?= $selected_user ?>">
 
-        <div class="control-panel" style="margin-bottom:1.5rem; background:#0f172a; border-color:#3b82f6;">
+        <div class="control-panel active-panel">
 
             <div class="form-group">
-                <label style="color:#60a5fa;">User Role:</label>
+                <label style="color:var(--blue);">User Role Hierarchy:</label>
                 <select name="role_id" id="roleSelector" class="form-control" onchange="applyRolePreset(this.value)">
                     <option value="1" <?= $current_role == 1 ? 'selected' : '' ?>>👤 New User (No Access)</option>
                     <option value="2" <?= $current_role == 2 ? 'selected' : '' ?>>🚜 Farm Employee (Operations)</option>
                     <option value="3" <?= $current_role == 3 ? 'selected' : '' ?>>👔 Admin (Management)</option>
                     <option value="4" <?= $current_role == 4 ? 'selected' : '' ?>>⚡ Super Admin (Full Control)</option>
                 </select>
-                <small style="color:#64748b;">Changing this automatically checks/unchecks permissions below.</small>
+                <span class="hint-text">Changing this automatically configures permissions below.</span>
             </div>
 
             <div class="form-group">
-                <label style="color:#34d399;">Assigned Location:</label>
+                <label style="color:var(--emerald);">Assigned Location Constraint:</label>
                 <select name="location_id" id="locationSelector" class="form-control">
                     <option value="">Assign Location...</option>
-                    <option value="1000" <?= $current_location == 1000 ? 'selected' : '' ?>>All Locations...</option>
+                    <option value="1000" <?= $current_location == 1000 ? 'selected' : '' ?>>All Locations (Global)</option>
                     <?php foreach($locations as $loc): ?>
                         <option value="<?= $loc['LOCATION_ID'] ?>" <?= ($current_location !== null && $current_location == $loc['LOCATION_ID']) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <small style="color:#64748b;">Leave unassigned for Global/All Locations access.</small>
+                <span class="hint-text">Leave unassigned for standard Global/All Locations access.</span>
             </div>
         </div>
 
@@ -257,26 +363,25 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
             <?php endforeach; ?>
         </div>
 
-        <div style="height:100px;"></div>
-
         <div class="sticky-footer">
-            <button type="button" class="btn-save" onclick="openConfirmationModal()">💾 Save Role & Permissions</button>
+            <button type="button" class="btn-save" onclick="openConfirmationModal()"><i class="fa-solid fa-shield-check"></i> Save Role &amp; Permissions</button>
         </div>
     </form>
 
-    <!-- Confirmation modal -->
     <div id="confirmModal" class="modal-overlay">
         <div class="modal-card">
-            <span class="modal-icon">⚠️</span>
+            <div class="modal-icon-wrapper">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
             <h2 class="modal-title">Confirm Access Changes</h2>
             <p class="modal-text">
-                You are about to update the role and permissions for<br>
-                <strong><?= htmlspecialchars($selected_user_name) ?></strong>.<br><br>
+                You are about to update the functional role and system permissions for<br>
+                <strong class="modal-highlight"><?= htmlspecialchars($selected_user_name) ?></strong>.<br><br>
                 Are you sure you want to proceed?
             </p>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel" onclick="closeConfirmationModal()">Cancel</button>
-                <button type="button" class="btn-confirm" onclick="submitForm()">Yes, Save Changes</button>
+                <button type="button" class="btn-confirm" onclick="submitForm()"><i class="fa-solid fa-check"></i> Apply Changes</button>
             </div>
         </div>
     </div>
@@ -286,6 +391,16 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
 </div>
 
 <script>
+    // ── Toast Notification Helper ───────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
+        t.innerHTML = `${type === 'error' ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-check"></i>'} ${msg}`;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+
     // ── Restriction lists (from PageList.php via PHP) ─────────────────────────
     const RESTRICTED_BASIC = <?= $restricted_json ?>;        // locked for USER_TYPE 1 & 2
     const RESTRICTED_SUPER = <?= $restricted_super_json ?>;  // locked for USER_TYPE 1, 2 & 3 (non-superadmin)
@@ -377,9 +492,7 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
             });
         }
 
-        // Always apply restrictions after setting checkboxes —
-        // this unchecks and disables anything the role isn't allowed to have
-        // The 
+        // Always apply restrictions after setting checkboxes
         applyRestrictions(roleId);
     }
 
@@ -387,7 +500,7 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
     function toggleCard(link) {
         const card       = link.closest('.card');
         const checkboxes = Array.from(card.querySelectorAll('input[type="checkbox"]:not(:disabled)'));
-        const allChecked = checkboxes.every(cb => cb.checke-d);
+        const allChecked = checkboxes.every(cb => cb.checked);
         checkboxes.forEach(cb => cb.checked = !allChecked);
         updateCardHeaderText(card);
     }
@@ -407,16 +520,16 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
 
     // ── Page load ─────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-        const currentRole = document.getElementById('roleSelector').value;
-        applyRestrictions(currentRole);
-        document.querySelectorAll('.card').forEach(card => updateCardHeaderText(card));
+        const roleSel = document.getElementById('roleSelector');
+        if(roleSel) {
+            applyRestrictions(roleSel.value);
+            document.querySelectorAll('.card').forEach(card => updateCardHeaderText(card));
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('success') === '1') {
-            setTimeout(() => {
-                alert('✅ Permissions and Role successfully updated!');
-                window.history.replaceState({}, document.title, window.location.pathname + '?user_id=<?= $selected_user ?>');
-            }, 100);
+            showToast('Permissions and Role successfully updated!');
+            window.history.replaceState({}, document.title, window.location.pathname + '?user_id=<?= $selected_user ?>');
         }
     });
 
@@ -429,11 +542,12 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
 
     function submitForm() {
         const btn = document.querySelector('.btn-confirm');
-        btn.innerHTML = 'Saving...';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         btn.disabled  = true;
         form.submit();
     }
 
+    // Close on outside click
     modal.addEventListener('click', e => {
         if (e.target === modal) closeConfirmationModal();
     });

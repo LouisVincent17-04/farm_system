@@ -50,92 +50,174 @@ if ($selected_pen) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Birth Certificates - FarmPro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Birth Certificates | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0f172a; color: #e2e8f0; font-family: sans-serif; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        
-        /* Back Link Style */
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(14,165,233,0.5); /* Sky Blue Accent */
+            
+            --sky:            #0ea5e9;
+            --sky-dim:        rgba(14,165,233,0.12);
+            --sky-glow:       rgba(14,165,233,0.25);
+            --emerald:        #10b981;
+            --pink:           #ec4899;
+            --blue:           #3b82f6;
+            --amber:          #f59e0b;
+            --red:            #f87171;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14,165,233,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .title { font-size: 2rem; font-weight: 800; color: #0ea5e9; margin: 0; display:flex; align-items:center; gap:10px; }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--sky); background: var(--sky-dim); border: 1px solid rgba(14,165,233,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        /* ─── HEADER ─── */
+        .page-header { margin-bottom: 2.5rem; }
+        .page-header h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em;}
+        .page-header h1 span { background: linear-gradient(135deg, var(--sky), #0284c7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .page-header p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
+
+        /* ─── FILTERS ─── */
+        .filter-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 1.5rem; margin-bottom: 2rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; align-items: flex-end;
+            box-shadow: var(--shadow-md);
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         
-        /* Filter Bar Styles */
-        .filter-bar { 
-            background: rgba(30, 41, 59, 0.6); 
-            padding: 1.5rem; 
-            border-radius: 12px; 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 1rem; 
-            margin-bottom: 2rem; 
-            border: 1px solid #334155; 
-            align-items: end;
+        .form-select {
+            width: 100%; padding: 12px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition); box-sizing: border-box;
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
         }
-        .filter-group label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 5px; font-weight: bold; }
-        .form-select { 
-            width: 100%; padding: 12px; background: #1e293b; border: 1px solid #475569; 
-            color: white; border-radius: 6px; font-size: 1rem; cursor: pointer;
-        }
-        .form-select:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-primary { 
-            background: #0ea5e9; color: white; padding: 12px; border: none; border-radius: 6px; 
-            cursor: pointer; font-weight: bold; width: 100%; transition: background 0.2s;
-        }
-        .btn-primary:hover { background: #0284c7; }
+        .form-select:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); background: var(--bg-hover); }
+        .form-select:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); }
 
-        /* Grid Layout for Cards */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+        .btn-primary {
+            background: var(--sky); color: #000; border: none; padding: 12px 24px; 
+            border-radius: var(--radius-md); cursor: pointer; font-weight: 700; font-family: var(--font);
+            transition: var(--transition); font-size: 0.95rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 46px;
+        }
+        .btn-primary:hover { background: #38bdf8; box-shadow: 0 4px 15px var(--sky-glow); transform: translateY(-1px); }
+
+        /* ─── ANIMAL CARDS GRID ─── */
+        .section-title { color: var(--sky); font-size: 1.25rem; font-weight: 700; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 10px;}
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
         
         .animal-card { 
-            background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; 
-            transition: transform 0.2s; display: flex; flex-direction: column;
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); 
+            padding: 1.5rem; transition: var(--transition); display: flex; flex-direction: column;
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
         }
-        .animal-card:hover { transform: translateY(-5px); border-color: #0ea5e9; }
+        .animal-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+            background: linear-gradient(180deg, var(--sky), #0284c7);
+        }
+        .animal-card:hover { transform: translateY(-4px); border-color: rgba(14,165,233,0.4); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.5); }
         
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-        .tag-no { font-size: 1.5rem; font-weight: bold; color: #fff; }
-        .sex-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .sex-M { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
-        .sex-F { background: rgba(244, 114, 182, 0.2); color: #f472b6; }
-        .sex-U { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #cbd5e1; }
-        .info-label { color: #94a3b8; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; }
+        .tag-no { font-size: 1.5rem; font-weight: 700; color: #fff; font-family: var(--font-mono); letter-spacing: -0.02em;}
+        
+        .sex-badge { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 4px;}
+        .sex-M { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,0.3);}
+        .sex-F { background: var(--pink-dim); color: var(--pink); border: 1px solid rgba(236,72,153,0.3);}
+        .sex-U { background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border);}
+        
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; color: var(--text-primary); align-items: center;}
+        .info-label { color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;}
+        .val-mono { font-family: var(--font-mono); font-weight: 600; }
+        
+        .parent-tag { color: var(--pink); font-weight: 700; font-family: var(--font-mono); }
+        .sire-tag { color: var(--blue); font-weight: 700; font-family: var(--font-mono); }
 
         .btn-print { 
-            background: #334155; color: #e2e8f0; text-decoration: none; padding: 10px; 
-            border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; 
-            transition: all 0.2s; font-weight: 600;
+            background: var(--bg-elevated); color: var(--text-primary); text-decoration: none; padding: 12px; 
+            border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px; 
+            transition: var(--transition); font-weight: 700; font-size: 0.9rem; border: 1px solid var(--border);
+            margin-top: auto;
         }
-        .btn-print:hover { background: #0ea5e9; color: white; }
+        .btn-print:hover { background: var(--sky); color: #000; border-color: var(--sky); box-shadow: 0 4px 15px var(--sky-glow);}
 
-        .empty-state { text-align: center; color: #64748b; padding: 3rem; font-size: 1.2rem; }
+        .empty-state { text-align: center; color: var(--text-muted); padding: 4rem; font-style: italic; background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--radius-xl); grid-column: 1 / -1;}
+        
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .filter-card { grid-template-columns: 1fr; gap: 1rem; padding: 1.25rem; }
+            .btn-primary { height: auto; }
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     
-    <a href="farm_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Farm Dashboard
-    </a>
-
-    <div class="header">
-        <h1 class="title">📜 Birth Certificates</h1>
+    <div class="top-bar">
+        <a href="farm_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Farm Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-certificate"></i> Official Records</span>
     </div>
 
-    <div class="filter-bar">
-        <div class="filter-group">
+    <header class="page-header">
+        <h1>Birth <span>Certificates</span></h1>
+        <p>Access and print official registration and pedigree documents for livestock.</p>
+    </header>
+
+    <form class="filter-card" method="GET" id="filterForm">
+        <div class="form-group">
             <label>1. Location</label>
-            <select id="locSelect" class="form-select" onchange="loadBuildings()">
+            <select id="locSelect" name="loc_id" class="form-select" onchange="loadBuildings()">
                 <option value="">-- Select Location --</option>
                 <?php foreach($locations as $loc): ?>
                     <option value="<?= $loc['LOCATION_ID'] ?>" <?= $selected_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
@@ -144,29 +226,35 @@ if ($selected_pen) {
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="filter-group">
+        <div class="form-group">
             <label>2. Building</label>
-            <select id="bldSelect" class="form-select" disabled onchange="loadPens()">
+            <select id="bldSelect" name="bld_id" class="form-select" disabled onchange="loadPens()">
                 <option value="">-- Select Location First --</option>
             </select>
         </div>
-        <div class="filter-group">
+        <div class="form-group">
             <label>3. Pen</label>
-            <select id="penSelect" class="form-select" disabled>
+            <select id="penSelect" name="pen_id" class="form-select" disabled>
                 <option value="">-- Select Building First --</option>
             </select>
         </div>
-        <div class="filter-group">
-            <button onclick="applyFilter()" class="btn-primary">View Animals</button>
+        <div class="form-group" style="display: flex; justify-content: flex-end;">
+            <button type="button" onclick="applyFilter()" class="btn-primary"><i class="fa-solid fa-magnifying-glass"></i> View Animals</button>
         </div>
-    </div>
+    </form>
 
     <?php if ($selected_pen && empty($animals)): ?>
-        <div class="empty-state">No active animals found in <strong><?= htmlspecialchars($pen_name) ?></strong>.</div>
+        <div class="empty-state">
+            <i class="fa-solid fa-ghost" style="font-size: 2.5rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+            No active animals found in <strong><?= htmlspecialchars($pen_name) ?></strong>.
+        </div>
     <?php elseif (!$selected_pen): ?>
-        <div class="empty-state">Please select a Pen to view certificates.</div>
+        <div class="empty-state">
+            <i class="fa-solid fa-arrow-up" style="font-size: 2.5rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+            Please select a Location, Building, and Pen to view certificates.
+        </div>
     <?php else: ?>
-        <h3 style="color:#0ea5e9; margin-bottom:1rem;">Animals in <?= htmlspecialchars($pen_name) ?> (<?= count($animals) ?>)</h3>
+        <h3 class="section-title"><i class="fa-solid fa-layer-group"></i> Animals in <?= htmlspecialchars($pen_name) ?> <span style="color:var(--text-muted); font-size:1rem; font-weight:500;">(<?= count($animals) ?>)</span></h3>
         <div class="grid">
          <?php foreach($animals as $a): ?>
             <div class="animal-card">
@@ -175,40 +263,47 @@ if ($selected_pen) {
                     <?php 
                         // Determine Sex Label and Class
                         $sex = strtoupper($a['SEX']);
+                        $sexIcon = '';
                         if ($sex === 'M') {
                             $sexLabel = 'Male';
                             $sexClass = 'sex-M';
+                            $sexIcon = '<i class="fa-solid fa-mars"></i> ';
                         } elseif ($sex === 'F') {
                             $sexLabel = 'Female';
                             $sexClass = 'sex-F';
+                            $sexIcon = '<i class="fa-solid fa-venus"></i> ';
                         } else {
                             $sexLabel = 'Unknown';
-                            $sexClass = 'sex-U'; // Grey badge for unknown
+                            $sexClass = 'sex-U';
+                            $sexIcon = '<i class="fa-solid fa-circle-question"></i> ';
                         }
                     ?>
-                    <span class="sex-badge <?= $sexClass ?>"><?= $sexLabel ?></span>
+                    <span class="sex-badge <?= $sexClass ?>"><?= $sexIcon . $sexLabel ?></span>
                 </div>
                 
                 <div class="info-row">
-                    <span class="info-label">Type/Breed:</span>
+                    <span class="info-label">Type / Breed:</span>
                     <span><?= htmlspecialchars($a['ANIMAL_TYPE_NAME'] . ' / ' . $a['BREED_NAME']) ?></span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Birth Date:</span>
-                    <span><?= date('M d, Y', strtotime($a['BIRTH_DATE'])) ?></span>
+                    <span class="val-mono"><?= date('M d, Y', strtotime($a['BIRTH_DATE'])) ?></span>
                 </div>
+                
+                <div style="border-top: 1px dashed var(--border); margin: 10px 0; padding-top: 10px;"></div>
+                
                 <div class="info-row">
                     <span class="info-label">Dam (Mother):</span>
-                    <span style="color: #f472b6; font-weight:bold;"><?= $a['MOTHER_TAG'] ?: 'N/A' ?></span>
+                    <span class="parent-tag"><?= $a['MOTHER_TAG'] ?: 'N/A' ?></span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Sire (Father):</span>
-                    <span style="color: #60a5fa; font-weight:bold;"><?= $a['FATHER_TAG'] ?: 'N/A' ?></span>
+                    <span class="sire-tag"><?= $a['FATHER_TAG'] ?: 'N/A' ?></span>
                 </div>
 
-                <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #334155;">
+                <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); display:flex; flex-direction:column; flex-grow:1;">
                     <a href="print_certificate.php?id=<?= $a['ANIMAL_ID'] ?>" target="_blank" class="btn-print">
-                        🖨️ Print Certificate
+                        <i class="fa-solid fa-print"></i> Generate Certificate
                     </a>
                 </div>
             </div>
@@ -288,7 +383,7 @@ if ($selected_pen) {
         const pen = document.getElementById('penSelect').value;
 
         if(!pen) {
-            alert("Please select a Pen.");
+            alert("Please complete the selection to view animals.");
             return;
         }
 

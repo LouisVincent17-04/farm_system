@@ -20,9 +20,6 @@ try {
         throw new Exception("Database connection failed.");
     }
 
-    $items_sql = "";
-
-    // 1. Fetch Items
     if($USER_LOCATION_ != 1000) {
         $items_sql = "SELECT i.*, 
                   it.ITEM_TYPE_NAME,
@@ -34,23 +31,17 @@ try {
                   LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
                   WHERE i.ITEM_TYPE_ID = :type_id AND LOCATION_ID = :location_id
                   ORDER BY i.CREATED_AT DESC";
-
         $stmt = $conn->prepare($items_sql);
         $stmt->execute([':type_id' => $ANIMAL_ITEM_TYPE_ID, ':location_id' => $USER_LOCATION_]);
         $items_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. STRICT UNIT LOGIC
-        $unit_query = "SELECT * FROM UNITS 
-                       WHERE UPPER(UNIT_NAME) IN ('PCS', 'PIECES', 'PC', 'HEADS', 'HEAD') 
-                       LIMIT 1";
+        $unit_query = "SELECT * FROM UNITS WHERE UPPER(UNIT_NAME) IN ('PCS', 'PIECES', 'PC', 'HEADS', 'HEAD') LIMIT 1";
         $stmt = $conn->prepare($unit_query);
         $stmt->execute();
         $default_unit_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $default_unit_id = $default_unit_data[0]['UNIT_ID'] ?? ''; 
+        $default_unit_id   = $default_unit_data[0]['UNIT_ID'] ?? '';
         $default_unit_name = $default_unit_data[0]['UNIT_NAME'] ?? 'Pcs';
 
-        // 3. Location Hierarchy
         $loc_sql = "SELECT * FROM LOCATIONS WHERE LOCATION_ID = :location_id ORDER BY LOCATION_NAME ASC";
         $stmt = $conn->prepare($loc_sql);
         $stmt->execute([':location_id' => $USER_LOCATION_]);
@@ -65,10 +56,8 @@ try {
         $stmt = $conn->prepare($pens_sql);
         $stmt->execute();
         $pens_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-    }
-    else
-    {
+
+    } else {
         $items_sql = "SELECT i.*, 
                 it.ITEM_TYPE_NAME,
                 u.UNIT_NAME,
@@ -79,23 +68,17 @@ try {
                 LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
                 WHERE i.ITEM_TYPE_ID = :type_id
                 ORDER BY i.CREATED_AT DESC";
-
         $stmt = $conn->prepare($items_sql);
         $stmt->execute([':type_id' => $ANIMAL_ITEM_TYPE_ID]);
         $items_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. STRICT UNIT LOGIC
-        $unit_query = "SELECT * FROM UNITS 
-                       WHERE UPPER(UNIT_NAME) IN ('PCS', 'PIECES', 'PC', 'HEADS', 'HEAD') 
-                       LIMIT 1";
+        $unit_query = "SELECT * FROM UNITS WHERE UPPER(UNIT_NAME) IN ('PCS', 'PIECES', 'PC', 'HEADS', 'HEAD') LIMIT 1";
         $stmt = $conn->prepare($unit_query);
         $stmt->execute();
         $default_unit_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $default_unit_id = $default_unit_data[0]['UNIT_ID'] ?? ''; 
+        $default_unit_id   = $default_unit_data[0]['UNIT_ID'] ?? '';
         $default_unit_name = $default_unit_data[0]['UNIT_NAME'] ?? 'Pcs';
 
-        // 3. Location Hierarchy
         $loc_sql = "SELECT * FROM LOCATIONS ORDER BY LOCATION_NAME ASC";
         $stmt = $conn->prepare($loc_sql);
         $stmt->execute();
@@ -113,254 +96,397 @@ try {
     }
 
 } catch (Exception $e) {
-    $items_data = [];
-    $locations = [];
+    $items_data    = [];
+    $locations     = [];
     $buildings_raw = [];
-    $pens_raw = [];
-    $default_unit_id = '';
+    $pens_raw      = [];
+    $default_unit_id   = '';
     $default_unit_name = '';
     echo "<script>console.error('Database Error: " . addslashes($e->getMessage()) . "');</script>";
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Animal Purchases Management</title>
-    
+    <title>Animal Purchases Management | FarmPro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <style>
-        /* --- CORE STYLES --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; padding-bottom: 80px; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; width: 100%; }
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(56,189,248,0.5);
+            --blue:           #38bdf8;
+            --blue-dim:       rgba(56,189,248,0.12);
+            --blue-glow:      rgba(56,189,248,0.25);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.12);
+            --amber-glow:     rgba(245,158,11,0.25);
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
 
-        /* HEADER & BACK BUTTON */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1.5rem; }
-        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; line-height: 1.2; }
-        .header-info p { color: #cbd5e1; font-size: 0.95rem; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.95rem; margin-bottom: 10px; transition: color 0.2s; }
-        .back-link:hover { color: white; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,0.05) 0%, transparent 60%);
+        }
 
-        .header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* TOP BAR */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--blue); background: var(--blue-dim); border: 1px solid rgba(56,189,248,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        /* HEADER */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; gap: 1.5rem; flex-wrap: wrap; }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .header-info h1 span { background: linear-gradient(135deg, var(--blue), #0ea5e9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
+        .header-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 
         /* BUTTONS */
-        .btn-base { display: flex; align-items: center; justify-content: center; gap: 8px; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); white-space: nowrap; }
-        .add-btn { background: linear-gradient(135deg, #2563eb, #9333ea); color: white; }
-        .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: translateY(-2px); }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-primary { background: var(--blue); color: #000; }
+        .btn-primary:hover { background: #7dd3fc; box-shadow: 0 0 16px var(--blue-glow); transform: translateY(-1px); }
+        .btn-amber { background: var(--amber); color: #000; }
+        .btn-amber:hover { background: #fbbf24; box-shadow: 0 0 16px var(--amber-glow); transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
 
-        .confirm-all-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); display: flex; align-items: center; gap: 8px; }
-        .confirm-all-btn:hover { background: linear-gradient(135deg, #d97706, #b45309); transform: translateY(-1px); box-shadow: 0 6px 8px rgba(245, 158, 11, 0.4); }
+        /* SEARCH */
+        .search-container { position: relative; margin-bottom: 1.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+        .search-input {
+            width: 100%; padding: 12px 12px 12px 2.8rem; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-primary);
+            font-size: 0.95rem; font-family: var(--font); outline: none; transition: all var(--transition);
+        }
+        .search-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-glow); }
 
-        /* SEARCH & TABLE */
-        .search-container { position: relative; margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 14px 14px 14px 45px; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 8px; color: white; font-size: 1rem; backdrop-filter: blur(10px); outline: none; transition: border-color 0.2s; }
-        .search-input:focus { border-color: #3b82f6; }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
-        
-        .table-container { background: rgba(30, 41, 59, 0.5); border-radius: 12px; border: 1px solid #475569; overflow: hidden; }
-        .table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-        .table th { padding: 1rem 1.5rem; text-align: left; font-size: 0.85rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; background: rgba(15, 23, 42, 0.5); border-bottom: 1px solid #475569; white-space: nowrap; }
-        .table td { padding: 1rem 1.5rem; vertical-align: middle; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+        /* ── DESKTOP TABLE ── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+        .table-wrap { overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .data-table thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        .data-table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        .data-table tbody tr:last-child { border-bottom: none; }
+        .data-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .data-table td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
 
-        .ref-no { font-family: monospace; color: #93c5fd; font-size: 0.95rem; font-weight: 600; white-space: nowrap; }
-        .supplier-name { color: #f1f5f9; font-size: 0.95rem; font-weight: 500; white-space: nowrap; }
-        .item-name { font-weight: 600; color: #fff; font-size: 1rem; margin-bottom: 4px; white-space: nowrap; }
-        .amount { color: #34d399; font-weight: 600; font-family: monospace; font-size: 1.1rem; white-space: nowrap; }
-        
-        .confirmed-badge { display: inline-block; width: 100%; text-align: center; padding: 8px 0; background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; white-space: nowrap;}
-        .confirm-btn { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;}
-        .confirm-btn:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); }
+        .ref-no { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; }
+        .supplier-name { color: var(--text-secondary); font-size: 0.9rem; }
+        .item-name { font-weight: 700; color: #fff; font-size: 1rem; }
+        .val-mono { font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
+        .val-money { font-family: var(--font-mono); font-weight: 600; color: var(--emerald); font-size: 0.95rem; }
+
+        .confirmed-badge {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2);
+            border-radius: 6px; padding: 6px 12px; font-weight: 700; font-size: 0.75rem;
+            text-transform: uppercase; width: 100%;
+        }
+        .confirm-btn {
+            background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3);
+            padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;
+            cursor: pointer; transition: all var(--transition); width: 100%; text-transform: uppercase;
+        }
+        .confirm-btn:hover { background: var(--red); color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
 
         .actions { display: flex; gap: 8px; justify-content: center; }
-        .action-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-        .action-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-        .action-btn.view:hover { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: #3b82f6; }
-        .action-btn.edit:hover { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: #10b981; }
-        .action-btn.delete:hover { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: #ef4444; }
-        .icon { width: 18px; height: 18px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-elevated); display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary); text-decoration: none;
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.view:hover  { color: var(--emerald); border-color: var(--emerald); }
+        .action-btn.edit:hover  { color: var(--blue);    border-color: var(--blue); }
+        .action-btn.delete:hover{ color: var(--red);     border-color: var(--red); }
 
-        /* MODAL */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block; }
+
+        /* ── MOBILE CARD LIST ── (replaces the table) */
+        .mobile-list { display: none; padding: 1rem; }
+
+        .purchase-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.1rem;
+            margin-bottom: 0.85rem;
+        }
+        .purchase-card .card-top {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 0.65rem; gap: 0.5rem;
+        }
+        .purchase-card .card-name  { font-weight: 700; color: #fff; font-size: 1rem; }
+        .purchase-card .card-ref   { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+        .purchase-card .card-badge { flex-shrink: 0; }
+
+        .purchase-card .card-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 0.4rem 0.75rem; margin-bottom: 0.75rem;
+        }
+        .purchase-card .card-field { display: flex; flex-direction: column; gap: 1px; }
+        .purchase-card .card-field .lbl {
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--text-muted);
+        }
+        .purchase-card .card-field .val {
+            font-size: 0.88rem; color: var(--text-primary);
+        }
+        .purchase-card .card-field .val.money { color: var(--emerald); font-family: var(--font-mono); font-weight: 600; }
+        .purchase-card .card-field .val.mono  { font-family: var(--font-mono); }
+
+        .purchase-card .card-footer {
+            display: flex; align-items: center; justify-content: flex-end;
+            gap: 8px; padding-top: 0.65rem; border-top: 1px solid var(--border);
+        }
+        .purchase-card .card-confirm-btn {
+            flex: 1; background: var(--red-dim); color: var(--red);
+            border: 1px solid rgba(239,68,68,0.3); padding: 7px 12px;
+            border-radius: 6px; font-weight: 700; font-size: 0.75rem;
+            cursor: pointer; transition: all var(--transition); text-transform: uppercase;
+        }
+        .purchase-card .card-confirm-btn:hover { background: var(--red); color: #fff; }
+        .purchase-card .card-confirmed {
+            flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            background: var(--emerald-dim); color: var(--emerald);
+            border: 1px solid rgba(16,185,129,0.2); border-radius: 6px;
+            padding: 7px 12px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase;
+        }
+
+        /* MODALS */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem;
+        }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 16px; width: 100%; max-width: 700px; border: 1px solid #475569; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column; max-height: 90vh; }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
-        .modal-header h2 { margin: 0; font-size: 1.4rem; color: #fff; }
-        .modal-body { padding: 1.5rem; overflow-y: auto; flex-grow: 1; }
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 650px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            max-height: 90vh; animation: modalZoom 0.2s ease-out;
+        }
+        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff; }
+        .modal-body   { padding: 1.5rem; overflow-y: auto; }
+        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); border-radius: 0 0 var(--radius-xl) var(--radius-xl); }
 
-        /* FORM ELEMENTS */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
-        .form-group label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 8px; font-weight: 500; }
-        .form-group label span { color: #ef4444; }
-        
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 0.95rem; transition: border-color 0.2s; outline: none; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        
-        select[disabled], input[disabled], input[readonly] { opacity: 0.6; cursor: not-allowed; background: #1e293b; color: #94a3b8; }
+        /* Form */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full-width { grid-column: 1 / -1; margin-bottom: 1.25rem; }
+        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .form-label span { color: var(--red); }
+        .form-control, .form-select {
+            width: 100%; padding: 10px 12px; background: var(--bg-elevated);
+            border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .form-control:focus, .form-select:focus, textarea.form-control:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-glow); }
+        textarea.form-control { resize: vertical; min-height: 60px; line-height: 1.5; }
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+        }
+        .form-select:disabled, input:disabled, input[readonly] { opacity: 0.5; cursor: not-allowed; }
 
-        .info-group h3 { color: #93c5fd; font-size: 1.1rem; margin-bottom: 15px; margin-top: 20px; border-bottom: 1px solid #334155; padding-bottom: 5px; }
-        
-        .alert { padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; text-align: center; font-weight: 600; }
-        .alert.success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-        .alert.error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        .info-group h3 {
+            font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--blue); margin: 1.5rem 0 1rem 0;
+            border-bottom: 1px solid var(--border); padding-bottom: 8px;
+        }
 
-        .btn-cancel { padding: 12px 20px; background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
-        .btn-save { padding: 12px 20px; background: #2563eb; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
-        .btn-save:hover { background: #1d4ed8; }
+        /* Dynamic Rows */
+        .dynamic-row {
+            display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px;
+            background: rgba(255,255,255,0.02); padding: 1rem; border-radius: var(--radius-md);
+            border: 1px solid var(--border); margin-bottom: 10px; align-items: start;
+        }
+        .dynamic-row .form-group { margin-bottom: 0; }
+        .btn-remove-row {
+            background: transparent; color: var(--red); border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 6px; cursor: pointer; padding: 10px; font-weight: bold;
+            margin-top: 23px; transition: 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-remove-row:hover { background: var(--red-dim); border-color: var(--red); }
 
-        /* Dynamic Animal Rows */
-        .dynamic-row { display: flex; gap: 10px; align-items: flex-start; background: rgba(15, 23, 42, 0.5); padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 10px; }
-        .dynamic-row .form-group { margin-bottom: 0; flex: 1; }
-        .btn-remove-row { background: transparent; color: #f87171; border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; cursor: pointer; padding: 12px; font-weight: bold; margin-top: 25px; transition: 0.2s; }
-        .btn-remove-row:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
-
-        /* Autocomplete Styles */
+        /* Autocomplete */
         .autocomplete-wrapper { position: relative; }
-        .autocomplete-list { position: absolute; z-index: 1000; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #475569; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5); display: none; }
+        .autocomplete-list {
+            position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-top: none; border-radius: 0 0 8px 8px; max-height: 200px;
+            overflow-y: auto; box-shadow: var(--shadow-md); display: none;
+        }
         .autocomplete-list.show { display: block; }
-        .autocomplete-item { padding: 12px 15px; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid #334155; color: #e2e8f0; }
+        .autocomplete-item { padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 0.9rem; }
         .autocomplete-item:last-child { border-bottom: none; }
-        .autocomplete-item:hover, .autocomplete-item.active { background-color: #334155; }
-        .autocomplete-item strong { color: #60a5fa; }
-        .autocomplete-loading, .autocomplete-no-results { padding: 12px 15px; text-align: center; color: #94a3b8; font-size: 14px; }
+        .autocomplete-item:hover { background: var(--bg-hover); color: var(--blue); }
+        .autocomplete-item strong { color: var(--blue); }
+        .autocomplete-loading, .autocomplete-no-results { padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
 
-        /* Modal Specifics */
-        .confirm-content { text-align: center; padding: 20px; }
-        .confirm-icon { font-size: 4rem; margin-bottom: 15px; display: block; }
-        .warning-text { color: #f87171; font-size: 0.9rem; margin: 15px 0 25px 0; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); }
+        /* Alerts */
+        .alert { padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem; display: none; text-align: center; font-weight: 600; font-size: 0.9rem; }
+        .alert.success { background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.3); color: var(--emerald); }
+        .alert.error   { background: var(--red-dim);     border: 1px solid rgba(239,68,68,0.3);  color: var(--red); }
 
-        /* ========================================= */
-        /* MOBILE RESPONSIVENESS OVERRIDES           */
-        /* ========================================= */
-        @media (max-width: 900px) {
+        /* Confirm Modals */
+        .confirm-content { text-align: center; padding: 1rem; }
+        .confirm-icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.8; }
+        .warning-text {
+            color: var(--red); font-size: 0.85rem; margin: 1.5rem 0;
+            background: var(--red-dim); padding: 12px; border-radius: 8px;
+            border: 1px solid rgba(239,68,68,0.2); line-height: 1.4; text-align: left;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
             .container { padding: 1rem; }
-            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .header-info { text-align: left; }
-            .header-actions { flex-direction: column; width: 100%; gap: 10px; }
-            .btn-base, .confirm-all-btn { width: 100%; justify-content: center; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .btn { width: 100%; justify-content: center; }
 
-            /* Modal Adjustments */
-            .form-row { grid-template-columns: 1fr; gap: 0; }
-            .modal-footer { flex-direction: column; }
-            .modal-footer button { width: 100%; margin: 0 !important; }
-            
-            .dynamic-row { flex-direction: column; }
+            /* Hide desktop table, show mobile cards */
+            .table-card  { display: none; }
+            .mobile-list { display: block; }
+
+            .form-row    { grid-template-columns: 1fr; }
+            .dynamic-row { grid-template-columns: 1fr; }
             .btn-remove-row { margin-top: 0; width: 100%; }
-
-            /* Table to Card Layout */
-            .table-container { border: none; background: transparent; overflow: visible; }
-            .table { min-width: 0; display: block; }
-            .table thead { display: none; }
-            .table tbody { display: block; width: 100%; }
-            .table tr { 
-                display: block; 
-                background: rgba(30, 41, 59, 0.6); 
-                border: 1px solid #475569; 
-                border-radius: 12px; 
-                margin-bottom: 1rem; 
-                padding: 1rem; 
-            }
-            .table td { 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                padding: 0.75rem 0; 
-                border-bottom: 1px dashed rgba(255,255,255,0.1); 
-                text-align: right; 
-                font-size: 0.95rem;
-                white-space: normal;
-            }
-            .table td:last-child { border-bottom: none; }
-            
-            /* Inject Labels into Cards */
-            .table td::before { 
-                content: attr(data-label); 
-                font-weight: 700; 
-                color: #94a3b8; 
-                font-size: 0.8rem; 
-                text-transform: uppercase; 
-                margin-right: 1rem; 
-                text-align: left;
-                flex-shrink: 0;
-            }
-
-            .actions { justify-content: flex-end; width: 100%; }
-            .item-name, .supplier-name { margin-bottom: 0; text-align: right; }
+            .modal-footer { flex-direction: column; gap: 10px; }
+            .modal-footer .btn { width: 100%; margin: 0 !important; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+
+<div class="container">
+
+    <div class="top-bar">
         <a href="purchase_dashboard.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Purchase Dashboard
+            <i class="fa-solid fa-arrow-left"></i> Back to Purchases
         </a>
+        <span class="page-badge"><i class="fa-solid fa-cow"></i> Core Inventory</span>
+    </div>
 
-        <div class="header">
-            <div class="header-info">
-                <h1>Animal Purchases</h1>
-                <p>Manage and track livestock and animal purchases</p>
-            </div>
-            
-            <div class="header-actions">
-                <button class="confirm-all-btn" onclick="openConfirmAllModal()">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px; height:20px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Confirm All Pending
-                </button>
-
-                <button class="add-btn btn-base" onclick="openAddModal()">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Add Animal Purchase
-                </button>
-            </div>
+    <div class="page-header">
+        <div class="header-info">
+            <h1>Animal <span>Purchases</span></h1>
+            <p>Log and manage incoming livestock acquisitions before structural assignment.</p>
         </div>
-
-        <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px; height:20px;">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search by animal type or breed..." onkeyup="filterTable()">
+        <div class="header-actions">
+            <button class="btn btn-amber" onclick="openConfirmAllModal()">
+                <i class="fa-solid fa-check-double"></i> Confirm All
+            </button>
+            <button class="btn btn-primary" onclick="openAddModal()">
+                <i class="fa-solid fa-plus"></i> Add Purchase
+            </button>
         </div>
+    </div>
 
-        <div class="table-container">
-            <table class="table">
+    <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by breed, type, or supplier..." oninput="filterAll()">
+    </div>
+
+    <!-- ── DESKTOP TABLE ── -->
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>Ref No</th>
                         <th>Supplier</th>
-                        <th>Animal</th>
+                        <th>Animal Details</th>
                         <th>Quantity</th>
                         <th>Cost per Head</th>
                         <th>Purchase Date</th>
-                        <th style="text-align: center; width: 150px;">Confirmation</th>
-                        <th style="text-align: center;">Actions</th>
+                        <th style="text-align:center; width:140px;">Status</th>
+                        <th style="text-align:center; width:120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="item-table">
                     <?php if(empty($items_data)): ?>
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding: 3rem; color:#94a3b8;">No animal purchases recorded yet.</td>
+                        <tr class="empty-row">
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-folder-open"></i>
+                                    No animal purchases recorded yet in this location.
+                                </div>
+                            </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach($items_data as $item): 
-                            $status = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
+                        <?php foreach($items_data as $item):
+                            $status      = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
                             $isConfirmed = ($status === 1);
                         ?>
-                        <tr data-item-id="<?php echo $item['ITEM_ID']; ?>"
+                        <tr class="data-row"
+                            data-item-id="<?php echo $item['ITEM_ID']; ?>"
                             data-item-name="<?php echo htmlspecialchars($item['ITEM_NAME']); ?>"
                             data-item-desc="<?php echo htmlspecialchars($item['ITEM_DESCRIPTION'] ?? ''); ?>"
                             data-unit-id="<?php echo $item['UNIT_ID']; ?>"
@@ -375,58 +501,35 @@ try {
                             data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
                             data-supplier="<?php echo htmlspecialchars($item['SUPPLIER'] ?? ''); ?>"
                             data-reference-no="<?php echo htmlspecialchars($item['REFERENCE_NO'] ?? ''); ?>"
-                            data-created-at="<?php echo htmlspecialchars($item['CREATED_AT_FMT'] ?? ''); ?>">
-                            
-                            <td data-label="Ref No">
-                                <div class="ref-no"><?php echo !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : '—'; ?></div>
-                            </td>
-                            <td data-label="Supplier">
-                                <div class="supplier-name"><?php echo !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier'; ?></div>
-                            </td>
-                            <td data-label="Animal">
-                                <div class="item-name"><?php echo htmlspecialchars($item['ITEM_NAME']); ?></div>
-                            </td>
-                            <td data-label="Quantity">
-                                <div style="white-space: nowrap;">
-                                    <?php echo number_format($item['QUANTITY'] ?? 1, 0); ?> 
-                                    <small style="color:#94a3b8"><?php echo htmlspecialchars("Head"); ?></small>
+                            data-created-at="<?php echo htmlspecialchars($item['CREATED_AT_FMT'] ?? ''); ?>"
+                            data-confirmed="<?php echo $isConfirmed ? '1' : '0'; ?>">
+
+                            <td><div class="ref-no"><?php echo !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : '—'; ?></div></td>
+                            <td><div class="supplier-name"><?php echo !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier'; ?></div></td>
+                            <td><div class="item-name"><?php echo htmlspecialchars($item['ITEM_NAME']); ?></div></td>
+                            <td>
+                                <div class="val-mono" style="color:#fff;">
+                                    <?php echo number_format($item['QUANTITY'] ?? 1, 0); ?>
+                                    <span style="color:var(--text-muted);font-size:0.8rem;">Heads</span>
                                 </div>
                             </td>
-                            <td data-label="Cost per Head">
-                                <div class="amount">₱<?php echo number_format($item['UNIT_COST'], 2); ?></div>
-                            </td>
-                            <td data-label="Purchase Date">
-                                <div style="color:#cbd5e1; white-space: nowrap;"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A'); ?></div>
-                            </td>
-                            <td data-label="Confirmation" style="text-align: center;">
+                            <td><div class="val-money">₱<?php echo number_format($item['UNIT_COST'], 2); ?></div></td>
+                            <td><div class="val-mono"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A'); ?></div></td>
+                            <td style="text-align:center;">
                                 <?php if(!$isConfirmed): ?>
                                     <button class="confirm-btn" onclick="openConfirmModal(this)">Confirm</button>
                                 <?php else: ?>
-                                    <div class="confirmed-badge">Confirmed</div>
+                                    <div class="confirmed-badge"><i class="fa-solid fa-check"></i> Verified</div>
                                 <?php endif; ?>
                             </td>
-                            <td data-label="Actions">
+                            <td>
                                 <div class="actions">
-                                    <button class="action-btn view" onclick="viewItem(this)" title="View Details">
-                                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                        </svg>
-                                    </button>
-
+                                    <button class="action-btn view" onclick="viewItem(this)" title="View Details"><i class="fa-regular fa-eye"></i></button>
                                     <?php if(!$isConfirmed): ?>
-                                        <button class="action-btn edit" onclick="editItem(this)" title="Edit">
-                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
-                                        </button>
-                                        <button class="action-btn delete" onclick="deleteItem(this)" title="Delete">
-                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
+                                        <button class="action-btn edit"   onclick="editItem(this)"   title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                                        <button class="action-btn delete" onclick="deleteItem(this)" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                                     <?php else: ?>
-                                        <span style="font-size: 1.2em; opacity: 0.3; cursor: not-allowed; margin-left: 10px;">🔒</span>
+                                        <span style="opacity:0.3;cursor:not-allowed;display:flex;align-items:center;margin-left:4px;"><i class="fa-solid fa-lock"></i></span>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -435,564 +538,600 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
-            <div id="empty-state" style="text-align:center; padding:3rem; display:none; color:#94a3b8;">
-                No purchases found matching your search.
+            <div id="empty-state-desktop" class="empty-state" style="display:none;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <p>No purchases found matching your search.</p>
             </div>
         </div>
     </div>
 
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title">Add Animal Purchase</h2>
+    <!-- ── MOBILE CARD LIST ── -->
+    <div class="mobile-list" id="mobile-list">
+        <?php if(empty($items_data)): ?>
+            <div class="empty-state">
+                <i class="fa-solid fa-folder-open"></i>
+                No animal purchases recorded yet in this location.
             </div>
-            <div class="modal-body">
-                <div id="modal-alert" class="alert"></div>
-                <form id="item-form" method="POST">
-                    <input type="hidden" id="item-id" name="item_id">
-                    <input type="hidden" name="item_type_id" value="<?php echo $ANIMAL_ITEM_TYPE_ID; ?>">
-                    <input type="hidden" name="unit_id" value="<?php echo $default_unit_id; ?>">
-                    
-                    <div class="info-group" style="margin-top: 0;">
-                        <h3 style="margin-top:0;">Batch Details</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Date of Purchase <span>*</span></label>
-                                <input type="text" id="purchase-date" name="date_of_purchase" class="form-input date-picker" placeholder="mm/dd/yyyy" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Location</label>
-                                <select id="location_id" name="location_id" onchange="filterBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #1e293b; pointer-events: none; color: #94a3b8;"' : ''; ?> required>
-                                    <?php if($USER_LOCATION_ == 1000): ?>
-                                        <option value="">Select Location</option>
-                                    <?php endif; ?>
-                                    <?php foreach($locations as $loc): ?>
-                                        <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Building</label>
-                                <select id="building_id" name="building_id" onchange="filterPens()" disabled>
-                                    <option value="">Select Location First</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Pen</label>
-                                <select id="pen_id" name="pen_id" disabled>
-                                    <option value="">Select Building First</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group autocomplete-wrapper">
-                                <label>Supplier</label>
-                                <input type="text" id="supplier" name="supplier" placeholder="e.g., ABC Farm" autocomplete="off">
-                                <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Reference No.</label>
-                                <input type="text" id="reference-no" name="reference_no" placeholder="e.g., OR-12345">
-                            </div>
-                        </div>
+        <?php else: ?>
+            <?php foreach($items_data as $item):
+                $status      = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
+                $isConfirmed = ($status === 1);
+            ?>
+            <div class="purchase-card mobile-card"
+                data-item-id="<?php echo $item['ITEM_ID']; ?>"
+                data-item-name="<?php echo htmlspecialchars($item['ITEM_NAME']); ?>"
+                data-item-desc="<?php echo htmlspecialchars($item['ITEM_DESCRIPTION'] ?? ''); ?>"
+                data-unit-id="<?php echo $item['UNIT_ID']; ?>"
+                data-unit-cost="<?php echo $item['UNIT_COST']; ?>"
+                data-unit-name="<?php echo htmlspecialchars($item['UNIT_NAME']); ?>"
+                data-quantity="<?php echo $item['QUANTITY'] ?? '1'; ?>"
+                data-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
+                data-purchase-date-raw="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
+                data-purchase-date-fmt="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? ''); ?>"
+                data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
+                data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
+                data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
+                data-supplier="<?php echo htmlspecialchars($item['SUPPLIER'] ?? ''); ?>"
+                data-reference-no="<?php echo htmlspecialchars($item['REFERENCE_NO'] ?? ''); ?>"
+                data-created-at="<?php echo htmlspecialchars($item['CREATED_AT_FMT'] ?? ''); ?>"
+                data-confirmed="<?php echo $isConfirmed ? '1' : '0'; ?>">
 
+                <div class="card-top">
+                    <div>
+                        <div class="card-name"><?php echo htmlspecialchars($item['ITEM_NAME']); ?></div>
+                        <div class="card-ref"><?php echo !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : 'No reference'; ?></div>
+                    </div>
+                    <div class="card-badge">
+                        <?php if($isConfirmed): ?>
+                            <div class="confirmed-badge" style="width:auto;"><i class="fa-solid fa-check"></i> Verified</div>
+                        <?php else: ?>
+                            <div style="background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:4px 10px;font-size:0.7rem;font-weight:700;text-transform:uppercase;">Pending</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card-field">
+                        <span class="lbl">Supplier</span>
+                        <span class="val"><?php echo !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier'; ?></span>
+                    </div>
+                    <div class="card-field">
+                        <span class="lbl">Purchase Date</span>
+                        <span class="val mono"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A'); ?></span>
+                    </div>
+                    <div class="card-field">
+                        <span class="lbl">Quantity</span>
+                        <span class="val"><?php echo number_format($item['QUANTITY'] ?? 1, 0); ?> Heads</span>
+                    </div>
+                    <div class="card-field">
+                        <span class="lbl">Cost per Head</span>
+                        <span class="val money">₱<?php echo number_format($item['UNIT_COST'], 2); ?></span>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <button class="action-btn view" onclick="viewItemFromCard(this)" title="View"><i class="fa-regular fa-eye"></i></button>
+                    <?php if(!$isConfirmed): ?>
+                        <button class="action-btn edit"   onclick="editItemFromCard(this)"   title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn delete" onclick="deleteItemFromCard(this)" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        <button class="card-confirm-btn" onclick="openConfirmModalFromCard(this)">Confirm</button>
+                    <?php else: ?>
+                        <div class="card-confirmed"><i class="fa-solid fa-lock"></i> Locked</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+        <div id="empty-state-mobile" class="empty-state" style="display:none;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>No purchases found matching your search.</p>
+        </div>
+    </div>
+
+</div><!-- /container -->
+
+<!-- ── ADD / EDIT MODAL ── -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Add Animal Purchase</h2>
+        </div>
+        <div class="modal-body">
+            <div id="modal-alert" class="alert"></div>
+            <form id="item-form" method="POST">
+                <input type="hidden" id="item-id" name="item_id">
+                <input type="hidden" name="item_type_id" value="<?php echo $ANIMAL_ITEM_TYPE_ID; ?>">
+                <input type="hidden" name="unit_id"      value="<?php echo $default_unit_id; ?>">
+                <?php if($USER_LOCATION_ != 1000): ?>
+                    <input type="hidden" name="location_id" value="<?php echo $USER_LOCATION_; ?>">
+                <?php endif; ?>
+
+                <div class="info-group" style="margin-top:0;">
+                    <h3 style="margin-top:0;">Batch Details</h3>
+                    <div class="form-row">
                         <div class="form-group">
-                            <label>Description / Remarks</label>
-                            <textarea id="item-desc" name="item_description" placeholder="Enter batch details..." rows="2" maxlength="500"></textarea>
+                            <label class="form-label">Date of Purchase <span>*</span></label>
+                            <input type="text" id="purchase-date" name="date_of_purchase" class="form-control" placeholder="mm/dd/yyyy" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Location <span>*</span></label>
+                            <select id="location_id" name="location_id" class="form-select" onchange="filterBuildings()"
+                                <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : 'required'; ?>>
+                                <?php if($USER_LOCATION_ == 1000): ?>
+                                    <option value="">Select Location</option>
+                                <?php endif; ?>
+                                <?php foreach($locations as $loc): ?>
+                                    <option value="<?php echo $loc['LOCATION_ID']; ?>"
+                                        <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
-
-                    <div class="info-group">
-                        <div id="bulk-row-controls" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom:10px; flex-wrap: wrap; gap: 10px;">
-                            <h3 style="margin:0; border:none; padding:0; width:100%;">Animals to Purchase</h3>
-                            <div style="display:flex; gap:10px; align-items:flex-end;">
-                                <div style="display:flex; flex-direction:column; gap:4px; width: 60px;">
-                                    <label style="font-size:0.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Qty</label>
-                                    <input type="number" id="row_qty" value="1" min="1" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; outline: none; font-size:0.9rem;">
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:4px; width: 90px;">
-                                    <label style="font-size:0.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Wt (kg)</label>
-                                    <input type="number" id="default_weight" placeholder="Opt." step="0.01" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; outline: none; font-size:0.9rem;">
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:4px; width: 100px;">
-                                    <label style="font-size:0.7rem; color:#94a3b8; font-weight:600; text-transform:uppercase;">Cost (₱)</label>
-                                    <input type="number" id="default_cost" placeholder="Opt." step="0.01" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; outline: none; font-size:0.9rem;">
-                                </div>
-                                <button type="button" id="btnAddAnimalTop" class="btn-base" style="padding: 8px 16px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; height: 35px; font-size:0.85rem;" onclick="generateAnimalRows()">+ Add Row(s)</button>
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Building</label>
+                            <select id="building_id" name="building_id" class="form-select" onchange="filterPens()" disabled>
+                                <option value="">Select Location First</option>
+                            </select>
                         </div>
-                        
-                        <div id="dynamic-animal-container"></div>
+                        <div class="form-group">
+                            <label class="form-label">Target Pen</label>
+                            <select id="pen_id" name="pen_id" class="form-select" disabled>
+                                <option value="">Select Building First</option>
+                            </select>
+                        </div>
                     </div>
-                </form>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" id="btnFooterAddAnimal" class="btn-base" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; margin-right: auto;" onclick="generateAnimalRows()">+ Add Row(s)</button>
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="button" class="btn-save" id="btn-save" onclick="saveItem()">Save Purchase</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Purchase Details</h2></div>
-            <div class="modal-body" id="view-modal-body"></div>
-            <div class="modal-footer"><button type="button" class="btn-cancel" onclick="closeViewModal()" style="width:100%">Close</button></div>
-        </div>
-    </div>
-
-    <div id="confirm-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-body confirm-content">
-                <span class="confirm-icon">🐖</span>
-                <h2 style="color: #fff; margin-bottom: 10px;">Confirm Purchase?</h2>
-                <p style="color: #94a3b8; margin-bottom: 5px;">You are about to confirm <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color:#38bdf8;"></span></strong>.</p>
-                <div class="warning-text">⚠️ <strong>Warning:</strong> Once confirmed, this record will be locked and can no longer be edited or deleted.</div>
-                <form id="confirmForm" method="POST">
-                    <input type="hidden" id="confirm_item_id" name="item_id">
-                </form>
-            </div>
-            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
-                <button type="button" class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitConfirmation()" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Yes, Confirm it!</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirm-all-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-body confirm-content">
-                <span class="confirm-icon" style="font-size: 3rem;">📋</span>
-                <h2 style="color: #fff; margin-bottom: 10px;">Confirm All Pending?</h2>
-                <p style="color: #94a3b8;">This will confirm and lock <strong>ALL</strong> currently pending animal purchases.</p>
-                <div class="warning-text">⚠️ <strong>Warning:</strong> This action cannot be undone. Please review all pending items before proceeding.</div>
-            </div>
-            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
-                <button type="button" class="btn-cancel" onclick="closeConfirmAllModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitConfirmAll()" style="background: linear-gradient(135deg, #f59e0b, #d97706);">Confirm All</button>
-            </div>
-        </div>
-    </div>
-
-    <form id="deleteItemForm" method="POST" action="../process/deleteAnimalPurchase.php" style="display: none;">
-        <input type="hidden" id="delete_item_id" name="item_id">
-    </form>
-
-    <script>
-        const allBuildings = <?php echo json_encode($buildings_raw); ?>;
-        const allPens = <?php echo json_encode($pens_raw); ?>;
-        const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
-        
-        let fpPurchaseDate;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Flatpickr
-            fpPurchaseDate = flatpickr("#purchase-date", {
-                dateFormat: "Y-m-d", // Value submitted to PHP
-                altInput: true,      // Visual input
-                altFormat: "m/d/Y",  // mm/dd/yyyy format
-                allowInput: true
-            });
-        });
-
-        // --- Confirmation Logic ---
-        function openConfirmModal(button) {
-            const row = button.closest('tr');
-            document.getElementById('confirm_item_id').value = row.dataset.itemId;
-            document.getElementById('confirm-item-name').textContent = row.dataset.itemName;
-            document.getElementById('confirm-item-qty').textContent = row.dataset.quantity;
-            document.getElementById('confirm-modal').classList.add('show');
-        }
-        function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
-        function submitConfirmation() {
-            const formData = new FormData(document.getElementById('confirmForm'));
-            fetch('../purchase_confirmations/confirmAnimalPurchase.php', { method: 'POST', body: formData })
-            .then(r => r.json()).then(d => { alert(d.message); if(d.success) window.location.reload(); });
-        }
-        function openConfirmAllModal() { document.getElementById('confirm-all-modal').classList.add('show'); }
-        function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
-        function submitConfirmAll() {
-            fetch('../purchase_confirmations/confirmAllAnimalPurchases.php', { method: 'POST' })
-            .then(r => r.json()).then(d => { alert(d.message); if(d.success) window.location.reload(); });
-        }
-
-        // --- Filtering Logic ---
-        function filterBuildings() {
-            const bSelect = document.getElementById('building_id');
-            const pSelect = document.getElementById('pen_id');
-            const locId = document.getElementById('location_id').value;
-
-            bSelect.innerHTML = '<option value="">Select Building</option>';
-            pSelect.innerHTML = '<option value="">Select Building First</option>';
-            pSelect.disabled = true;
-
-            if (locId) {
-                bSelect.disabled = false;
-                allBuildings.filter(b => b.LOCATION_ID == locId).forEach(b => {
-                    bSelect.add(new Option(b.BUILDING_NAME, b.BUILDING_ID));
-                });
-            } else {
-                bSelect.disabled = true;
-            }
-        }
-
-        function filterPens() {
-            const pSelect = document.getElementById('pen_id');
-            const bId = document.getElementById('building_id').value;
-            pSelect.innerHTML = '<option value="">Select Pen</option>';
-            if (bId) {
-                pSelect.disabled = false;
-                allPens.filter(p => p.BUILDING_ID == bId).forEach(p => {
-                    pSelect.add(new Option(p.PEN_NAME, p.PEN_ID));
-                });
-            } else {
-                pSelect.disabled = true;
-            }
-        }
-
-        // --- Dynamic Rows Generator ---
-        function generateAnimalRows() {
-            const qty = parseInt(document.getElementById('row_qty').value) || 1;
-            const defWeight = document.getElementById('default_weight').value;
-            const defCost = document.getElementById('default_cost').value;
-            
-            for(let i = 0; i < qty; i++) {
-                addAnimalRow('', defWeight, defCost);
-            }
-            
-            // Reset qty to 1 after bulk add to prevent accidental massive additions
-            document.getElementById('row_qty').value = 1;
-        }
-
-        function addAnimalRow(name = '', weight = '', cost = '') {
-            const container = document.getElementById('dynamic-animal-container');
-            const rowId = 'row-' + Date.now() + Math.floor(Math.random() * 100);
-            
-            const html = `
-                <div class="dynamic-row" id="${rowId}">
-                    <div class="form-group autocomplete-wrapper" style="flex:2;">
-                        <label>Animal Tag <span>*</span></label>
-                        <input type="text" name="item_names[]" class="form-input animal-input" value="${name}" required autocomplete="off">
-                        <div class="autocomplete-list"></div>
+                    <div class="form-row">
+                        <div class="form-group autocomplete-wrapper">
+                            <label class="form-label">Supplier Entity</label>
+                            <input type="text" id="supplier" name="supplier" class="form-control" placeholder="e.g., ABC Farms" autocomplete="off">
+                            <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Reference No. (Receipt)</label>
+                            <input type="text" id="reference-no" name="reference_no" class="form-control" placeholder="e.g., OR-12345">
+                        </div>
                     </div>
-                    <div class="form-group" style="flex:1;">
-                        <label>Weight (kg)</label>
-                        <input type="number" name="weights[]" class="form-input" value="${weight}" step="0.01" min="0">
+                    <div class="form-group full-width">
+                        <label class="form-label">Description / Remarks</label>
+                        <textarea id="item-desc" name="item_description" class="form-control" placeholder="Enter batch details..." maxlength="500"></textarea>
                     </div>
-                    <div class="form-group" style="flex:1;">
-                        <label>Cost (₱) <span>*</span></label>
-                        <input type="number" name="unit_costs[]" class="form-input" value="${cost}" step="0.01" min="0" required>
-                    </div>
-                    <button type="button" class="btn-remove-row" onclick="document.getElementById('${rowId}').remove()">✕</button>
                 </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-            
-            // Attach Autocomplete to the newly created input
-            const newInput = document.getElementById(rowId).querySelector('.animal-input');
-            attachAutocomplete(newInput);
-        }
 
-        let autocompleteTimeout = null;
-        function attachAutocomplete(input) {
-            const list = input.nextElementSibling; 
-            
-            input.addEventListener('input', function() {
-                clearTimeout(autocompleteTimeout);
-                const val = this.value.trim();
-                if(val.length < 2) { list.classList.remove('show'); return; }
-                
-                list.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
-                list.classList.add('show');
-                
-                autocompleteTimeout = setTimeout(() => {
-                    fetch(`../process/searchAnimals.php?term=${encodeURIComponent(val)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        list.innerHTML = '';
-                        if(data.length === 0) {
-                            list.innerHTML = '<div class="autocomplete-no-results">No matches</div>';
-                            return;
-                        }
-                        data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = 'autocomplete-item';
-                            div.innerHTML = item.replace(new RegExp(`(${val})`, 'gi'), '<strong>$1</strong>');
-                            div.addEventListener('click', () => {
-                                input.value = item;
-                                list.classList.remove('show');
-                            });
-                            list.appendChild(div);
-                        });
-                    }).catch(() => list.classList.remove('show'));
-                }, 300);
-            });
-
-            document.addEventListener('click', e => {
-                if(!input.parentElement.contains(e.target)) list.classList.remove('show');
-            });
-        }
-
-        // --- Supplier Autocomplete Logic ---
-        let supplierTimeout = null;
-        const supplierInput = document.getElementById('supplier');
-        const supplierList = document.getElementById('supplier-autocomplete-list');
-
-        if (supplierInput) {
-            supplierInput.addEventListener('input', function() {
-                clearTimeout(supplierTimeout);
-                const val = this.value.trim();
-                
-                if (val.length < 2) { 
-                    supplierList.classList.remove('show'); 
-                    return; 
-                }
-                
-                supplierList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
-                supplierList.classList.add('show');
-                
-                supplierTimeout = setTimeout(() => {
-                    fetch(`../process/searchSuppliers.php?term=${encodeURIComponent(val)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        supplierList.innerHTML = '';
-                        if (data.length === 0) {
-                            supplierList.innerHTML = '<div class="autocomplete-no-results">No matches</div>';
-                            return;
-                        }
-                        
-                        data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = 'autocomplete-item';
-                            const regex = new RegExp(`(${val})`, 'gi');
-                            div.innerHTML = item.replace(regex, '<strong>$1</strong>');
-                            
-                            div.addEventListener('click', () => {
-                                supplierInput.value = item;
-                                supplierList.classList.remove('show');
-                            });
-                            supplierList.appendChild(div);
-                        });
-                    }).catch(() => supplierList.classList.remove('show'));
-                }, 300);
-            });
-
-            document.addEventListener('click', e => {
-                if (!supplierInput.parentElement.contains(e.target)) {
-                    supplierList.classList.remove('show');
-                }
-            });
-        }
-
-        // --- Modals ---
-        function openAddModal() {
-            document.getElementById('modal-title').textContent = 'Add Animal Purchase';
-            document.querySelector('#modal .btn-save').textContent = 'Save Purchase';
-            document.getElementById('item-form').reset();
-            document.getElementById('item-id').value = '';
-            
-            // Flatpickr handles the default date beautifully
-            fpPurchaseDate.setDate(new Date()); 
-            
-            const locSelect = document.getElementById('location_id');
-            
-            // Auto-select location logic based on admin vs regular user
-            if (USER_LOCATION != 1000) {
-                locSelect.value = USER_LOCATION;
-                filterBuildings(); 
-            } else {
-                locSelect.value = "";
-                document.getElementById('building_id').innerHTML = '<option value="">Select Location First</option>';
-                document.getElementById('building_id').disabled = true;
-                document.getElementById('pen_id').innerHTML = '<option value="">Select Building First</option>';
-                document.getElementById('pen_id').disabled = true;
-            }
-            
-            // Reset Row Generator UI Defaults
-            document.getElementById('row_qty').value = '1';
-            document.getElementById('default_weight').value = '';
-            document.getElementById('default_cost').value = '';
-
-            // Clear existing rows and add one blank
-            document.getElementById('dynamic-animal-container').innerHTML = '';
-            
-            // Show bulk row controls for ADD mode
-            document.getElementById('bulk-row-controls').style.display = 'flex';
-            document.getElementById('btnFooterAddAnimal').style.display = 'flex'; 
-
-            addAnimalRow(); 
-
-            hideAlert();
-            document.getElementById('modal').classList.add('show');
-        }
-
-        function populateEditForm(data) {
-            document.getElementById('modal-title').textContent = 'Edit Animal Purchase';
-            document.querySelector('#modal .btn-save').textContent = 'Update Purchase';
-            document.getElementById('item-id').value = data.item_id;
-            document.getElementById('item-desc').value = data.item_description || '';
-            
-            // Use the raw date for flatpickr setting
-            fpPurchaseDate.setDate(data.purchase_date_raw || ''); 
-            
-            // Populate Supplier and Reference No
-            document.getElementById('supplier').value = data.supplier || '';
-            document.getElementById('reference-no').value = data.reference_no || '';
-            
-            const locSelect = document.getElementById('location_id');
-            locSelect.value = data.location_id || ""; 
-            filterBuildings(); 
-            const bldgSelect = document.getElementById('building_id');
-            if(data.building_id) {
-                bldgSelect.value = data.building_id;
-                filterPens();
-                if(data.pen_id) document.getElementById('pen_id').value = data.pen_id;
-            }
-
-            // Clear and add specific row
-            document.getElementById('dynamic-animal-container').innerHTML = '';
-            
-            // HIDE Row generator controls because EDIT mode is strict 1:1
-            document.getElementById('bulk-row-controls').style.display = 'none';
-            document.getElementById('btnFooterAddAnimal').style.display = 'none';
-
-            addAnimalRow(data.item_name, data.weight, data.unit_cost);
-            
-            // Remove the delete button from the single row since we can't have 0 rows
-            document.querySelector('.btn-remove-row').style.display = 'none';
-
-            hideAlert();
-            document.getElementById('modal').classList.add('show');
-        }
-
-        function editItem(button) {
-            const row = button.closest('tr');
-            populateEditForm({
-                item_id: row.dataset.itemId,
-                item_name: row.dataset.itemName,
-                item_description: row.dataset.itemDesc,
-                unit_cost: row.dataset.unitCost,
-                weight: row.dataset.weight,
-                purchase_date_raw: row.dataset.purchaseDateRaw,
-                location_id: row.dataset.locationId,
-                building_id: row.dataset.buildingId,
-                pen_id: row.dataset.penId,
-                supplier: row.dataset.supplier,
-                reference_no: row.dataset.referenceNo
-            });
-        }
-
-        function viewItem(button) {
-            const row = button.closest('tr');
-            const data = {
-                item_id: row.dataset.itemId, 
-                item_name: row.dataset.itemName, 
-                item_description: row.dataset.itemDesc,
-                unit: row.dataset.unitName, 
-                unit_cost: row.dataset.unitCost, 
-                quantity: row.dataset.quantity,
-                weight: row.dataset.weight, 
-                purchase_date_fmt: row.dataset.purchaseDateFmt, 
-                created_at: row.dataset.createdAt,
-                supplier: row.dataset.supplier, 
-                reference_no: row.dataset.referenceNo
-            };
-            const html = `
                 <div class="info-group">
-                    <h3 style="color:#93c5fd; border-bottom:1px solid #334155; padding-bottom:5px;">Basic Information</h3>
-                    <p><strong>Purchase ID:</strong> ANM-${String(data.item_id).padStart(4, '0')}</p>
-                    <p><strong>Animal / Breed:</strong> ${data.item_name}</p>
-                    <p><strong>Description:</strong> ${data.item_description || 'N/A'}</p>
-                    <p><strong>Supplier:</strong> ${data.supplier || 'N/A'}</p>
-                    <p><strong>Reference No:</strong> ${data.reference_no || 'N/A'}</p>
-                    <p><strong>Recorded On:</strong> ${data.created_at}</p>
+                    <div id="bulk-row-controls" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;flex-wrap:wrap;gap:10px;">
+                        <h3 style="margin:0;border:none;padding:0;width:100%;">Livestock Entries</h3>
+                        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                            <div class="form-group" style="width:70px;margin:0;">
+                                <label class="form-label">Qty Rows</label>
+                                <input type="number" id="row_qty" value="1" min="1" class="form-control" style="height:38px;">
+                            </div>
+                            <div class="form-group" style="width:100px;margin:0;">
+                                <label class="form-label">Wt (kg)</label>
+                                <input type="number" id="default_weight" placeholder="Opt." step="0.01" class="form-control" style="height:38px;">
+                            </div>
+                            <div class="form-group" style="width:110px;margin:0;">
+                                <label class="form-label">Cost (₱)</label>
+                                <input type="number" id="default_cost" placeholder="Opt." step="0.01" class="form-control" style="height:38px;">
+                            </div>
+                            <button type="button" class="btn btn-ghost" style="height:38px;" onclick="generateAnimalRows()">
+                                <i class="fa-solid fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <div id="dynamic-animal-container"></div>
                 </div>
-                <div class="info-group" style="margin-top:20px;">
-                    <h3 style="color:#93c5fd; border-bottom:1px solid #334155; padding-bottom:5px;">Purchase Details</h3>
-                    <p><strong>Quantity:</strong> ${data.quantity || '1'} ${data.unit}</p>
-                    <p><strong>Weight:</strong> ${data.weight || '0'} kg</p>
-                    <p><strong>Cost per Head:</strong> ₱${parseFloat(data.unit_cost).toLocaleString('en-PH', {minimumFractionDigits: 2})}</p>
-                    <p><strong>Purchase Date:</strong> ${data.purchase_date_fmt || 'N/A'}</p>
-                </div>
-            `;
-            document.getElementById('view-modal-body').innerHTML = html;
-            document.getElementById('view-modal').classList.add('show');
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="btnFooterAddAnimal" class="btn btn-ghost" style="margin-right:auto;" onclick="generateAnimalRows()">
+                <i class="fa-solid fa-plus"></i> Row
+            </button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btn-save" onclick="saveItem()">Save Purchase</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── VIEW MODAL ── -->
+<div id="view-modal" class="modal">
+    <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header"><h2>Purchase Dossier</h2></div>
+        <div class="modal-body" id="view-modal-body"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeViewModal()" style="width:100%;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── CONFIRM SINGLE ── -->
+<div id="confirm-modal" class="modal">
+    <div class="modal-content" style="max-width:450px;">
+        <div class="modal-body confirm-content">
+            <span class="confirm-icon" style="color:var(--red);">🐖</span>
+            <h2 style="color:#fff;margin-bottom:10px;">Verify Acquisition?</h2>
+            <p style="color:var(--text-secondary);margin-bottom:5px;">
+                Confirming intake of <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color:var(--blue);"></span></strong>.
+            </p>
+            <div class="warning-text">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>
+                <strong>Critical:</strong> Once confirmed, this record is locked and cannot be edited or deleted.
+            </div>
+            <form id="confirmForm" method="POST">
+                <input type="hidden" id="confirm_item_id" name="item_id">
+            </form>
+        </div>
+        <div class="modal-footer" style="justify-content:center;border-top:none;padding-top:0;padding-bottom:30px;background:transparent;">
+            <button type="button" class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitConfirmation()" style="background:var(--red);border-color:var(--red);">Yes, Lock Record</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── CONFIRM ALL ── -->
+<div id="confirm-all-modal" class="modal">
+    <div class="modal-content" style="max-width:450px;">
+        <div class="modal-body confirm-content">
+            <span class="confirm-icon" style="color:var(--amber);">📋</span>
+            <h2 style="color:#fff;margin-bottom:10px;">Commit All Pending?</h2>
+            <p style="color:var(--text-secondary);">This will verify and lock <strong>ALL</strong> pending animal acquisitions in this location.</p>
+            <div class="warning-text" style="background:var(--amber-dim);border-color:rgba(245,158,11,0.3);color:var(--amber);">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>
+                <strong>Irreversible:</strong> Please audit all pending items before executing this batch commit.
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content:center;border-top:none;padding-top:0;padding-bottom:30px;background:transparent;">
+            <button type="button" class="btn btn-ghost" onclick="closeConfirmAllModal()">Cancel</button>
+            <button type="button" class="btn btn-amber" onclick="submitConfirmAll()">Commit All Now</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden delete form -->
+<form id="deleteItemForm" method="POST" action="../process/deleteAnimalPurchase.php" style="display:none;">
+    <input type="hidden" id="delete_item_id" name="item_id">
+</form>
+
+<script>
+const allBuildings  = <?php echo json_encode($buildings_raw); ?>;
+const allPens       = <?php echo json_encode($pens_raw); ?>;
+const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+
+let fpPurchaseDate;
+
+document.addEventListener('DOMContentLoaded', () => {
+    fpPurchaseDate = flatpickr("#purchase-date", {
+        dateFormat: "Y-m-d",
+        altInput:   true,
+        altFormat:  "m/d/Y",
+        allowInput: true
+    });
+    if (USER_LOCATION != 1000) filterBuildings();
+});
+
+/* ── helpers to get dataset from either a <tr> or a .purchase-card ── */
+function dsFrom(el) {
+    return el.closest('tr') ? el.closest('tr').dataset
+                            : el.closest('.purchase-card').dataset;
+}
+
+/* ── Confirm single ── */
+function openConfirmModal(btn)         { _openConfirm(btn.closest('tr').dataset); }
+function openConfirmModalFromCard(btn) { _openConfirm(btn.closest('.purchase-card').dataset); }
+function _openConfirm(ds) {
+    document.getElementById('confirm_item_id').value  = ds.itemId;
+    document.getElementById('confirm-item-name').textContent = ds.itemName;
+    document.getElementById('confirm-item-qty').textContent  = ds.quantity;
+    document.getElementById('confirm-modal').classList.add('show');
+}
+function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
+function submitConfirmation() {
+    fetch('../purchase_confirmations/confirmAnimalPurchase.php', {
+        method: 'POST', body: new FormData(document.getElementById('confirmForm'))
+    }).then(r=>r.json()).then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+
+/* ── Confirm all ── */
+function openConfirmAllModal()  { document.getElementById('confirm-all-modal').classList.add('show'); }
+function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
+function submitConfirmAll() {
+    fetch('../purchase_confirmations/confirmAllAnimalPurchases.php', { method: 'POST' })
+        .then(r=>r.json()).then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+
+/* ── Location cascades ── */
+function filterBuildings() {
+    const bSelect = document.getElementById('building_id');
+    const pSelect = document.getElementById('pen_id');
+    const locId   = document.getElementById('location_id').value || String(USER_LOCATION);
+
+    bSelect.innerHTML = '<option value="">Select Building</option>';
+    pSelect.innerHTML = '<option value="">Select Building First</option>';
+    pSelect.disabled  = true;
+
+    if (locId && locId !== '0') {
+        bSelect.disabled = false;
+        allBuildings.filter(b => b.LOCATION_ID == locId)
+                    .forEach(b => bSelect.add(new Option(b.BUILDING_NAME, b.BUILDING_ID)));
+    } else {
+        bSelect.disabled = true;
+    }
+}
+
+function filterPens() {
+    const pSelect = document.getElementById('pen_id');
+    const bId     = document.getElementById('building_id').value;
+    pSelect.innerHTML = '<option value="">Select Pen</option>';
+    if (bId) {
+        pSelect.disabled = false;
+        allPens.filter(p => p.BUILDING_ID == bId)
+               .forEach(p => pSelect.add(new Option(p.PEN_NAME, p.PEN_ID)));
+    } else {
+        pSelect.disabled = true;
+    }
+}
+
+/* ── Dynamic rows ── */
+function generateAnimalRows() {
+    const qty = parseInt(document.getElementById('row_qty').value) || 1;
+    const w   = document.getElementById('default_weight').value;
+    const c   = document.getElementById('default_cost').value;
+    for (let i = 0; i < qty; i++) addAnimalRow('', w, c);
+    document.getElementById('row_qty').value = 1;
+}
+
+function addAnimalRow(name='', weight='', cost='') {
+    const id   = 'row-' + Date.now() + Math.floor(Math.random()*100);
+    const html = `
+        <div class="dynamic-row" id="${id}">
+            <div class="form-group autocomplete-wrapper">
+                <label class="form-label">Type / Breed <span>*</span></label>
+                <input type="text" name="item_names[]" class="form-control animal-input" value="${name}" required autocomplete="off">
+                <div class="autocomplete-list"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Weight (kg)</label>
+                <input type="number" name="weights[]" class="form-control val-mono" value="${weight}" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Cost (₱) <span>*</span></label>
+                <input type="number" name="unit_costs[]" class="form-control val-mono" value="${cost}" step="0.01" min="0" required>
+            </div>
+            <button type="button" class="btn-remove-row" onclick="document.getElementById('${id}').remove()" title="Remove">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>`;
+    document.getElementById('dynamic-animal-container').insertAdjacentHTML('beforeend', html);
+    attachAutocomplete(document.getElementById(id).querySelector('.animal-input'));
+}
+
+/* ── Animal autocomplete ── */
+let acTimer = null;
+function attachAutocomplete(input) {
+    const list = input.nextElementSibling;
+    input.addEventListener('input', function() {
+        clearTimeout(acTimer);
+        const val = this.value.trim();
+        if (val.length < 2) { list.classList.remove('show'); return; }
+        list.innerHTML = '<div class="autocomplete-loading">Querying registry...</div>';
+        list.classList.add('show');
+        acTimer = setTimeout(() => {
+            fetch(`../process/searchAnimals.php?term=${encodeURIComponent(val)}`)
+                .then(r=>r.json()).then(data => {
+                    list.innerHTML = '';
+                    if (!data.length) { list.innerHTML = '<div class="autocomplete-no-results">No breed match found</div>'; return; }
+                    data.forEach(item => {
+                        const d = document.createElement('div');
+                        d.className = 'autocomplete-item';
+                        d.innerHTML = item.replace(new RegExp(`(${val})`,'gi'),'<strong>$1</strong>');
+                        d.onclick = () => { input.value = item; list.classList.remove('show'); };
+                        list.appendChild(d);
+                    });
+                }).catch(()=>list.classList.remove('show'));
+        }, 300);
+    });
+    document.addEventListener('click', e => { if(!input.parentElement.contains(e.target)) list.classList.remove('show'); });
+}
+
+/* ── Supplier autocomplete ── */
+let supTimer = null;
+const supInput = document.getElementById('supplier');
+const supList  = document.getElementById('supplier-autocomplete-list');
+if (supInput) {
+    supInput.addEventListener('input', function() {
+        clearTimeout(supTimer);
+        const val = this.value.trim();
+        if (val.length < 2) { supList.classList.remove('show'); return; }
+        supList.innerHTML = '<div class="autocomplete-loading">Finding vendor...</div>';
+        supList.classList.add('show');
+        supTimer = setTimeout(() => {
+            fetch(`../process/searchSuppliers.php?term=${encodeURIComponent(val)}`)
+                .then(r=>r.json()).then(data => {
+                    supList.innerHTML = '';
+                    if (!data.length) { supList.innerHTML = '<div class="autocomplete-no-results">No previous supplier matched</div>'; return; }
+                    data.forEach(item => {
+                        const d = document.createElement('div');
+                        d.className = 'autocomplete-item';
+                        d.innerHTML = item.replace(new RegExp(`(${val})`,'gi'),'<strong>$1</strong>');
+                        d.onclick = () => { supInput.value = item; supList.classList.remove('show'); };
+                        supList.appendChild(d);
+                    });
+                }).catch(()=>supList.classList.remove('show'));
+        }, 300);
+    });
+    document.addEventListener('click', e => { if(!supInput.parentElement.contains(e.target)) supList.classList.remove('show'); });
+}
+
+/* ── Open Add modal ── */
+function openAddModal() {
+    document.getElementById('modal-title').textContent = 'Register New Acquisition';
+    document.getElementById('btn-save').innerHTML = '<i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i> Save Purchase';
+    document.getElementById('item-form').reset();
+    document.getElementById('item-id').value = '';
+    fpPurchaseDate.setDate(new Date());
+
+    const locSelect = document.getElementById('location_id');
+    locSelect.value = (USER_LOCATION != 1000) ? USER_LOCATION : '';
+    filterBuildings();
+
+    document.getElementById('row_qty').value        = '1';
+    document.getElementById('default_weight').value = '';
+    document.getElementById('default_cost').value   = '';
+    document.getElementById('dynamic-animal-container').innerHTML = '';
+    document.getElementById('bulk-row-controls').style.display   = 'flex';
+    document.getElementById('btnFooterAddAnimal').style.display   = 'flex';
+
+    addAnimalRow();
+    hideAlert();
+    document.getElementById('modal').classList.add('show');
+}
+
+/* ── Shared edit population ── */
+function _populateEdit(ds) {
+    document.getElementById('modal-title').textContent = 'Modify Purchase Record';
+    document.getElementById('btn-save').innerHTML = '<i class="fa-solid fa-arrows-rotate" style="margin-right:6px;"></i> Update Record';
+    document.getElementById('item-id').value   = ds.itemId;
+    document.getElementById('item-desc').value = ds.itemDesc || '';
+    fpPurchaseDate.setDate(ds.purchaseDateRaw || '');
+    document.getElementById('supplier').value     = ds.supplier || '';
+    document.getElementById('reference-no').value = ds.referenceNo || '';
+
+    const locSelect = document.getElementById('location_id');
+    locSelect.value = ds.locationId || String(USER_LOCATION) || '';
+    filterBuildings();
+    if (ds.buildingId) {
+        document.getElementById('building_id').value = ds.buildingId;
+        filterPens();
+        if (ds.penId) document.getElementById('pen_id').value = ds.penId;
+    }
+
+    document.getElementById('dynamic-animal-container').innerHTML = '';
+    document.getElementById('bulk-row-controls').style.display    = 'none';
+    document.getElementById('btnFooterAddAnimal').style.display   = 'none';
+
+    addAnimalRow(ds.itemName, ds.weight, ds.unitCost);
+    const rmBtn = document.querySelector('.btn-remove-row');
+    if (rmBtn) rmBtn.style.display = 'none';
+
+    hideAlert();
+    document.getElementById('modal').classList.add('show');
+}
+
+function editItem(btn)         { _populateEdit(btn.closest('tr').dataset); }
+function editItemFromCard(btn) { _populateEdit(btn.closest('.purchase-card').dataset); }
+
+/* ── View modal ── */
+function _buildViewHtml(ds) {
+    return `
+        <div class="info-group">
+            <h3>Acquisition Overview</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <p style="color:var(--text-secondary);margin:0;"><strong>System ID:</strong><br><span class="val-mono">PCH-${String(ds.itemId).padStart(5,'0')}</span></p>
+                <p style="color:var(--text-secondary);margin:0;"><strong>Reference No:</strong><br><span class="val-mono">${ds.referenceNo||'N/A'}</span></p>
+            </div>
+            <p style="margin-top:15px;color:var(--text-primary);"><strong>Genetic Profile:</strong><br>${ds.itemName}</p>
+            <p style="margin-top:10px;color:var(--text-secondary);"><strong>Supplier Origin:</strong><br>${ds.supplier||'N/A'}</p>
+            <p style="margin-top:10px;color:var(--text-secondary);"><strong>Remarks:</strong><br>${ds.itemDesc||'None'}</p>
+        </div>
+        <div class="info-group" style="margin-top:20px;">
+            <h3>Financials &amp; Metrics</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <p style="color:var(--text-secondary);margin:0;"><strong>Batch Size:</strong><br><span style="color:#fff;">${ds.quantity||'1'} ${ds.unitName}</span></p>
+                <p style="color:var(--text-secondary);margin:0;"><strong>Avg. Weight:</strong><br><span class="val-mono">${ds.weight||'0'} kg</span></p>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px;">
+                <p style="color:var(--text-secondary);margin:0;"><strong>Cost per Head:</strong><br><span class="val-money">₱${parseFloat(ds.unitCost).toLocaleString('en-PH',{minimumFractionDigits:2})}</span></p>
+                <p style="color:var(--text-secondary);margin:0;"><strong>Date Logged:</strong><br><span class="val-mono">${ds.purchaseDateFmt||'N/A'}</span></p>
+            </div>
+        </div>`;
+}
+function viewItem(btn)         { document.getElementById('view-modal-body').innerHTML = _buildViewHtml(btn.closest('tr').dataset); document.getElementById('view-modal').classList.add('show'); }
+function viewItemFromCard(btn) { document.getElementById('view-modal-body').innerHTML = _buildViewHtml(btn.closest('.purchase-card').dataset); document.getElementById('view-modal').classList.add('show'); }
+function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
+
+/* ── Delete ── */
+function _doDelete(ds) {
+    if (confirm(`Irreversible: Delete purchase record for "${ds.itemName}"?`)) {
+        document.getElementById('delete_item_id').value = ds.itemId;
+        document.getElementById('deleteItemForm').submit();
+    }
+}
+function deleteItem(btn)         { _doDelete(btn.closest('tr').dataset); }
+function deleteItemFromCard(btn) { _doDelete(btn.closest('.purchase-card').dataset); }
+
+/* ── Save ── */
+function saveItem() {
+    const form = document.getElementById('item-form');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!document.querySelectorAll('.dynamic-row').length) { showAlert('Add at least one animal entry.','error'); return; }
+
+    const formData = new FormData(form);
+    const isEdit   = !!document.getElementById('item-id').value;
+    const url      = isEdit ? '../process/editAnimalPurchase.php' : '../process/addAnimalPurchase.php';
+    const saveBtn  = document.getElementById('btn-save');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i> Processing...';
+
+    if (isEdit) {
+        const names   = formData.getAll('item_names[]');
+        const weights = formData.getAll('weights[]');
+        const costs   = formData.getAll('unit_costs[]');
+        formData.delete('item_names[]');  formData.append('item_name',  names[0]);
+        formData.delete('weights[]');     formData.append('weight',     weights[0]);
+        formData.delete('unit_costs[]');  formData.append('unit_cost',  costs[0]);
+    }
+
+    fetch(url, { method:'POST', body: formData }).then(r=>r.json()).then(d => {
+        if (d.success) { showAlert(d.message,'success'); setTimeout(()=>location.reload(), 1000); }
+        else {
+            showAlert(d.message,'error');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = isEdit
+                ? '<i class="fa-solid fa-arrows-rotate" style="margin-right:6px;"></i> Update Record'
+                : '<i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i> Save Purchase';
         }
+    }).catch(()=>{
+        showAlert('Network error.','error');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = isEdit
+            ? '<i class="fa-solid fa-arrows-rotate" style="margin-right:6px;"></i> Update Record'
+            : '<i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i> Save Purchase';
+    });
+}
 
-        function deleteItem(button) {
-            const row = button.closest('tr');
-            if (confirm(`Are you sure you want to delete record for "${row.dataset.itemName}"?`)) {
-                document.getElementById('delete_item_id').value = row.dataset.itemId;
-                document.getElementById('deleteItemForm').submit();
-            }
-        }
+function showAlert(msg,type) { const a=document.getElementById('modal-alert'); a.textContent=msg; a.className='alert '+type; a.style.display='block'; }
+function hideAlert()  { document.getElementById('modal-alert').style.display='none'; }
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
 
-        function saveItem() {
-            const form = document.getElementById('item-form');
-            if (!form.checkValidity()) { form.reportValidity(); return; }
-            
-            // Check if there are any animal rows
-            if(document.querySelectorAll('.dynamic-row').length === 0) {
-                showAlert('You must add at least one animal.', 'error'); return;
-            }
+/* ── Unified search / filter (desktop table + mobile cards) ── */
+function filterAll() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
 
-            const formData = new FormData(form);
-            const isEdit = document.getElementById('item-id').value !== '';
-            const url = isEdit ? '../process/editAnimalPurchase.php' : '../process/addAnimalPurchase.php';
-            
-            const saveBtn = document.getElementById('btn-save');
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<span class="loading"></span> ' + (isEdit ? 'Updating...' : 'Saving...');
-            
-            // Modify form data for edit mode if backend expects single values
-            if (isEdit) {
-                const names = formData.getAll('item_names[]');
-                const weights = formData.getAll('weights[]');
-                const costs = formData.getAll('unit_costs[]');
-                formData.delete('item_names[]'); formData.append('item_name', names[0]);
-                formData.delete('weights[]'); formData.append('weight', weights[0]);
-                formData.delete('unit_costs[]'); formData.append('unit_cost', costs[0]);
-            }
+    // Desktop rows
+    const rows = document.querySelectorAll('#item-table .data-row');
+    let dCount = 0;
+    rows.forEach(r => {
+        const match = r.textContent.toLowerCase().includes(term);
+        r.style.display = match ? '' : 'none';
+        if (match) dCount++;
+    });
+    document.getElementById('empty-state-desktop').style.display = dCount === 0 ? 'block' : 'none';
 
-            fetch(url, { method: 'POST', body: formData })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    showAlert(data.message, 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    showAlert(data.message, 'error');
-                    saveBtn.disabled = false; saveBtn.textContent = isEdit ? 'Update Purchase' : 'Save Purchase';
-                }
-            }).catch(e => {
-                showAlert('Network error occurred.', 'error');
-                saveBtn.disabled = false; saveBtn.textContent = isEdit ? 'Update Purchase' : 'Save Purchase';
-            });
-        }
+    // Mobile cards
+    const cards = document.querySelectorAll('#mobile-list .mobile-card');
+    let mCount = 0;
+    cards.forEach(c => {
+        const match = c.textContent.toLowerCase().includes(term);
+        c.style.display = match ? '' : 'none';
+        if (match) mCount++;
+    });
+    document.getElementById('empty-state-mobile').style.display = mCount === 0 ? 'block' : 'none';
+}
 
-        function showAlert(msg, type) { const a = document.getElementById('modal-alert'); a.textContent = msg; a.className = 'alert ' + type; a.style.display = 'block'; }
-        function hideAlert() { document.getElementById('modal-alert').style.display = 'none'; }
-        function closeModal() { document.getElementById('modal').classList.remove('show'); }
-        function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
-
-        function filterTable() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('#item-table tr');
-            let count = 0;
-            rows.forEach(r => {
-                if(r.children.length === 1) return;
-                if(r.textContent.toLowerCase().includes(term)) { r.style.display = ''; count++; } 
-                else { r.style.display = 'none'; }
-            });
-            document.getElementById('empty-state').style.display = count === 0 ? 'block' : 'none';
-        }
-    </script>
+// Close modal on background click
+window.onclick = e => { if (e.target.classList.contains('modal')) e.target.classList.remove('show'); };
+</script>
 </body>
 </html>

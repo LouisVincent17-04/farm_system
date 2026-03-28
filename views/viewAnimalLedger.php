@@ -12,7 +12,6 @@ include '../common/chat_support.php';
 
 $animal_id = $_GET['id'] ?? 0;
 
-
 try {
     if (!$animal_id) throw new Exception("No Animal ID provided.");
 
@@ -39,11 +38,6 @@ try {
 
     if (!$animal) throw new Exception("Animal not found in records.");
 
-    // printf("<pre>");
-    // print_r($animal);
-    // printf("</pre>");
-    // echo "<hr><h2>Debug:".$animal['CLASS_ID']."</h2>";
-    // exit;
     // --- 2. Build the Combined Ledger ---
     $ledger = [];
 
@@ -99,7 +93,7 @@ try {
     try {
         $vit_sql = "SELECT 
                         vst.TRANSACTION_DATE AS txn_date, 
-                        'Vitamins/Supplements' AS type, 
+                        'Supplement' AS type, 
                         CONCAT('Given ', IFNULL(vs.SUPPLY_NAME, 'Vitamins/Supplements'), ' - ', IFNULL(vst.DOSAGE, 'N/A')) AS details,
                         vst.TOTAL_COST AS cost,
                         vst.REMARKS AS remarks
@@ -128,8 +122,7 @@ try {
 
     // F. Cost Transfers (Table: cost_transfers)
     try {
-        if($animal['CLASS_ID'] == 7)
-        {
+        if($animal['CLASS_ID'] == 7) {
             $ct_sql = "SELECT 
                         TRANSFER_DATE AS txn_date, 
                         'Cost Transfer' AS type, 
@@ -138,13 +131,11 @@ try {
                         'Cost reset/transfer for birthing cycle' AS remarks
                     FROM cost_transfers
                     WHERE BOAR_ID = ?";
-
-                $stmt = $conn->prepare($ct_sql);
-                $stmt->execute([$animal_id]);
-                $ledger = array_merge($ledger, $stmt->fetchAll(PDO::FETCH_ASSOC));
+            $stmt = $conn->prepare($ct_sql);
+            $stmt->execute([$animal_id]);
+            $ledger = array_merge($ledger, $stmt->fetchAll(PDO::FETCH_ASSOC));
         }
-        else if($animal['CLASS_ID'] == 8)
-        {
+        else if($animal['CLASS_ID'] == 8) {
             $ct_sql = "SELECT 
                         TRANSFER_DATE AS txn_date, 
                         'Cost Transfer' AS type, 
@@ -153,12 +144,10 @@ try {
                         'Cost reset/transfer for birthing cycle' AS remarks
                     FROM cost_transfers
                     WHERE SOW_ID = ?";
-
-                       $stmt = $conn->prepare($ct_sql);
+            $stmt = $conn->prepare($ct_sql);
             $stmt->execute([$animal_id]);
             $ledger = array_merge($ledger, $stmt->fetchAll(PDO::FETCH_ASSOC));
         }
-
     } catch(Exception $e) {}
 
     // 3. Sort Ledger by Date Descending
@@ -170,186 +159,312 @@ try {
     $error = $e->getMessage();
 }
 
-
 $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'));
-
-// printf("<pre>");
-//         print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
-//         printf("</pre>");
-//         exit;
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animal Ledger - <?= htmlspecialchars($animal['TAG_NO'] ?? 'Profile') ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Animal Ledger | Tag <?= htmlspecialchars($animal['TAG_NO'] ?? '') ?></title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; margin: 0; padding-bottom: 40px; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            
+            --slate:          #94a3b8;
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.15);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.15);
+            --red:            #ef4444;
+            --red-dim:        rgba(239,68,68,0.15);
+            --blue:           #3b82f6;
+            --blue-dim:       rgba(59,130,246,0.15);
+            --purple:         #a855f7;
+            --purple-dim:     rgba(168,85,247,0.15);
+            --pink:           #ec4899;
+            --pink-dim:       rgba(236,72,153,0.15);
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: #fff; border-color: rgba(255,255,255,0.2); background: var(--bg-hover); }
+
+        /* ─── ERROR STATE ─── */
+        .error-box { background: var(--red-dim); border: 1px solid var(--red); padding: 2rem; border-radius: var(--radius-lg); color: var(--red); text-align: center; margin-top: 2rem;}
+        .error-box h3 { margin-top: 1rem; font-weight: 600;}
+
+        /* ─── PROFILE HERO CARD ─── */
+        .profile-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden; margin-bottom: 2.5rem;
+            box-shadow: var(--shadow-md); position: relative;
+        }
+        .profile-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--emerald), var(--blue)); }
+
+        .profile-header {
+            padding: 2rem; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .ph-left { display: flex; align-items: center; gap: 1.5rem; }
+        .ph-icon { width: 64px; height: 64px; border-radius: 16px; background: var(--emerald-dim); color: var(--emerald); display: flex; align-items: center; justify-content: center; font-size: 2rem; border: 1px solid rgba(16,185,129,0.3);}
         
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s; }
-        .back-link:hover { color: white; }
+        .tag-no { font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); color: #fff; margin: 0 0 0.25rem 0; line-height: 1; letter-spacing: -0.02em;}
+        .tag-sub { color: var(--text-secondary); font-size: 1rem; font-weight: 500; display: flex; align-items: center; gap: 8px;}
 
-        /* --- PROFILE CARD --- */
-        .profile-card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 16px; overflow: hidden; margin-bottom: 2rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); }
-        .profile-header { background: rgba(15, 23, 42, 0.8); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
-        .tag-no { font-size: 2.2rem; font-weight: 800; color: #4ade80; margin: 0; }
-        .status-badge { padding: 6px 16px; border-radius: 999px; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        .status-badge {
+            padding: 8px 16px; border-radius: 99px; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .s-active { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.3); }
+        .s-sold { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+        .s-dead { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+
+        /* ─── PROFILE STATS GRID ─── */
+        .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: var(--border); }
+        .profile-item { background: var(--bg-surface); padding: 1.5rem; display: flex; flex-direction: column; justify-content: center;}
         
-        .s-active { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.5); }
-        .s-sold { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid rgba(251,191,36,0.5); }
-        .s-dead { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.5); }
+        .p-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;}
+        .p-value { font-size: 1.25rem; color: #fff; font-weight: 700; font-family: var(--font); margin-bottom: 0.25rem; line-height: 1.2;}
+        .p-sub { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;}
 
-        .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: #334155; }
-        .profile-item { background: rgba(30, 41, 59, 0.9); padding: 1.5rem; }
-        .p-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
-        .p-value { font-size: 1.1rem; color: #fff; font-weight: 500; }
-        .p-sub { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+        /* Value Colors */
+        .val-blue { color: var(--blue); }
+        .val-amber { color: var(--amber); font-family: var(--font-mono); }
+        .val-emerald { color: var(--emerald); font-family: var(--font-mono); }
 
-        /* --- LEDGER TABLE --- */
-        .table-wrap { background: rgba(30, 41, 59, 0.5); border-radius: 16px; overflow: hidden; border: 1px solid #334155; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { background: rgba(15, 23, 42, 0.9); color: #94a3b8; text-align: left; padding: 1rem; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
-        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #e2e8f0; vertical-align: top;}
-        tr:hover { background: rgba(255,255,255,0.02); }
+        /* ─── LEDGER TABLE ─── */
+        .section-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px;}
 
-        .badge-type { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
-        .t-feed { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .t-med { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .t-vax { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
-        .t-vit { background: rgba(163, 230, 53, 0.15); color: #bef264; border: 1px solid rgba(163, 230, 53, 0.3); }
-        .t-chk { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-        .t-trans { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+        .table-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-md);}
+        .table-scroll-wrapper { overflow-x: auto; }
+        .table-scroll-wrapper::-webkit-scrollbar { height: 8px; }
+        .table-scroll-wrapper::-webkit-scrollbar-track { background: var(--bg-surface); }
+        .table-scroll-wrapper::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-        .empty-state { text-align: center; padding: 4rem; color: #64748b; font-style: italic; }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .data-table th { background: var(--bg-elevated); color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 16px; text-align: left; font-weight: 700; border-bottom: 1px solid var(--border); }
+        .data-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-primary); vertical-align: top; font-size: 0.95rem; }
+        .data-table tr:hover { background: rgba(255,255,255,0.01); }
+
+        /* Ledger specific cells */
+        .td-date { color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.9rem; white-space: nowrap;}
+        .td-details { font-weight: 600; color: #fff; line-height: 1.4;}
+        .td-remarks { color: var(--text-secondary); font-size: 0.85rem; font-style: italic; }
+        .td-cost { text-align: right; font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem; white-space: nowrap;}
         
+        .cost-add { color: var(--amber); }
+        .cost-sub { color: var(--emerald); }
+        .cost-zero { color: var(--text-muted); }
+
+        /* Type Badges */
+        .badge-type { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; border: 1px solid transparent;}
+        .t-feed { background: var(--amber-dim); color: var(--amber); border-color: rgba(245,158,11,0.3); }
+        .t-med { background: var(--red-dim); color: var(--red); border-color: rgba(239,68,68,0.3); }
+        .t-vax { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,0.3); }
+        .t-vit { background: var(--emerald-dim); color: var(--emerald); border-color: rgba(16,185,129,0.3); }
+        .t-chk { background: var(--purple-dim); color: var(--purple); border-color: rgba(168,85,247,0.3); }
+        .t-trans { background: var(--pink-dim); color: var(--pink); border-color: rgba(236,72,153,0.3); }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); font-style: italic; }
+
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            .profile-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-            .table-wrap { overflow-x: auto; }
+            .container { padding: 1rem; }
+            .profile-header { flex-direction: column; align-items: flex-start; }
+            .ph-left { width: 100%; }
+            
+            /* Table to Cards */
+            .data-table thead { display: none; }
+            .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
+            
+            .data-table tr { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1rem; padding: 1.25rem; box-shadow: var(--shadow-md); }
+            .data-table td { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); gap: 4px; }
+            .data-table td:last-child { border-bottom: none; padding-top: 1rem; align-items: flex-end;}
+            
+            .data-table td::before { content: attr(data-label); font-weight: 700; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+            .td-cost { text-align: right; width: 100%;}
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="animal_report.php" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i> Back to Animal Report
-    </a>
+    <div class="top-bar">
+        <a href="animal_report.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Animal Report
+        </a>
+    </div>
 
     <?php if(isset($error)): ?>
-        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 1.5rem; border-radius: 12px; color: #ef4444; text-align: center;">
-            <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-            <h3><?= $error ?></h3>
+        <div class="error-box">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <h3><?= htmlspecialchars($error) ?></h3>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">The requested animal profile could not be loaded.</p>
         </div>
     <?php else: 
         $status_css = 's-active';
-        if(in_array($animal['CURRENT_STATUS'], ['Sold'])) $status_css = 's-sold';
-        if(in_array($animal['CURRENT_STATUS'], ['Dead', 'Deceased', 'Cull'])) $status_css = 's-dead';
+        $status_icon = 'fa-check';
+        if(in_array($animal['CURRENT_STATUS'], ['Sold'])) { $status_css = 's-sold'; $status_icon = 'fa-tag'; }
+        if(in_array($animal['CURRENT_STATUS'], ['Dead', 'Deceased', 'Cull'])) { $status_css = 's-dead'; $status_icon = 'fa-skull'; }
     ?>
 
         <div class="profile-card">
             <div class="profile-header">
-                <div>
-                    <h1 class="tag-no"><?= htmlspecialchars($animal['TAG_NO']) ?></h1>
-                    <div style="color: #94a3b8; margin-top: 5px;">
-                        <?= htmlspecialchars($animal['ANIMAL_TYPE_NAME']) ?> • <?= htmlspecialchars($animal['BREED_NAME']) ?>
+                <div class="ph-left">
+                    <div class="ph-icon"><i class="fa-solid fa-paw"></i></div>
+                    <div>
+                        <h1 class="tag-no"><?= htmlspecialchars($animal['TAG_NO']) ?></h1>
+                        <div class="tag-sub">
+                            <?= htmlspecialchars($animal['ANIMAL_TYPE_NAME'] ?? 'Unknown Type') ?> 
+                            &bull; 
+                            <?= htmlspecialchars($animal['BREED_NAME'] ?? 'Unknown Breed') ?>
+                        </div>
                     </div>
                 </div>
                 <div class="status-badge <?= $status_css ?>">
-                    <?= htmlspecialchars($animal['CURRENT_STATUS']) ?>
+                    <i class="fa-solid <?= $status_icon ?>"></i> <?= htmlspecialchars($animal['CURRENT_STATUS']) ?>
                 </div>
             </div>
 
             <div class="profile-grid">
                 <div class="profile-item">
-                    <div class="p-label">Stage / Class</div>
+                    <div class="p-label"><i class="fa-solid fa-layer-group"></i> Stage / Class</div>
                     <div class="p-value"><?= htmlspecialchars($animal['STAGE_NAME'] ?? 'Unclassified') ?></div>
                     <div class="p-sub"><?= $animal['SEX'] == 'M' ? 'Male' : 'Female' ?></div>
                 </div>
                 <div class="profile-item">
-                    <div class="p-label">Age & Birth</div>
+                    <div class="p-label"><i class="fa-solid fa-cake-candles"></i> Age & Birth</div>
                     <div class="p-value"><?= $animal['DAYS_OLD'] !== null ? $animal['DAYS_OLD'] . ' days old' : 'Unknown' ?></div>
                     <div class="p-sub">Born: <?= $animal['BIRTH_DATE'] ? date('M d, Y', strtotime($animal['BIRTH_DATE'])) : 'N/A' ?></div>
                 </div>
                 <div class="profile-item">
-                    <div class="p-label">Weight (KG)</div>
-                    <div class="p-value"><span style="color:#60a5fa"><?= $animal['CURRENT_ESTIMATED_WEIGHT'] ?: '-' ?></span> Est.</div>
-                    <div class="p-sub"><span style="color:#34d399"><?= $animal['CURRENT_ACTUAL_WEIGHT'] ?: '-' ?></span> Actual</div>
+                    <div class="p-label"><i class="fa-solid fa-weight-scale"></i> Weight (KG)</div>
+                    <div class="p-value val-blue"><?= $animal['CURRENT_ESTIMATED_WEIGHT'] ?: '-' ?> <span style="font-size:0.8rem; font-weight:500; color:var(--text-secondary); font-family:var(--font);">Est.</span></div>
+                    <div class="p-sub"><span style="color:var(--emerald); font-weight:700; font-family:var(--font-mono);"><?= $animal['CURRENT_ACTUAL_WEIGHT'] ?: '-' ?></span> Actual</div>
                 </div>
                 <div class="profile-item">
-                    <div class="p-label">Location</div>
-                    <div class="p-value"><?= htmlspecialchars($animal['BUILDING_NAME'] ?? 'No Building') ?></div>
+                    <div class="p-label"><i class="fa-solid fa-location-dot"></i> Location</div>
+                    <div class="p-value" style="font-size: 1.1rem;"><?= htmlspecialchars($animal['BUILDING_NAME'] ?? 'No Building') ?></div>
                     <div class="p-sub">Pen: <?= htmlspecialchars($animal['PEN_NAME'] ?? 'No Pen') ?></div>
                 </div>
                 <div class="profile-item">
-                    <div class="p-label">Lineage</div>
-                    <div class="p-value" style="color:#f472b6;">Dam: <?= htmlspecialchars($animal['MOTHER_TAG'] ?? 'Unknown') ?></div>
-                    <div class="p-sub" style="color:#60a5fa;">Sire: <?= htmlspecialchars($animal['FATHER_TAG'] ?? 'Unknown') ?></div>
+                    <div class="p-label"><i class="fa-solid fa-dna"></i> Lineage</div>
+                    <div class="p-value" style="font-size: 1.05rem; color:var(--pink);">Dam: <?= htmlspecialchars($animal['MOTHER_TAG'] ?? 'Unknown') ?></div>
+                    <div class="p-sub" style="color:var(--blue); font-weight:600;">Sire: <?= htmlspecialchars($animal['FATHER_TAG'] ?? 'Unknown') ?></div>
                 </div>
                 <div class="profile-item">
-                    <div class="p-label">Acquisition Cost</div>
-                    <div class="p-value" style="color:#fbbf24;">₱<?= number_format($animal['ACQUISITION_COST'], 2) ?></div>
+                    <div class="p-label"><i class="fa-solid fa-money-bill-transfer"></i> Acquisition Cost</div>
+                    <div class="p-value val-amber">₱<?= number_format($animal['ACQUISITION_COST'], 2) ?></div>
+                    <div class="p-sub">Initial Capital</div>
                 </div>
-                <div class="profile-item">
-                    <div class="p-label">Net Cost</div>
-                    <div class="p-value" style="color:#fbbf24;">
-                        
-                        ₱<?php echo number_format($net_cost, 2) ?>
-                    </div>
+                <div class="profile-item" style="background: rgba(16,185,129,0.05);">
+                    <div class="p-label" style="color:var(--emerald);"><i class="fa-solid fa-chart-line"></i> Total Net Cost</div>
+                    <div class="p-value val-emerald" style="font-size: 1.5rem;">₱<?= number_format($net_cost, 2) ?></div>
+                    <div class="p-sub">Acquisition + Operations</div>
                 </div>
             </div>
         </div>
 
-        <h3 style="color:#94a3b8; margin-bottom: 1rem;">Operations & Treatment Ledger</h3>
+        <div class="section-title"><i class="fa-solid fa-book-open"></i> Operations & Treatment Ledger</div>
 
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Details / Action Performed</th>
-                        <th>Remarks / Reason</th>
-                        <th style="text-align:right;">Cost (PHP)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if(empty($ledger)): ?>
-                        <tr><td colspan="5" class="empty-state">No operational history found for this animal.</td></tr>
-                    <?php else: ?>
-                        <?php foreach($ledger as $row): 
-                            $badgeClass = 't-feed'; // default
-                            if ($row['type'] == 'Medication') $badgeClass = 't-med';
-                            if ($row['type'] == 'Vaccination') $badgeClass = 't-vax';
-                            if ($row['type'] == 'Supplement') $badgeClass = 't-vit';
-                            if ($row['type'] == 'Checkup') $badgeClass = 't-chk';
-                            if ($row['type'] == 'Cost Transfer') $badgeClass = 't-trans';
-                        ?>
+        <div class="table-section">
+            <div class="table-scroll-wrapper">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td style="color:#94a3b8; white-space:nowrap;"><?= date('M d, Y H:i', strtotime($row['txn_date'])) ?></td>
-                            <td><span class="badge-type <?= $badgeClass ?>"><?= htmlspecialchars($row['type']) ?></span></td>
-                            <td style="color:#fff; font-weight:500;"><?= htmlspecialchars($row['details']) ?></td>
-                            <td style="color:#cbd5e1; font-size:0.85rem;"><?= htmlspecialchars($row['remarks'] ?? '-') ?></td>
-                            <td style="text-align:right; color:#fbbf24;">
-                                <?php 
-                                    if ($row['type'] == 'Cost Transfer'){
-                                        echo $row['cost'] < 0 ? '₱ '.number_format($row['cost'], 2) : '-';
-                                    }
-                                    else
-                                    {
-                                        echo $row['cost'] > 0 ? '₱'.number_format($row['cost'], 2) : '-';
-                                    }
-                                ?>
-                            </td>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Details / Action Performed</th>
+                            <th>Remarks / Reason</th>
+                            <th style="text-align:right;">Cost Impact</th>
                         </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php if(empty($ledger)): ?>
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <i class="fa-solid fa-ghost" style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                    No operational history found for this animal.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach($ledger as $row): 
+                                $badgeClass = 't-feed'; $icon = 'fa-wheat-awn';
+                                if ($row['type'] == 'Medication') { $badgeClass = 't-med'; $icon = 'fa-syringe'; }
+                                if ($row['type'] == 'Vaccination') { $badgeClass = 't-vax'; $icon = 'fa-shield-virus'; }
+                                if ($row['type'] == 'Supplement' || $row['type'] == 'Vitamins/Supplements') { $badgeClass = 't-vit'; $icon = 'fa-flask'; $row['type'] = 'Supplement'; }
+                                if ($row['type'] == 'Checkup') { $badgeClass = 't-chk'; $icon = 'fa-stethoscope'; }
+                                if ($row['type'] == 'Cost Transfer') { $badgeClass = 't-trans'; $icon = 'fa-arrow-right-arrow-left'; }
+                                
+                                $costVal = floatval($row['cost']);
+                                $costStr = '-';
+                                $costClass = 'cost-zero';
+                                
+                                if ($costVal > 0) {
+                                    $costStr = '+ ₱ ' . number_format($costVal, 2);
+                                    $costClass = 'cost-add';
+                                } else if ($costVal < 0) {
+                                    $costStr = '- ₱ ' . number_format(abs($costVal), 2);
+                                    $costClass = 'cost-sub';
+                                }
+                            ?>
+                            <tr>
+                                <td data-label="Date" class="td-date"><?= date('M d, Y h:i A', strtotime($row['txn_date'])) ?></td>
+                                <td data-label="Type">
+                                    <span class="badge-type <?= $badgeClass ?>"><i class="fa-solid <?= $icon ?>"></i> <?= htmlspecialchars($row['type']) ?></span>
+                                </td>
+                                <td data-label="Details" class="td-details"><?= htmlspecialchars($row['details']) ?></td>
+                                <td data-label="Remarks" class="td-remarks"><?= htmlspecialchars($row['remarks'] ?? '-') ?></td>
+                                <td data-label="Cost Impact" class="td-cost <?= $costClass ?>">
+                                    <?= $costStr ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
     <?php endif; ?>
 </div>
 

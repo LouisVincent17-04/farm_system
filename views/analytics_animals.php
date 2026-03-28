@@ -10,7 +10,6 @@ checkAccess('animals_livestock_analytics');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
-
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
@@ -73,280 +72,235 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Animal Analytics - FarmPro</title>
+    <title>Animal Analytics | FarmPro</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     
     <style>
-        /* ===== RESET & BASE ===== */
-        *, *::before, *::after { box-sizing: border-box; }
-
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
-            min-height: 100vh;
-            color: #e2e8f0; 
-            margin: 0; 
-            padding-bottom: 40px; 
-            overflow-x: hidden; /* Prevent horizontal scroll on body */
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(59,130,246,0.5); /* Blue Accent */
+            
+            --blue:           #3b82f6;
+            --blue-dim:       rgba(59,130,246,0.12);
+            --blue-glow:      rgba(59,130,246,0.25);
+            --emerald:        #10b981;
+            --amber:          #f59e0b;
+            --red:            #f87171;
+            --pink:           #f472b6;
+            --purple:         #a855f7;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* ===== LAYOUT ===== */
-        .container { 
-            width: 100%;
-            max-width: 1400px; 
-            margin: 0 auto; 
-            padding: 1.5rem 1rem; 
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.06) 0%, transparent 60%);
         }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        @media (min-width: 768px) {
-            .container { padding: 2rem; }
-        }
-
-        /* ===== BACK LINK ===== */
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            text-decoration: none; 
-            color: #94a3b8; 
-            font-weight: 600; 
-            font-size: 0.9rem; 
-            margin-bottom: 1.25rem; 
-            transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        /* ===== HEADER ===== */
-        .header { text-align: center; margin-bottom: 1.75rem; padding: 0 10px; }
-        .title { 
-            font-size: clamp(1.6rem, 5vw, 2.2rem); 
-            font-weight: 800; 
-            background: linear-gradient(135deg, #38bdf8, #2563eb); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
-            background-clip: text;
-            margin: 0 0 0.5rem;
-            line-height: 1.2;
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--blue); background: var(--blue-dim); border: 1px solid rgba(59,130,246,0.2);
+            padding: 6px 12px; border-radius: 99px;
         }
-        .subtitle { color: #94a3b8; font-size: clamp(0.85rem, 2.5vw, 1rem); margin: 0; }
 
-        /* ===== KPI GRID ===== */
+        /* ─── HEADER ─── */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1.5rem; flex-wrap: wrap; }
+        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em;}
+        .header-info h1 span { background: linear-gradient(135deg, var(--blue), #1d4ed8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
+
+        .btn-view {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px 24px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-weight: 700; font-size: 0.95rem; font-family: var(--font);
+            cursor: pointer; transition: var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-view:hover { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); transform: translateY(-2px);}
+
+        /* ─── DASHBOARD STATS ─── */
         .kpi-grid { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.875rem; 
-            margin-bottom: 1.5rem; 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 1.5rem; margin-bottom: 2.5rem; 
         }
-
-        @media (min-width: 640px) {
-            .kpi-grid { gap: 1.25rem; }
-        }
-
-        @media (min-width: 1024px) {
-            .kpi-grid { grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
-        }
-
         .kpi-card { 
-            background: rgba(30, 41, 59, 0.6); 
-            border: 1px solid rgba(255,255,255,0.07); 
-            border-radius: 14px; 
-            padding: 1rem; 
-            backdrop-filter: blur(10px); 
-            position: relative; 
-            overflow: hidden;
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
+        
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .stat-green::before { background: var(--emerald); }
+        .stat-blue::before { background: var(--blue); }
+        .stat-red::before { background: var(--red); }
+        .stat-yellow::before { background: var(--amber); }
 
-        @media (min-width: 768px) {
-            .kpi-card { padding: 1.5rem; border-radius: 16px; }
-        }
+        .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .kpi-title { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;}
+        .kpi-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #fff;}
+        .stat-green .kpi-icon { background: linear-gradient(135deg, var(--emerald), #047857); }
+        .stat-blue .kpi-icon { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .stat-red .kpi-icon { background: linear-gradient(135deg, var(--red), #991b1b); }
+        .stat-yellow .kpi-icon { background: linear-gradient(135deg, var(--amber), #b45309); }
 
-        .kpi-card::after { 
-            content: ''; 
-            position: absolute; top: 0; left: 0; 
-            width: 100%; height: 3px; 
-            background: linear-gradient(90deg, #38bdf8, #2563eb); 
-        }
-        .kpi-label { 
-            color: #94a3b8; 
-            font-size: clamp(0.68rem, 1.8vw, 0.8rem); 
-            font-weight: 600; 
-            text-transform: uppercase; 
-            letter-spacing: 0.8px; 
-            line-height: 1.3;
-        }
-        .kpi-value { 
-            font-size: clamp(1.6rem, 5vw, 2.2rem); 
-            font-weight: 800; 
-            color: #fff; 
-            margin: 0.4rem 0 0.25rem;
-            line-height: 1;
-        }
-        .kpi-sub { 
-            font-size: clamp(0.72rem, 1.8vw, 0.85rem); 
-            color: #64748b; 
-            line-height: 1.3;
-        }
+        .kpi-value { font-size: 2.5rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; margin-bottom: 0.5rem;}
+        .stat-green .kpi-value { color: var(--emerald); }
+        .stat-blue .kpi-value { color: var(--blue); }
+        .stat-red .kpi-value { color: var(--red); }
+        .stat-yellow .kpi-value { color: var(--amber); }
 
-        .text-green  { color: #4ade80; }
-        .text-blue   { color: #60a5fa; }
-        .text-red    { color: #f87171; }
-        .text-orange { color: #fbbf24; }
+        .kpi-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
 
-        /* ===== BUTTON GROUP ===== */
-        .btn-group { 
-            display: flex; 
-            justify-content: flex-end; 
-            margin-bottom: 1.25rem; 
-        }
-        .btn { 
-            padding: 10px 20px; 
-            background: rgba(56, 189, 248, 0.1); 
-            color: #38bdf8; 
-            border: 1px solid rgba(56, 189, 248, 0.3); 
-            border-radius: 8px; 
-            text-decoration: none; 
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.2s; 
-            text-align: center;
-            white-space: nowrap;
-        }
-        .btn:hover { background: rgba(56, 189, 248, 0.2); transform: translateY(-2px); }
-
-        /* ===== CHARTS GRID ===== */
+        /* ─── CHARTS GRID ─── */
         .charts-container { 
-            display: grid; 
-            grid-template-columns: 1fr; /* Stack on mobile */
-            gap: 1rem; 
-            width: 100%;
-            overflow: hidden; /* CRITICAL: Prevent container blowout */
-        }
-
-        @media (min-width: 900px) {
-            .charts-container { grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem; 
+            width: 100%; overflow: hidden; /* Prevent container blowout */
         }
 
         .chart-box { 
-            background: rgba(30, 41, 59, 0.6); 
-            border: 1px solid rgba(255,255,255,0.07); 
-            border-radius: 14px; 
-            padding: 1.25rem; 
-            display: flex; 
-            flex-direction: column;
-            width: 100%; /* CRITICAL */
-            max-width: 100%; /* CRITICAL */
-            overflow: hidden; /* CRITICAL: Prevent chart overflowing box */
-            box-sizing: border-box;
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            display: flex; flex-direction: column; width: 100%; max-width: 100%; 
+            overflow: hidden; box-sizing: border-box; box-shadow: var(--shadow-md);
         }
 
-        @media (min-width: 768px) {
-            .chart-box { border-radius: 16px; padding: 1.5rem; }
-        }
-
-        .chart-title { 
-            font-size: clamp(0.9rem, 2.5vw, 1.1rem); 
-            font-weight: 700; 
-            color: #e2e8f0; 
-            margin: 0 0 1rem;
-            word-wrap: break-word; /* Prevent long text stretching box */
-        }
+        .chart-title { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 10px;}
 
         /* Chart canvas wrapper */
         .chart-canvas-wrapper {
-            position: relative;
-            width: 100%; /* CRITICAL */
-            max-width: 100%; /* CRITICAL */
-            height: 250px; 
-            margin: 0 auto;
+            position: relative; width: 100%; max-width: 100%; height: 300px; margin: 0 auto;
         }
 
         .chart-canvas-wrapper canvas {
-            width: 100% !important; /* CRITICAL: Force canvas to respect wrapper */
+            width: 100% !important; /* Force canvas to respect wrapper */
             height: 100% !important;
         }
 
-        @media (min-width: 768px) {
-            .chart-canvas-wrapper { height: 300px; }
-        }
-
         /* ===== MOBILE OVERRIDES ===== */
-        @media (max-width: 480px) {
-            .kpi-grid { grid-template-columns: 1fr; }
-            .kpi-value { font-size: 2rem; }
-            
-            .btn-group { justify-content: stretch; display: block; width: 100%; }
-            .btn { display: block; width: 100%; padding: 12px 20px; box-sizing: border-box; }
-            
-            /* Further restrict height on very small phones */
-            .chart-canvas-wrapper { height: 220px; }
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .btn-view { width: 100%; }
+            .charts-container { grid-template-columns: 1fr; }
+            .chart-canvas-wrapper { height: 250px; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="analytics_dashboard.php" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i>
-        Back to Analytics Dashboard
-    </a>
-
-    <div class="header">
-        <h1 class="title">Livestock Analytics</h1>
-        <p class="subtitle">Population overview, health metrics, and herd demographics.</p>
+    <div class="top-bar">
+        <a href="analytics_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-chart-line"></i> Performance Data</span>
     </div>
 
+    <header class="page-header">
+        <div class="header-info">
+            <h1>Livestock <span>Analytics</span></h1>
+            <p>Comprehensive overview of population health, demographics, and intake trends.</p>
+        </div>
+        <a href="animal_list.php" class="btn-view"><i class="fa-solid fa-list-ul"></i> View Master List</a>
+    </header>
+
     <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Active Herd</div>
-            <div class="kpi-value text-green"><?= number_format($kpi['active_count']) ?></div>
+        <div class="kpi-card stat-green">
+            <div class="kpi-header">
+                <div class="kpi-title">Active Herd</div>
+                <div class="kpi-icon"><i class="fa-solid fa-hippo"></i></div>
+            </div>
+            <div class="kpi-value"><?= number_format($kpi['active_count']) ?></div>
             <div class="kpi-sub">Currently on farm</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Total Sold</div>
-            <div class="kpi-value text-blue"><?= number_format($kpi['sold_count']) ?></div>
+
+        <div class="kpi-card stat-blue">
+            <div class="kpi-header">
+                <div class="kpi-title">Total Sold</div>
+                <div class="kpi-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            </div>
+            <div class="kpi-value"><?= number_format($kpi['sold_count']) ?></div>
             <div class="kpi-sub">Lifetime sales</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Deceased</div>
-            <div class="kpi-value text-red"><?= number_format($kpi['deceased_count']) ?></div>
-            <div class="kpi-sub">Mortality: <?= number_format($mortality_rate, 1) ?>%</div>
+
+        <div class="kpi-card stat-red">
+            <div class="kpi-header">
+                <div class="kpi-title">Deceased</div>
+                <div class="kpi-icon"><i class="fa-solid fa-skull"></i></div>
+            </div>
+            <div class="kpi-value"><?= number_format($kpi['deceased_count']) ?></div>
+            <div class="kpi-sub">Mortality Rate: <?= number_format($mortality_rate, 1) ?>%</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Sick / Quarantine</div>
-            <div class="kpi-value text-orange"><?= number_format($kpi['sick_count']) ?></div>
+
+        <div class="kpi-card stat-yellow">
+            <div class="kpi-header">
+                <div class="kpi-title">Sick / Quarantine</div>
+                <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+            <div class="kpi-value"><?= number_format($kpi['sick_count']) ?></div>
             <div class="kpi-sub">Needs Attention</div>
         </div>
     </div>
 
-    <div class="btn-group">
-        <a href="animal_list.php" class="btn">View Animal List →</a>
-    </div>
-
     <div class="charts-container">
         <div class="chart-box">
-            <div class="chart-title">📊 Overall Status Breakdown</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-pie" style="color:var(--blue);"></i> Overall Status Breakdown</div>
             <div class="chart-canvas-wrapper">
                 <canvas id="statusChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">🐷 Active Population by Stage</div>
+            <div class="chart-title"><i class="fa-solid fa-chart-column" style="color:var(--emerald);"></i> Active Population by Stage</div>
             <div class="chart-canvas-wrapper">
                 <canvas id="stageChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">⚧ Gender Distribution (Active)</div>
+            <div class="chart-title"><i class="fa-solid fa-venus-mars" style="color:var(--pink);"></i> Gender Distribution (Active)</div>
             <div class="chart-canvas-wrapper">
                 <canvas id="genderChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title">📈 New Animal Intake (Last 6 Months)</div>
+            <div class="chart-title"><i class="fa-solid fa-arrow-trend-up" style="color:var(--purple);"></i> New Animal Intake (Last 6 Months)</div>
             <div class="chart-canvas-wrapper">
                 <canvas id="intakeChart"></canvas>
             </div>
@@ -359,10 +313,10 @@ try {
     const statusLabels = statusRaw.map(i => i.status_name);
     const statusCounts = statusRaw.map(i => i.count);
     const statusColors = statusLabels.map(s => {
-        if (s === 'Active')   return '#4ade80';
-        if (s === 'Sold')     return '#38bdf8';
-        if (s === 'Deceased') return '#f87171';
-        return '#fbbf24';
+        if (s === 'Active')   return '#10b981';
+        if (s === 'Sold')     return '#3b82f6';
+        if (s === 'Deceased') return '#ef4444';
+        return '#f59e0b';
     });
 
     const stageRaw  = <?= json_encode($stage_data) ?>;
@@ -380,7 +334,7 @@ try {
     /* ---- Global Chart.js defaults ---- */
     Chart.defaults.color       = '#94a3b8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    Chart.defaults.font.family = 'system-ui';
+    Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
 
     /* Responsive legend helper: bottom on small screens, right on large */
     function legendPos() {
@@ -405,7 +359,7 @@ try {
             plugins: { 
                 legend: { 
                     position: legendPos(),
-                    labels: { boxWidth: 12, padding: 14, font: { size: 12 } }
+                    labels: { boxWidth: 12, padding: 14, font: { size: 12, family: "'DM Sans', sans-serif" } }
                 } 
             }
         }
@@ -419,8 +373,8 @@ try {
             datasets: [{
                 label: 'Head Count',
                 data: stageCounts,
-                backgroundColor: 'rgba(96, 165, 250, 0.6)',
-                borderColor: '#60a5fa',
+                backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                borderColor: '#10b981',
                 borderWidth: 1,
                 borderRadius: 4
             }]
@@ -443,7 +397,7 @@ try {
             labels: genderLabels,
             datasets: [{
                 data: genderCounts,
-                backgroundColor: ['#f472b6', '#60a5fa', '#9ca3af'],
+                backgroundColor: ['#f472b6', '#3b82f6', '#9ca3af'],
                 borderWidth: 0
             }]
         },
@@ -453,7 +407,7 @@ try {
             plugins: { 
                 legend: { 
                     position: 'bottom',
-                    labels: { boxWidth: 12, padding: 14, font: { size: 12 } }
+                    labels: { boxWidth: 12, padding: 14, font: { size: 12, family: "'DM Sans', sans-serif" } }
                 } 
             }
         }
@@ -467,8 +421,8 @@ try {
             datasets: [{
                 label: 'New Animals',
                 data: intakeCounts,
-                borderColor: '#a78bfa',
-                backgroundColor: 'rgba(167, 139, 250, 0.1)',
+                borderColor: '#a855f7',
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.4,

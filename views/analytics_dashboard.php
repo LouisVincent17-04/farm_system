@@ -8,6 +8,7 @@ include '../security/checkAccess.php';
 checkAccess('analytics_dashboard');
 include '../common/navbar.php';
 include '../common/chat_support.php';
+
 if($_SESSION['user']['USER_TYPE'] < 3)
 {
     echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
@@ -19,711 +20,590 @@ if($_SESSION['user']['USER_TYPE'] < 3)
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics Dashboard - FarmPro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Analytics Dashboard | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(6,182,212,0.5); /* Cyan Accent */
+            
+            /* Theme Colors */
+            --teal:           #14b8a6; --teal-dim: rgba(20,184,166,0.12);
+            --cyan:           #06b6d4; --cyan-dim: rgba(6,182,212,0.12); --cyan-glow: rgba(6,182,212,0.25);
+            --emerald:        #10b981; --emerald-dim: rgba(16,185,129,0.12);
+            --blue:           #3b82f6; --blue-dim: rgba(59,130,246,0.12);
+            --amber:          #f59e0b; --amber-dim: rgba(245,158,11,0.12);
+            --orange:         #f97316;
+            --rose:           #e11d48;
+            --purple:         #a855f7;
+            --slate:          #64748b;
+            --red:            #f87171;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
             min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(6,182,212,0.06) 0%, transparent 60%);
+        }
+        
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--cyan); background: var(--cyan-dim); border: 1px solid rgba(6,182,212,0.2);
+            padding: 6px 12px; border-radius: 99px;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .page-header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
+        /* ─── HEADER ─── */
+        .page-header { text-align: center; margin-bottom: 3.5rem; margin-top: 1rem; }
         .page-title {
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: clamp(2rem, 4vw, 3rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.75rem;
         }
-
-        .page-subtitle {
-            color: #94a3b8;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
+        .page-title span {
+            background: linear-gradient(135deg, var(--cyan), #0891b2);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
+        .page-subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .page-description { color: var(--text-muted); font-size: 0.95rem; max-width: 600px; margin: 0 auto; }
 
-        .page-description {
-            color: #64748b;
-            font-size: 1rem;
-        }
-
+        /* ─── SEARCH BAR ─── */
         .search-filter-section {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            margin-bottom: 2rem;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 1.5rem;
+            margin-bottom: 3rem; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            max-width: 800px; margin-left: auto; margin-right: auto;
         }
 
-        .search-bar {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+        .search-bar { position: relative; display: flex; gap: 1rem; }
+        .search-icon {
+            position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted); font-size: 1.1rem; pointer-events: none;
         }
-
         .search-input {
-            flex: 1;
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 12px;
-            color: #e2e8f0;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+            flex: 1; padding: 14px 16px 14px 3rem; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            color: var(--text-primary); font-size: 1rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
         }
+        .search-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-glow); background: var(--bg-hover); }
+        .search-input::placeholder { color: var(--text-muted); }
 
-        .search-input:focus {
-            outline: none;
-            border-color: #22c55e;
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-        }
-
-        .btn-primary {
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
-        }
-
+        /* ─── CATEGORY GRID ─── */
         .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1.5rem; margin-bottom: 2rem;
         }
 
         .category-card {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; position: relative;
+            overflow: hidden; display: flex; flex-direction: column;
+            text-decoration: none; color: inherit; transition: all var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); min-height: 280px;
         }
-
         .category-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, #22c55e, transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+            transition: left 0.8s ease; pointer-events: none;
         }
+        .category-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.5); }
+        .category-card:hover::before { left: 100%; }
 
-        .category-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            border-color: rgba(34, 197, 94, 0.4);
-            box-shadow: 0 20px 40px rgba(34, 197, 94, 0.15);
-        }
+        /* Dynamic Card Borders on Hover */
+        .category-card.c-animal:hover { border-color: rgba(59,130,246,0.4); }
+        .category-card.c-meds:hover { border-color: rgba(225,29,72,0.4); }
+        .category-card.c-vits:hover { border-color: rgba(16,185,129,0.4); }
+        .category-card.c-vacs:hover { border-color: rgba(6,182,212,0.4); }
+        .category-card.c-feed:hover { border-color: rgba(245,158,11,0.4); }
+        .category-card.c-housing:hover { border-color: rgba(168,85,247,0.4); }
+        .category-card.c-equip:hover { border-color: rgba(99,102,241,0.4); }
+        .category-card.c-sanitation:hover { border-color: rgba(20,184,166,0.4); }
+        .category-card.c-breeding:hover { border-color: rgba(249,115,22,0.4); }
+        .category-card.c-admin:hover { border-color: rgba(100,116,139,0.4); }
+        .category-card.c-maint:hover { border-color: rgba(107,114,128,0.4); }
+        .category-card.c-util:hover { border-color: rgba(234,179,8,0.4); }
+        .category-card.c-others:hover { border-color: rgba(236,72,153,0.4); }
 
-        .category-card:hover::before {
-            opacity: 1;
-        }
-
-        .category-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
+        .category-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        
         .category-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            width: 56px; height: 56px; border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.3); flex-shrink: 0;
         }
+        
+        /* Icon Gradients */
+        .category-icon.blue { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .category-icon.pink { background: linear-gradient(135deg, #e11d48, #be123c); }
+        .category-icon.emerald { background: linear-gradient(135deg, var(--emerald), #047857); }
+        .category-icon.cyan { background: linear-gradient(135deg, var(--cyan), #0891b2); }
+        .category-icon.amber { background: linear-gradient(135deg, var(--amber), #b45309); }
+        .category-icon.purple { background: linear-gradient(135deg, var(--purple), #7e22ce); }
+        .category-icon.indigo { background: linear-gradient(135deg, var(--indigo), #4338ca); }
+        .category-icon.teal { background: linear-gradient(135deg, var(--teal), #0f766e); }
+        .category-icon.orange { background: linear-gradient(135deg, var(--orange), #c2410c); }
+        .category-icon.slate { background: linear-gradient(135deg, var(--slate), #334155); }
+        .category-icon.gray { background: linear-gradient(135deg, #6b7280, #374151); }
+        .category-icon.yellow { background: linear-gradient(135deg, #eab308, #a16207); }
+        .category-icon.rose { background: linear-gradient(135deg, #ec4899, #be185d); }
 
-        .category-icon.medicine { background: linear-gradient(135deg, #ec4899, #db2777); }
-        .category-icon.feed { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .category-icon.housing { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .category-icon.equipment { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-        .category-icon.sanitation { background: linear-gradient(135deg, #10b981, #059669); }
-        .category-icon.breeding { background: linear-gradient(135deg, #f97316, #ea580c); }
-        .category-icon.admin { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-        .category-icon.maintenance { background: linear-gradient(135deg, #64748b, #475569); }
-        .category-icon.utilities { background: linear-gradient(135deg, #eab308, #ca8a04); }
-        .category-icon.others { background: linear-gradient(135deg, #a855f7, #9333ea); }
-        .category-icon.vitamins { background: linear-gradient(135deg, #34d399, #059669); }
-        .category-icon.vaccines { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-        .category-icon.animals { background: linear-gradient(135deg, #6366f1, #4338ca); }
-
-        .category-info {
-            flex: 1;
-        }
-
-        .category-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #22c55e;
-            margin-bottom: 0.5rem;
-        }
-
-        .category-subtitle {
-            color: #64748b;
-            font-size: 0.9rem;
-        }
+        .category-info { flex: 1; }
+        .category-title { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem; }
+        .category-subtitle { color: var(--text-secondary); font-size: 0.85rem; }
 
         .analytics-preview {
-            margin-bottom: 1rem;
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 8px;
-            border: 1px solid rgba(34, 197, 94, 0.1);
-            flex-grow: 1;
+            margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-elevated);
+            border-radius: var(--radius-md); border: 1px solid var(--border); flex-grow: 1;
         }
-
         .analytics-preview-title {
-            color: #94a3b8;
-            font-size: 0.85rem;
-            margin-bottom: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: var(--text-muted); font-size: 0.75rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;
         }
-
-        .metrics-list {
-            list-style: none;
-            padding-left: 0;
-        }
-
+        
+        .metrics-list { list-style: none; padding-left: 0; }
         .metrics-list li {
-            color: #cbd5e1;
-            font-size: 0.9rem;
-            padding: 0.4rem 0;
-            padding-left: 1.5rem;
-            position: relative;
+            color: var(--text-secondary); font-size: 0.9rem; padding: 4px 0 4px 1.25rem;
+            position: relative; line-height: 1.4;
         }
-
-        .metrics-list li:before {
-            content: "📊";
-            position: absolute;
-            left: 0;
-            font-size: 0.8rem;
+        .metrics-list li::before {
+            content: "\f080"; font-family: "Font Awesome 6 Free"; font-weight: 900;
+            position: absolute; left: 0; top: 6px; font-size: 0.6rem; color: var(--cyan);
+            opacity: 0.7;
         }
 
         .card-action {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 1rem;
-            background: rgba(34, 197, 94, 0.1);
-            border-radius: 8px;
-            color: #22c55e;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            margin-top: auto;
+            font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);
+            transition: color var(--transition); display: flex; align-items: center; gap: 4px;
+            margin-top: auto; justify-content: flex-end;
         }
+        .management-card:hover .card-action { color: var(--cyan); }
 
-        .category-card:hover .card-action {
-            background: rgba(34, 197, 94, 0.2);
-            border-color: rgba(34, 197, 94, 0.4);
-            transform: translateX(5px);
+        .no-results-message {
+            grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;
+            color: var(--text-muted); border: 1px dashed var(--border); border-radius: var(--radius-xl);
+            background: rgba(255,255,255,0.01);
         }
+        .no-results-message i { font-size: 3rem; opacity: 0.2; margin-bottom: 1rem; display: block; }
+        .no-results-message strong { color: var(--text-primary); }
 
-        .analytics-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 20px;
-            color: #22c55e;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            body {
-                padding: 1rem;
-            }
-
-            .page-title {
-                font-size: 2rem;
-            }
-
-            .categories-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .search-bar {
-                flex-direction: column;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .page-title {
-                font-size: 1.5rem;
-            }
-
-            .category-card {
-                padding: 1.5rem;
-            }
-
-            .category-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.5rem;
-            }
+            .container { padding: 1rem; }
+            .page-header { margin-bottom: 2rem;}
+            .categories-grid { grid-template-columns: 1fr; }
+            .search-bar { flex-direction: column; }
+            .category-card { padding: 1.5rem; min-height: auto; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="page-header">
-            <div style="font-size: 4rem; margin-bottom: 1rem;">📈</div>
-            <h1 class="page-title">Analytics Dashboard</h1>
+
+<div class="container">
+
+    <div class="top-bar">
+        <a href="admin_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-chart-line"></i> Intelligence</span>
+    </div>
+
+    <header class="page-header">
+        <div class="header-info">
+            <h1 class="page-title">Analytics <span>Dashboard</span></h1>
             <p class="page-subtitle">Data-Driven Farm Management Insights</p>
-            <p class="page-description">Select a category to view detailed analytics and performance metrics</p>
-        </header>
-
-        <div class="search-filter-section">
-            <div class="search-bar">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search analytics categories...">
-                <button class="btn-primary" onclick="searchCategories()">🔍 Search</button>
-            </div>
+            <p class="page-description">Select a category below to view detailed analytics, visual charts, and performance metrics.</p>
         </div>
+    </header>
 
-        <div class="categories-grid">
-            <a href="analytics_animals.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon animals">🐖</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Animals / Livestock Analytics</h3>
-                        <p class="category-subtitle">Growth & Performance Tracking</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Mortality & Survival Rates</li>
-                        <li>Growth Performance Trends</li>
-                        <li>Purchase Cost Analysis</li>
-                        <li>Stock Movement History</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_medicines.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon medicine">🩺</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Medicines Analytics</h3>
-                        <p class="category-subtitle">Treatment & Cost Insights</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Usage Patterns & Trends</li>
-                        <li>Cost per Treatment Analysis</li>
-                        <li>Inventory Turnover Rate</li>
-                        <li>Expiration & Waste Tracking</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_vitamins_supplements.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon vitamins">💊</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Vitamins & Supplements Analytics</h3>
-                        <p class="category-subtitle">Nutritional Investment Tracking</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Supplement Usage by Type</li>
-                        <li>Cost vs Health Improvements</li>
-                        <li>Seasonal Consumption Patterns</li>
-                        <li>ROI on Health Boosters</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_vaccines.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon vaccines">💉</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Vaccines Analytics</h3>
-                        <p class="category-subtitle">Preventive Care Monitoring</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Vaccination Coverage Rates</li>
-                        <li>Disease Prevention Success</li>
-                        <li>Program Cost Efficiency</li>
-                        <li>Schedule Compliance Tracking</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_feeds_feeding.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon feed">🍽️</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Feeds & Feeding Analytics</h3>
-                        <p class="category-subtitle">Nutrition & Efficiency Metrics</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Feed Conversion Ratio (FCR)</li>
-                        <li>Cost per Kilogram Gained</li>
-                        <li>Consumption Trends by Stage</li>
-                        <li>Supplier Performance Analysis</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_housing_facilities.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon housing">🏠</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Housing & Facilities Analytics</h3>
-                        <p class="category-subtitle">Infrastructure Investment Insights</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Capacity Utilization Rates</li>
-                        <li>Depreciation & Maintenance Costs</li>
-                        <li>Facility Expansion Timeline</li>
-                        <li>Space Efficiency Analysis</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_farm_equipment_tools.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon equipment">⚙️</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Farm Equipment & Tools Analytics</h3>
-                        <p class="category-subtitle">Asset Performance Tracking</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Equipment Utilization Rates</li>
-                        <li>Breakdown & Downtime Analysis</li>
-                        <li>Maintenance Cost Tracking</li>
-                        <li>ROI on Equipment Purchases</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_sanitation_waste_m.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon sanitation">🧹</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Sanitation & Waste Analytics</h3>
-                        <p class="category-subtitle">Hygiene Cost Monitoring</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Waste Management Costs</li>
-                        <li>Biosecurity Compliance Rates</li>
-                        <li>Cleaning Supply Usage</li>
-                        <li>Disease Outbreak Correlation</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_breeding_reproduction.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon breeding">👨‍🌾</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Breeding & Reproduction Analytics</h3>
-                        <p class="category-subtitle">Genetic Performance Insights</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Conception & Birth Rates</li>
-                        <li>Litter Size & Quality Trends</li>
-                        <li>AI Success Rates</li>
-                        <li>Breeding Program ROI</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_admin_records.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon admin">📊</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Administration & Records Analytics</h3>
-                        <p class="category-subtitle">Operational Efficiency Metrics</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Record-keeping Accuracy</li>
-                        <li>Administrative Cost Analysis</li>
-                        <li>Compliance Tracking</li>
-                        <li>Data Entry Efficiency</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_maintenance_parts.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon maintenance">🧰</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Maintenance Parts Analytics</h3>
-                        <p class="category-subtitle">Repair & Upkeep Insights</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Parts Replacement Frequency</li>
-                        <li>Preventive vs Emergency Repairs</li>
-                        <li>Maintenance Cost Trends</li>
-                        <li>Inventory Stock Levels</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_utilities_consumables.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon utilities">💡</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Utilities & Consumables Analytics</h3>
-                        <p class="category-subtitle">Operating Cost Tracking</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Energy Consumption Patterns</li>
-                        <li>Fuel & Electricity Costs</li>
-                        <li>Seasonal Usage Variations</li>
-                        <li>Cost Optimization Opportunities</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
-
-            <a href="analytics_others.php" class="category-card">
-                <div class="category-header">
-                    <div class="category-icon others">📦</div>
-                    <div class="category-info">
-                        <h3 class="category-title">Others Analytics</h3>
-                        <p class="category-subtitle">Miscellaneous Expense Insights</p>
-                    </div>
-                </div>
-                <div class="analytics-preview">
-                    <div class="analytics-preview-title">Available Metrics</div>
-                    <ul class="metrics-list">
-                        <li>Uncategorized Expenses</li>
-                        <li>Special Order Tracking</li>
-                        <li>Seasonal Item Analysis</li>
-                        <li>Budget Variance Reports</li>
-                    </ul>
-                </div>
-                <div class="card-action">
-                    <span>View Analytics</span>
-                    <span>→</span>
-                </div>
-            </a>
+    <div class="search-filter-section">
+        <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search analytics modules or key metrics...">
         </div>
     </div>
 
-    <script>
-        // Search functionality
-        const searchInput = document.getElementById('searchInput');
-        const categoryCards = document.querySelectorAll('.category-card');
+    <div class="categories-grid">
 
-        // Real-time search as user types
-        searchInput.addEventListener('input', function() {
-            searchCategories();
-        });
+        <a href="analytics_animals.php" class="category-card c-animal">
+            <div class="category-header">
+                <div class="category-icon blue"><i class="fa-solid fa-cow"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Livestock Analytics</h3>
+                    <p class="category-subtitle">Growth &amp; Performance</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Mortality &amp; Survival Rates</li>
+                    <li>Growth Performance Trends</li>
+                    <li>Purchase Cost Analysis</li>
+                    <li>Stock Movement History</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
 
-        // Search on Enter key
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchCategories();
+        <a href="analytics_medicines.php" class="category-card c-meds">
+            <div class="category-header">
+                <div class="category-icon pink"><i class="fa-solid fa-capsules"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Medicines Analytics</h3>
+                    <p class="category-subtitle">Treatment &amp; Cost Insights</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Usage Patterns &amp; Trends</li>
+                    <li>Cost per Treatment Analysis</li>
+                    <li>Inventory Turnover Rate</li>
+                    <li>Expiration &amp; Waste Tracking</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_vitamins_supplements.php" class="category-card c-vits">
+            <div class="category-header">
+                <div class="category-icon emerald"><i class="fa-solid fa-seedling"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Vitamins &amp; Supplements</h3>
+                    <p class="category-subtitle">Nutritional Investments</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Supplement Usage by Type</li>
+                    <li>Cost vs Health Improvements</li>
+                    <li>Seasonal Consumption Patterns</li>
+                    <li>ROI on Health Boosters</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_vaccines.php" class="category-card c-vacs">
+            <div class="category-header">
+                <div class="category-icon cyan"><i class="fa-solid fa-syringe"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Vaccines Analytics</h3>
+                    <p class="category-subtitle">Preventive Care Monitoring</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Vaccination Coverage Rates</li>
+                    <li>Disease Prevention Success</li>
+                    <li>Program Cost Efficiency</li>
+                    <li>Schedule Compliance Tracking</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_feeds_feeding.php" class="category-card c-feed">
+            <div class="category-header">
+                <div class="category-icon amber"><i class="fa-solid fa-wheat-awn"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Feeds &amp; Feeding</h3>
+                    <p class="category-subtitle">Nutrition &amp; Efficiency</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Feed Conversion Ratio (FCR)</li>
+                    <li>Cost per Kilogram Gained</li>
+                    <li>Consumption Trends by Stage</li>
+                    <li>Supplier Performance Analysis</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_housing_facilities.php" class="category-card c-housing">
+            <div class="category-header">
+                <div class="category-icon purple"><i class="fa-solid fa-house-chimney-window"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Housing &amp; Facilities</h3>
+                    <p class="category-subtitle">Infrastructure Investment</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Capacity Utilization Rates</li>
+                    <li>Depreciation &amp; Maintenance Costs</li>
+                    <li>Facility Expansion Timeline</li>
+                    <li>Space Efficiency Analysis</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_farm_equipment_tools.php" class="category-card c-equip">
+            <div class="category-header">
+                <div class="category-icon indigo"><i class="fa-solid fa-tractor"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Equipment &amp; Tools</h3>
+                    <p class="category-subtitle">Asset Performance Tracking</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Equipment Utilization Rates</li>
+                    <li>Breakdown &amp; Downtime Analysis</li>
+                    <li>Maintenance Cost Tracking</li>
+                    <li>ROI on Equipment Purchases</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_sanitation_waste_m.php" class="category-card c-sanitation">
+            <div class="category-header">
+                <div class="category-icon teal"><i class="fa-solid fa-pump-soap"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Sanitation &amp; Waste</h3>
+                    <p class="category-subtitle">Hygiene Cost Monitoring</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Waste Management Costs</li>
+                    <li>Biosecurity Compliance Rates</li>
+                    <li>Cleaning Supply Usage</li>
+                    <li>Disease Outbreak Correlation</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_breeding_reproduction.php" class="category-card c-breeding">
+            <div class="category-header">
+                <div class="category-icon orange"><i class="fa-solid fa-dna"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Breeding &amp; Reproduction</h3>
+                    <p class="category-subtitle">Genetic Performance Insights</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Conception &amp; Birth Rates</li>
+                    <li>Litter Size &amp; Quality Trends</li>
+                    <li>AI Success Rates</li>
+                    <li>Breeding Program ROI</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_admin_records.php" class="category-card c-admin">
+            <div class="category-header">
+                <div class="category-icon slate"><i class="fa-solid fa-file-contract"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Administration Records</h3>
+                    <p class="category-subtitle">Operational Efficiency Metrics</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Record-keeping Accuracy</li>
+                    <li>Administrative Cost Analysis</li>
+                    <li>Compliance Tracking</li>
+                    <li>Data Entry Efficiency</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_maintenance_parts.php" class="category-card c-maint">
+            <div class="category-header">
+                <div class="category-icon gray"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Maintenance Parts</h3>
+                    <p class="category-subtitle">Repair &amp; Upkeep Insights</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Parts Replacement Frequency</li>
+                    <li>Preventive vs Emergency Repairs</li>
+                    <li>Maintenance Cost Trends</li>
+                    <li>Inventory Stock Levels</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_utilities_consumables.php" class="category-card c-util">
+            <div class="category-header">
+                <div class="category-icon yellow"><i class="fa-solid fa-bolt"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Utilities &amp; Consumables</h3>
+                    <p class="category-subtitle">Operating Cost Tracking</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Energy Consumption Patterns</li>
+                    <li>Fuel &amp; Electricity Costs</li>
+                    <li>Seasonal Usage Variations</li>
+                    <li>Cost Optimization Opportunities</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="analytics_others.php" class="category-card c-others">
+            <div class="category-header">
+                <div class="category-icon rose"><i class="fa-solid fa-chart-pie"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Others Analytics</h3>
+                    <p class="category-subtitle">Miscellaneous Expense Insights</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Available Metrics</div>
+                <ul class="metrics-list">
+                    <li>Uncategorized Expenses</li>
+                    <li>Special Order Tracking</li>
+                    <li>Seasonal Item Analysis</li>
+                    <li>Budget Variance Reports</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                View Analytics <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+    </div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const categoryCards = document.querySelectorAll('.category-card');
+
+    searchInput.addEventListener('input', searchCategories);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchCategories();
+    });
+
+    function searchCategories() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        categoryCards.forEach(card => {
+            const title = card.querySelector('.category-title').textContent.toLowerCase();
+            const subtitle = card.querySelector('.category-subtitle').textContent.toLowerCase();
+            
+            const items = Array.from(card.querySelectorAll('.metrics-list li'))
+                .map(li => li.textContent.toLowerCase())
+                .join(' ');
+
+            const searchableContent = `${title} ${subtitle} ${items}`;
+
+            if (searchTerm === '' || searchableContent.includes(searchTerm)) {
+                card.style.display = 'flex';
+                visibleCount++;
+                card.style.animation = 'fadeIn 0.3s ease';
+            } else {
+                card.style.display = 'none';
             }
         });
 
-        function searchCategories() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            let visibleCount = 0;
+        showNoResultsMessage(visibleCount, searchTerm);
+    }
 
-            categoryCards.forEach(card => {
-                // Get all searchable text from the card
-                const title = card.querySelector('.category-title').textContent.toLowerCase();
-                const subtitle = card.querySelector('.category-subtitle').textContent.toLowerCase();
-                const metrics = Array.from(card.querySelectorAll('.metrics-list li'))
-                    .map(li => li.textContent.toLowerCase())
-                    .join(' ');
+    function showNoResultsMessage(count, term) {
+        const existingMessage = document.querySelector('.no-results-message');
+        if (existingMessage) existingMessage.remove();
 
-                // Combine all searchable content
-                const searchableContent = `${title} ${subtitle} ${metrics}`;
-
-                // Check if search term matches
-                if (searchTerm === '' || searchableContent.includes(searchTerm)) {
-                    card.style.display = 'block';
-                    visibleCount++;
-                    // Add highlight effect
-                    card.style.animation = 'fadeIn 0.3s ease';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Show message if no results
-            showNoResultsMessage(visibleCount, searchTerm);
+        if (count === 0 && term !== '') {
+            const grid = document.querySelector('.categories-grid');
+            const message = document.createElement('div');
+            message.className = 'no-results-message';
+            message.innerHTML = `
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <h3 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.25rem;">No analytics modules found for "<strong>${term}</strong>"</h3>
+                <p style="margin:0;">Try searching for: livestock, feed, medicine, metrics, etc.</p>
+            `;
+            grid.appendChild(message);
         }
-
-        function showNoResultsMessage(count, term) {
-            // Remove existing message if any
-            const existingMessage = document.querySelector('.no-results-message');
-            if (existingMessage) {
-                existingMessage.remove();
-            }
-
-            if (count === 0 && term !== '') {
-                const grid = document.querySelector('.categories-grid');
-                const message = document.createElement('div');
-                message.className = 'no-results-message';
-                message.style.cssText = `
-                    grid-column: 1 / -1;
-                    text-align: center;
-                    padding: 3rem;
-                    color: #94a3b8;
-                    font-size: 1.1rem;
-                `;
-                message.innerHTML = `
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                    <div>No analytics categories found for "<strong>${term}</strong>"</div>
-                    <div style="font-size: 0.9rem; margin-top: 0.5rem; color: #64748b;">Try searching for: animals, feeds, medicines, housing, etc.</div>
-                `;
-                grid.appendChild(message);
-            }
-        }
-
-        // Add fade-in animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    </script>
+    }
+</script>
 </body>
 </html>

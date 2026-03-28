@@ -1,73 +1,43 @@
 <?php
 // process/addFeedAndFeedingSupplies.php
-session_start(); // 1. Start Session
+session_start();
 error_reporting(0);
 ini_set('display_errors', 0);
-
 include '../config/Connection.php';
-
 header('Content-Type: application/json');
 
-// Get User Info
 $user_id = !empty($_SESSION['user']['USER_ID']) ? $_SESSION['user']['USER_ID'] : null;
 $username = $_SESSION['user']['FULL_NAME'] ?? 'System';
 $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        if (!isset($conn)) {
-            throw new Exception("Database connection failed.");
+        if (!isset($conn)) throw new Exception("Database connection failed.");
+
+        // Read the JSON payload sent from the dynamic table
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+
+        if (!$data || empty($data['items'])) {
+            throw new Exception("No items provided.");
         }
 
-        // 1. Retrieve Basic Info
-        $item_name = trim($_POST['item_name']);
-        $item_type_id = 2; // Feeds & Feeding Supplies
-        $item_quantity = floatval($_POST['item_quantity'] ?? 0);
-        $item_net_weight = floatval($_POST['item_net_weight'] ?? 0);
-        $unit_id = $_POST['unit_id'];
-        $unit_cost = floatval($_POST['unit_cost'] ?? 0);
-        $item_category = $_POST['item_category'];
-        $date_of_purchase = $_POST['date_of_purchase'];
-        $item_description = $_POST['item_description'] ?? null;
-        
-        // NEW: Retrieve Expiration Date
-        $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
+        // 1. Extract Global Invoice Info
+        $date_of_purchase = $data['date_of_purchase'] ?? null;
+        $location_id = $data['location_id'] ?? null;
+        $building_id = !empty($data['building_id']) ? $data['building_id'] : null;
+        $pen_id      = !empty($data['pen_id']) ? $data['pen_id'] : null;
+        $supplier = !empty(trim($data['supplier'] ?? '')) ? trim($data['supplier']) : 'General Supplier';
+        $reference_no = !empty(trim($data['reference_no'] ?? '')) ? trim($data['reference_no']) : null;
 
-        if($expiration_date < $date_of_purchase) {
-            throw new Exception("Expiration date cannot be before purchase date.");
+        if(empty($location_id) || empty($date_of_purchase)) {
+            throw new Exception("Location and Purchase Date are required.");
         }
 
-        // 2. Retrieve Location Info
-        $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
-        $building_id = !empty($_POST['building_id']) ? $_POST['building_id'] : null;
-        $pen_id      = !empty($_POST['pen_id']) ? $_POST['pen_id'] : null;
-
-        // NEW: Capture Supplier and Reference Number
-        $supplier = !empty(trim($_POST['supplier'] ?? '')) ? trim($_POST['supplier']) : 'General Supplier';
-        $reference_no = !empty(trim($_POST['reference_no'] ?? '')) ? trim($_POST['reference_no']) : null;
-
-        // 3. Handle zero/null values for weight/quantity
-        $item_net_weight = ($item_net_weight <= 0) ? null : $item_net_weight;
-        $item_quantity = ($item_quantity <= 0) ? null : $item_quantity;
-
-        // Validation
-        if (empty($item_name) || empty($unit_id) || empty($date_of_purchase) || $item_quantity === null) {
-             throw new Exception("Missing required fields (Name, Quantity, Unit, Date).");
-        }
-
-        if(empty($location_id)) {
-            throw new Exception("Location must be specified.");
-        }
-
-        // 4. CALCULATE TOTAL COST
-        $total_cost = $item_quantity * $unit_cost;
-
-        // ---------------------------------------------------------
-        // START TRANSACTION
-        // ---------------------------------------------------------
         $conn->beginTransaction();
+        $inserted_count = 0;
 
-        // 5. INSERT ITEM (Added SUPPLIER and REFERENCE_NO)
+        // Prepare statements for bulk insert
         $sql = "INSERT INTO ITEMS (
                     ITEM_NAME, ITEM_TYPE_ID, QUANTITY, ITEM_NET_WEIGHT, UNIT_ID, UNIT_COST, 
                     ITEM_CATEGORY, DATE_OF_PURCHASE, EXPIRATION_DATE, ITEM_DESCRIPTION, LOCATION_ID, 
@@ -77,86 +47,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     :item_category, :date_of_purchase, :expiration_date, :item_description, :location_id, 
                     :building_id, :pen_id, :total_cost, 0, :supplier, :reference_no
                 )";
-        
         $stmt = $conn->prepare($sql);
-        
-        $params = [
-            ':item_name'        => $item_name,
-            ':item_type_id'     => $item_type_id,
-            ':item_quantity'    => $item_quantity,
-            ':item_net_weight'  => $item_net_weight,
-            ':unit_id'          => $unit_id,
-            ':unit_cost'        => $unit_cost,
-            ':item_category'    => $item_category,
-            ':date_of_purchase' => $date_of_purchase,
-            ':expiration_date'  => $expiration_date,
-            ':item_description' => $item_description,
-            ':location_id'      => $location_id,
-            ':building_id'      => $building_id,
-            ':pen_id'           => $pen_id,
-            ':total_cost'       => $total_cost,
-            ':supplier'         => $supplier,
-            ':reference_no'     => $reference_no
-        ];
-        
-        // Execute Insert
-        if ($stmt->execute($params)) {
+
+        $log_sql = "INSERT INTO AUDIT_LOGS (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) VALUES (:user_id, :username, 'ADD_ITEM', 'ITEMS', :details, :ip)";
+        $log_stmt = $conn->prepare($log_sql);
+
+        // 2. Loop through every dynamically added row
+        foreach ($data['items'] as $item) {
+            $item_name = trim($item['item_name']);
+            $item_quantity = floatval($item['quantity'] ?? 0);
+            $unit_cost = floatval($item['unit_cost'] ?? 0);
+            $unit_id = $item['unit_id'];
             
-            // 6. Fetch the last inserted ID
-            $new_item_id = $conn->lastInsertId();
-            
-            if (!$new_item_id) {
-                 throw new Exception("Failed to retrieve new Item ID for logging.");
+            if (empty($item_name) || empty($unit_id) || $item_quantity <= 0) {
+                throw new Exception("Invalid item data. Ensure all rows have a Name, Unit, and Quantity > 0.");
             }
 
-            // 7. INSERT AUDIT LOG
-            $logDetails = "Added new Feed Purchase: $item_name (Supplier: $supplier, Qty: $item_quantity, Cost: $total_cost). Expiry: " . ($expiration_date ?? 'N/A');
-            
-            $log_sql = "INSERT INTO AUDIT_LOGS 
-                        (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
-                        VALUES 
-                        (:user_id, :username, 'ADD_ITEM', 'ITEMS', :details, :ip)";
-            
-            $log_stmt = $conn->prepare($log_sql);
-            
-            $log_params = [
+            $item_net_weight = floatval($item['net_weight'] ?? 0);
+            $item_net_weight = ($item_net_weight <= 0) ? null : $item_net_weight;
+            $expiration_date = !empty($item['expiration_date']) ? $item['expiration_date'] : null;
+
+            if($expiration_date && $expiration_date < $date_of_purchase) {
+                throw new Exception("Expiration date for '$item_name' cannot be before the purchase date.");
+            }
+
+            $total_cost = $item_quantity * $unit_cost;
+
+            $params = [
+                ':item_name'        => $item_name,
+                ':item_type_id'     => 2, // Feeds & Feeding Supplies
+                ':item_quantity'    => $item_quantity,
+                ':item_net_weight'  => $item_net_weight,
+                ':unit_id'          => $unit_id,
+                ':unit_cost'        => $unit_cost,
+                ':item_category'    => $item['category'] ?? '1',
+                ':date_of_purchase' => $date_of_purchase,
+                ':expiration_date'  => $expiration_date,
+                ':item_description' => $item['description'] ?? null,
+                ':location_id'      => $location_id,
+                ':building_id'      => $building_id,
+                ':pen_id'           => $pen_id,
+                ':total_cost'       => $total_cost,
+                ':supplier'         => $supplier,
+                ':reference_no'     => $reference_no
+            ];
+
+            if (!$stmt->execute($params)) {
+                throw new Exception("Failed to insert item: $item_name");
+            }
+
+            // Log the action
+            $logDetails = "Added Feed Purchase: $item_name (Qty: $item_quantity, Cost: $total_cost). Expiry: " . ($expiration_date ?? 'N/A');
+            $log_stmt->execute([
                 ':user_id'  => $user_id,
                 ':username' => $username,
                 ':details'  => $logDetails,
                 ':ip'       => $ip_address
-            ];
-            
-            if (!$log_stmt->execute($log_params)) {
-                throw new Exception("Audit Log Failed.");
-            }
-
-            // 8. COMMIT EVERYTHING
-            $conn->commit();
-            
-            echo json_encode([
-                'success' => true, 
-                'message' => '✅ Feed purchase recorded successfully (ID: ' . $new_item_id . ')'
             ]);
             
-        } else {
-            throw new Exception("Database Insert Error.");
+            $inserted_count++;
         }
-        
+
+        $conn->commit();
+        echo json_encode(['success' => true, 'message' => "✅ Successfully recorded $inserted_count feed item(s)."]);
+
     } catch (Exception $e) {
-        // Rollback if anything failed
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-
-        echo json_encode([
-            'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
-        ]);
+        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
     }
 } else {
-    echo json_encode([
-        'success' => false, 
-        'message' => 'Invalid request method.'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
 }
 ?>

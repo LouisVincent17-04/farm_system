@@ -215,167 +215,229 @@ if ($animal_id) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Operational History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+    <title>Operational History | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        /* --- THEME STYLES --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(239,68,68,0.5); /* Red Accent */
+            
+            --red:            #ef4444; --red-dim:        rgba(239,68,68,0.12); --red-glow:       rgba(239,68,68,0.25);
+            --emerald:        #10b981; --emerald-dim:    rgba(16,185,129,0.12);
+            --blue:           #3b82f6; --blue-dim:       rgba(59,130,246,0.12);
+            --amber:          #f59e0b; --amber-dim:      rgba(245,158,11,0.12);
+            --purple:         #a855f7; --purple-dim:     rgba(168,85,247,0.12);
+            --cyan:           #06b6d4; --cyan-dim:       rgba(6,182,212,0.12);
+            --orange:         #f97316; --orange-dim:     rgba(249,115,22,0.12);
+            --pink:           #ec4899; --pink-dim:       rgba(236,72,153,0.12);
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0; min-height: 100vh;
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(239,68,68,0.06) 0%, transparent 60%);
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        /* Back Link - Upper Left, No Outline */
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 1rem; margin-bottom: 1rem; transition: color 0.2s;
-            border: none; background: transparent; padding: 0;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .page-header { margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 1rem; }
-        .page-title { font-size: 2rem; font-weight: 800; color: white; margin-bottom: 0.5rem; }
-        .page-desc { color: #94a3b8; }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--red); background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
 
-        /* Filter Card */
+        /* ─── HEADER ─── */
+        .page-header { margin-bottom: 2.5rem; }
+        .page-header h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em;}
+        .page-header h1 span { background: linear-gradient(135deg, var(--red), #991b1b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .page-header p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
+
+        /* ─── FILTERS ─── */
         .filter-card {
-            background: rgba(30, 41, 59, 0.6); border: 1px solid #475569;
-            border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 1.5rem; margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
         }
+        
         .filter-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
-            gap: 1rem; align-items: end;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 1.25rem; align-items: end; margin-bottom: 1rem;
         }
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        
         .form-select, .form-input {
-            width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155;
-            color: white; border-radius: 6px; font-size: 0.9rem;
+            width: 100%; padding: 12px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition); box-sizing: border-box;
         }
-        .form-select:disabled { opacity: 0.5; cursor: not-allowed; }
-        .form-select:focus, .form-input:focus { border-color: #3b82f6; outline: none; }
+        .form-select {
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+        }
+        .form-input:focus, .form-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-glow); background: var(--bg-hover); }
+        .form-select:disabled, .form-input:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); }
+
+        .search-row { display: flex; gap: 10px; align-items: stretch; margin-top: 1rem;}
+        .btn-go {
+            background: var(--red); color: #fff; border: none; padding: 0 2rem; 
+            border-radius: var(--radius-md); cursor: pointer; font-weight: 700; font-family: var(--font);
+            transition: var(--transition); font-size: 0.95rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-go:hover { background: #b91c1c; box-shadow: 0 4px 15px var(--red-glow); transform: translateY(-1px); }
 
         /* Divider */
-        .divider-text { text-align: center; color: #64748b; font-size: 0.8rem; font-weight: bold; margin: 1.5rem 0; position: relative; }
-        .divider-text::before, .divider-text::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #334155; }
+        .divider-text { text-align: center; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; margin: 1.5rem 0; position: relative; text-transform: uppercase; letter-spacing: 0.1em;}
+        .divider-text::before, .divider-text::after { content: ""; position: absolute; top: 50%; width: 38%; height: 1px; background: var(--border); }
         .divider-text::before { left: 0; } .divider-text::after { right: 0; }
 
-        .btn-go {
-            background: #3b82f6; color: white; border: none; padding: 10px; 
-            border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%;
-        }
-        .btn-go:hover { background: #2563eb; }
-
-        /* Animal Profile Card */
+        /* ─── ANIMAL PROFILE CARD ─── */
         .profile-card {
-            background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; margin-bottom: 2rem;
             display: flex; justify-content: space-between; align-items: center;
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            flex-wrap: wrap; gap: 1.5rem;
         }
-        .profile-main h2 { font-size: 2rem; margin: 0; color: #fff; }
-        .profile-sub { color: #86efac; font-size: 0.9rem; margin-top: 5px; }
-        .profile-stats { text-align: right; }
-        .total-cost-label { font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; }
-        .total-cost-val { font-size: 1.8rem; font-weight: 800; color: #fbbf24; }
+        .profile-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+            background: linear-gradient(180deg, var(--red), #991b1b);
+        }
+        .profile-main h2 { font-size: 2.2rem; margin: 0 0 0.5rem 0; color: #fff; font-family: var(--font-mono); letter-spacing: -0.02em;}
+        .profile-sub { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; }
+        .profile-sub i { color: var(--red); margin-right: 4px; opacity: 0.8; width: 16px; text-align: center;}
+        
+        .profile-stats { text-align: right; background: var(--bg-elevated); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border);}
+        .total-cost-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;}
+        .total-cost-val { font-size: 2rem; font-weight: 800; color: var(--amber); font-family: var(--font-mono); line-height: 1.1; margin-bottom: 0.75rem;}
+        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.3); border-radius: 99px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;}
+        .status-badge.sold { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,0.3); }
+        .status-badge.deceased { background: rgba(255,255,255,0.05); color: var(--text-muted); border-color: var(--border); }
 
-        /* Table */
-        .table-wrapper { background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; }
-        .data-table { width: 100%; border-collapse: collapse; }
+        /* ─── DATA TABLE ─── */
+        .table-wrapper { background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-md); }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 900px;}
         .data-table th {
-            text-align: left; padding: 1rem; background: #0f172a;
-            color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid #334155;
+            text-align: left; padding: 14px 16px; background: var(--bg-elevated);
+            color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
         }
-        .data-table td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; }
+        .data-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-primary); vertical-align: middle;}
         .data-table tr:hover { background: rgba(255,255,255,0.02); }
 
-        /* Badges & Buttons */
-        .type-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-        .type-feeding { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-        .type-medication { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-        .type-vaccination { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
-        .type-vitamins { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
-        .type-checkup { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
-        .type-cost-transfer { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        /* Dynamic Row Badges */
+        .type-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 6px;}
+        .type-feeding { background: var(--orange-dim); color: var(--orange); }
+        .type-medication { background: var(--blue-dim); color: var(--blue); }
+        .type-vaccination { background: var(--purple-dim); color: var(--purple); }
+        .type-vitamins { background: var(--emerald-dim); color: var(--emerald); }
+        .type-checkup { background: var(--cyan-dim); color: var(--cyan); }
+        .type-cost-transfer { background: var(--pink-dim); color: var(--pink); }
 
-        .cost-val { font-family: monospace; font-weight: 600; color: #fbbf24; }
-        .empty-state { text-align: center; padding: 4rem; color: #64748b; }
+        .td-mono { font-family: var(--font-mono); font-size: 0.9rem; }
+        .cost-val { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; color: var(--amber); }
+        .cost-neg { color: var(--red); }
         
+        .empty-state { text-align: center; padding: 4rem; color: var(--text-muted); font-style: italic; }
+
         .btn-view-piglets {
-            background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; color: #fbbf24;
-            padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;
-            transition: all 0.2s; white-space: nowrap;
+            background: var(--pink-dim); border: 1px solid rgba(236,72,153,0.3); color: var(--pink);
+            padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: all var(--transition); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
         }
-        .btn-view-piglets:hover { background: #f59e0b; color: #0f172a; }
+        .btn-view-piglets:hover { background: var(--pink); color: #000; box-shadow: 0 4px 12px var(--pink-glow); transform: translateY(-1px); }
 
-        /* Modal Styles */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+        /* ─── MODAL ─── */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 12px; width: 100%; max-width: 600px; border: 1px solid #475569; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h2 { margin: 0; color: #fbbf24; font-size: 1.25rem; }
+        .modal-content { background: var(--bg-surface); border-radius: var(--radius-xl); width: 100%; max-width: 650px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); animation: modalZoom 0.2s ease-out;}
+        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-elevated);}
+        .modal-header h2 { margin: 0; color: #fff; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;}
+        .modal-header h2 i { color: var(--pink); }
         .modal-body { padding: 0; max-height: 60vh; overflow-y: auto; }
-        .btn-close { background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
-        .btn-close:hover { color: #ef4444; }
+        .btn-close { background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color var(--transition); }
+        .btn-close:hover { color: var(--red); }
 
-        /* --- MOBILE RESPONSIVE CSS --- */
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- MOBILE RESPONSIVE --- */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
-            .page-title { font-size: 1.5rem; }
+            .profile-card { flex-direction: column; align-items: stretch; padding: 1.5rem;}
+            .profile-stats { text-align: left; }
+            .search-row { flex-direction: column; }
+            .btn-go { width: 100%; padding: 12px; justify-content: center;}
 
-            /* Stack Profile Card */
-            .profile-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .profile-stats { text-align: left; border-top: 1px solid rgba(16, 185, 129, 0.3); padding-top: 1rem; width: 100%; }
-
-            /* Table to Card View Transformation */
-            .data-table thead { display: none; } /* Hide Headers */
+            /* Table to Card View */
+            .data-table thead { display: none; }
             .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
-            
-            .data-table tr {
-                background: rgba(30, 41, 59, 0.6);
-                border: 1px solid #475569;
-                border-radius: 12px;
-                margin-bottom: 1rem;
-                padding: 1rem;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            }
-
-            .data-table td {
-                padding: 0.5rem 0;
-                text-align: right;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255,255,255,0.05);
-            }
-
-            .data-table td:last-child { border-bottom: none; }
-
-            /* Data Labels via CSS */
-            .data-table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: #94a3b8;
-                font-size: 0.85rem;
-                text-transform: uppercase;
-                margin-right: 1rem;
-            }
+            .data-table tr { background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border); border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem; }
+            .data-table td { padding: 0.6rem 0; text-align: right; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+            .data-table td:last-child { border-bottom: none; padding-top: 1rem; justify-content: flex-end;}
+            .data-table td::before { content: attr(data-label); font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-right: 1rem; text-align: left;}
         }
     </style>
 </head>
 <body>
 
+<div id="toastContainer"></div>
+
 <div class="container">
     
-    <a href="farm_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Farm Dashboard
-    </a>
+    <div class="top-bar">
+        <a href="farm_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Farm Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-clock-rotate-left"></i> Audit Trail</span>
+    </div>
 
     <header class="page-header">
-        <h1 class="page-title">Operational History</h1>
-        <p class="page-desc">Comprehensive transaction log per animal.</p>
+        <h1>Operational <span>History</span></h1>
+        <p>Comprehensive transaction log and cost analysis per animal.</p>
     </header>
 
     <div class="filter-card">
@@ -393,7 +455,7 @@ if ($animal_id) {
         <div class="filter-grid">
             <div class="form-group">
                 <label>1. Location</label>
-                <select id="loc_id" class="form-select" onchange="loadBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #0f172a; pointer-events: none; color: #94a3b8;"' : ''; ?>>
+                <select id="loc_id" class="form-select" onchange="loadBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
                     <?php if($USER_LOCATION_ == 1000): ?>
                         <option value="">-- Select --</option>
                     <?php endif; ?>
@@ -424,11 +486,11 @@ if ($animal_id) {
             </div>
         </div>
 
-        <div class="divider-text">OR DIRECT SEARCH</div>
+        <div class="divider-text">Or Direct Search</div>
 
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="direct_search" class="form-input" placeholder="Enter Tag No (e.g. A001)...">
-            <button class="btn-go" style="width: auto; padding: 0 2rem;" onclick="performDirectSearch()">SEARCH</button>
+        <div class="search-row">
+            <input type="text" id="direct_search" class="form-input" placeholder="Enter precise Tag No (e.g. A001)...">
+            <button class="btn-go" onclick="performDirectSearch()"><i class="fa-solid fa-magnifying-glass"></i> Find Record</button>
         </div>
     </div>
 
@@ -437,15 +499,27 @@ if ($animal_id) {
         <div class="profile-main">
             <h2><?= htmlspecialchars($animal_info['TAG_NO']) ?></h2>
             <div class="profile-sub">
-                <?= htmlspecialchars($animal_info['ANIMAL_TYPE_NAME']) ?> • <?= htmlspecialchars($animal_info['BREED_NAME']) ?> • <?= $animal_info['SEX'] ?>
-                <br>
-                <?= htmlspecialchars($animal_info['LOCATION_NAME']) ?> > <?= htmlspecialchars($animal_info['BUILDING_NAME']) ?> > <?= htmlspecialchars($animal_info['PEN_NAME']) ?>
+                <div><i class="fa-solid fa-dna"></i> <?= htmlspecialchars($animal_info['ANIMAL_TYPE_NAME']) ?> &bull; <?= htmlspecialchars($animal_info['BREED_NAME']) ?> &bull; <?= $animal_info['SEX'] === 'M' ? 'Male' : 'Female' ?></div>
+                <div style="margin-top: 6px;"><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($animal_info['LOCATION_NAME']) ?> &nbsp;&gt;&nbsp; <?= htmlspecialchars($animal_info['BUILDING_NAME']) ?> &nbsp;&gt;&nbsp; <?= htmlspecialchars($animal_info['PEN_NAME']) ?></div>
             </div>
         </div>
         <div class="profile-stats">
             <div class="total-cost-label">Total Operational Cost</div>
             <div class="total-cost-val">₱<?= number_format($total_cost, 2) ?></div>
-            <div style="color: #64748b; font-size: 0.9rem;">Status: <?= $animal_info['CURRENT_STATUS'] ?></div>
+            
+            <?php 
+                $statBadge = 'status-badge';
+                if ($animal_info['CURRENT_STATUS'] == 'Sold') $statBadge .= ' sold';
+                if ($animal_info['CURRENT_STATUS'] == 'Deceased') $statBadge .= ' deceased';
+            ?>
+            <div class="<?= $statBadge ?>">
+                <?php if ($animal_info['CURRENT_STATUS'] == 'Active' || $animal_info['CURRENT_STATUS'] == 'Sold' || $animal_info['CURRENT_STATUS'] == 'Deceased'): ?>
+                    <i class="fa-solid fa-circle-dot"></i> 
+                <?php else: ?>
+                    <i class="fa-solid fa-tag"></i> 
+                <?php endif; ?>
+                <?= $animal_info['CURRENT_STATUS'] ?>
+            </div>
         </div>
     </div>
 
@@ -453,39 +527,52 @@ if ($animal_id) {
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Date & Time</th>
-                    <th>Type</th>
+                    <th>Timestamp</th>
+                    <th>Log Type</th>
                     <th>Item / Description</th>
-                    <th>Qty</th>
+                    <th>Quantity</th>
                     <th>Remarks</th>
-                    <th>Cost</th>
+                    <th>Cost Impact</th>
                     <th style="text-align: center;">Action</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($records)): ?>
-                    <tr><td colspan="7" class="empty-state">No operational history found for this animal.</td></tr>
+                    <tr><td colspan="7" class="empty-state"><i class="fa-solid fa-ghost" style="font-size: 2rem; margin-bottom:1rem; display:block; opacity: 0.5;"></i>No operational history found for this animal.</td></tr>
                 <?php else: ?>
                     <?php foreach ($records as $row): 
                         // Formats string to lowercase and replaces spaces with dashes (e.g. 'Cost Transfer' -> 'type-cost-transfer')
                         $badgeClass = 'type-' . str_replace(' ', '-', strtolower($row['LOG_TYPE']));
                         
                         $isTransfer = $row['LOG_TYPE'] === 'Cost Transfer';
-                        $costPrefix = $isTransfer ? '-' : '';
-                        $costColor = $isTransfer ? '#f87171' : '#fbbf24'; // Red if deduction, Gold if addition
+                        $costPrefix = $isTransfer ? '-' : '+';
+                        $costClass = $isTransfer ? 'cost-neg' : ''; // Red if deduction, Gold if addition
+                        
+                        // Icons for badges
+                        $typeIcon = '';
+                        switch($row['LOG_TYPE']) {
+                            case 'Feeding': $typeIcon = '<i class="fa-solid fa-wheat-awn"></i> '; break;
+                            case 'Medication': $typeIcon = '<i class="fa-solid fa-pills"></i> '; break;
+                            case 'Vaccination': $typeIcon = '<i class="fa-solid fa-syringe"></i> '; break;
+                            case 'Vitamins': $typeIcon = '<i class="fa-solid fa-flask"></i> '; break;
+                            case 'Checkup': $typeIcon = '<i class="fa-solid fa-stethoscope"></i> '; break;
+                            case 'Cost Transfer': $typeIcon = '<i class="fa-solid fa-money-bill-transfer"></i> '; break;
+                        }
                     ?>
                     <tr>
-                        <td data-label="Date & Time"><?= date('M d, Y h:i A', strtotime($row['LOG_DATE'])) ?></td>
-                        <td data-label="Type"><span class="type-badge <?= $badgeClass ?>"><?= $row['LOG_TYPE'] ?></span></td>
-                        <td data-label="Item / Desc"><?= htmlspecialchars($row['ITEM_NAME'] ?? '-') ?></td>
-                        <td data-label="Qty"><?= number_format($row['QTY'], 2) ?> <?= $row['UNIT'] ?></td>
-                        <td data-label="Remarks" style="color:#94a3b8; font-size:0.85rem;"><?= htmlspecialchars($row['REMARKS'] ?? '-') ?></td>
-                        <td data-label="Cost" class="cost-val" style="color: <?= $costColor ?>;"><?= $costPrefix ?>₱<?= number_format($row['COST'], 2) ?></td>
+                        <td data-label="Timestamp" class="td-mono"><?= date('M d, Y h:i A', strtotime($row['LOG_DATE'])) ?></td>
+                        <td data-label="Log Type"><span class="type-badge <?= $badgeClass ?>"><?= $typeIcon . $row['LOG_TYPE'] ?></span></td>
+                        <td data-label="Item / Desc" style="font-weight:600;"><?= htmlspecialchars($row['ITEM_NAME'] ?? '-') ?></td>
+                        <td data-label="Quantity" class="td-mono"><?= number_format($row['QTY'], 2) ?> <span style="color:var(--text-muted);"><?= $row['UNIT'] ?></span></td>
+                        <td data-label="Remarks" style="color:var(--text-muted); font-size:0.85rem;"><?= htmlspecialchars($row['REMARKS'] ?? '-') ?></td>
+                        <td data-label="Cost Impact" class="cost-val <?= $costClass ?>"><?= $costPrefix ?>₱<?= number_format($row['COST'], 2) ?></td>
                         <td data-label="Action" style="text-align: center;">
                             <?php if ($isTransfer): ?>
-                                <button class="btn-view-piglets" onclick="viewTransferDetails(<?= $row['REF_ID'] ?>)">View Piglets</button>
+                                <button class="btn-view-piglets" onclick="viewTransferDetails(<?= $row['REF_ID'] ?>)">
+                                    <i class="fa-solid fa-magnifying-glass"></i> View Piglets
+                                </button>
                             <?php else: ?>
-                                <span style="color:#475569;">-</span>
+                                <span style="color:var(--text-muted); opacity: 0.3;">-</span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -495,9 +582,10 @@ if ($animal_id) {
         </table>
     </div>
     <?php else: ?>
-        <div class="empty-state">
-            <h3>Select an animal to view history</h3>
-            <p>Use the filters above or search by tag number.</p>
+        <div class="empty-state" style="background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--radius-xl);">
+            <i class="fa-solid fa-arrow-up" style="font-size: 2.5rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+            <h3 style="margin:0 0 0.5rem 0; color: #fff;">Select an animal to view history</h3>
+            <p style="margin:0;">Use the cascade filters above or perform a direct search by tag number.</p>
         </div>
     <?php endif; ?>
 
@@ -506,12 +594,12 @@ if ($animal_id) {
 <div id="transferModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Piglets (Cost Transfer)</h2>
-            <button class="btn-close" onclick="closeTransferModal()">&times;</button>
+            <h2><i class="fa-solid fa-piggy-bank"></i> Piglet Cost Allocation</h2>
+            <button class="btn-close" onclick="closeTransferModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <table class="data-table" style="margin: 0; border-radius: 0; border: none;">
-                <thead>
+            <table class="data-table" style="margin: 0; border-radius: 0; border: none; min-width: 100%;">
+                <thead style="position: sticky; top: 0;">
                     <tr>
                         <th>Piglet Tag No</th>
                         <th>Sex</th>
@@ -534,7 +622,6 @@ if ($animal_id) {
     const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Auto-load buildings if user is restricted to a location
         if (USER_LOCATION != 1000) {
             loadBuildings();
         }
@@ -543,6 +630,15 @@ if ($animal_id) {
     async function fetchJson(params) {
         try { return await (await fetch(`${API_URL}${params}`)).json(); } 
         catch(e) { return []; }
+    }
+
+    function showToast(msg, type = 'success') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
+        t.innerHTML = `${type === 'error' ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-check"></i>'} ${msg}`;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => t.remove(), 3500);
     }
 
     function resetSelect(id) {
@@ -574,6 +670,10 @@ if ($animal_id) {
         const id = document.getElementById('loc_id').value;
         resetSelect('bldg_id'); resetSelect('pen_id'); resetSelect('animal_select');
         if(!id) return;
+        
+        const el = document.getElementById('bldg_id');
+        el.innerHTML = '<option value="">Loading...</option>';
+        
         const data = await fetchJson(`?action=get_buildings&loc_id=${id}`);
         fillSelect('bldg_id', data, 'BUILDING_ID', 'BUILDING_NAME');
     }
@@ -582,6 +682,10 @@ if ($animal_id) {
         const id = document.getElementById('bldg_id').value;
         resetSelect('pen_id'); resetSelect('animal_select');
         if(!id) return;
+        
+        const el = document.getElementById('pen_id');
+        el.innerHTML = '<option value="">Loading...</option>';
+
         const data = await fetchJson(`?action=get_pens&bldg_id=${id}`);
         fillSelect('pen_id', data, 'PEN_ID', 'PEN_NAME');
     }
@@ -592,7 +696,9 @@ if ($animal_id) {
         resetSelect('animal_select');
         if(!id) return;
         
-        // Pass status filter to AJAX
+        const el = document.getElementById('animal_select');
+        el.innerHTML = '<option value="">Loading...</option>';
+        
         const data = await fetchJson(`?action=get_animals&pen_id=${id}&status_filter=${status}`);
         fillSelect('animal_select', data, 'ANIMAL_ID', 'TAG_NO');
     }
@@ -612,9 +718,9 @@ if ($animal_id) {
         if(data.length === 1) {
             goToAnimal(data[0].ANIMAL_ID);
         } else if (data.length > 1) {
-            alert("Multiple animals found. Please be more specific.");
+            showToast("Multiple animals found. Please be more specific.", "warning");
         } else {
-            alert("Animal not found in your location (Check your Status Filter).");
+            showToast("Animal not found in your location (Check your Status Filter).", "error");
         }
     }
 
@@ -628,7 +734,7 @@ if ($animal_id) {
         const modal = document.getElementById('transferModal');
         const tbody = document.getElementById('piglet-list');
         
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">Loading piglets...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin me-2"></i> Loading piglets...</td></tr>';
         modal.classList.add('show');
 
         const data = await fetchJson(`?action=get_transfer_details&transfer_id=${transferId}`);
@@ -643,18 +749,18 @@ if ($animal_id) {
             data.piglets.forEach(p => {
                 html += `
                     <tr>
-                        <td data-label="Tag No" style="font-weight:bold; color:#fff;">${p.TAG_NO}</td>
-                        <td data-label="Sex">${p.SEX}</td>
-                        <td data-label="Status">${p.CURRENT_STATUS}</td>
-                        <td data-label="Sow Share" style="text-align:right; font-family:monospace; color:#f472b6;">+₱${sowShare}</td>
-                        <td data-label="Boar Share" style="text-align:right; font-family:monospace; color:#60a5fa;">+₱${boarShare}</td>
-                        <td data-label="Total Added" style="text-align:right; font-family:monospace; color:#4ade80; font-weight:bold;">+₱${totalAdded}</td>
+                        <td data-label="Tag No" style="font-weight:700; color:#fff; font-family:var(--font-mono);">${p.TAG_NO}</td>
+                        <td data-label="Sex">${p.SEX === 'M' ? '<i class="fa-solid fa-mars" style="color:var(--blue)"></i>' : '<i class="fa-solid fa-venus" style="color:var(--pink)"></i>'} ${p.SEX}</td>
+                        <td data-label="Status"><span style="color:var(--text-secondary); font-size:0.85rem;">${p.CURRENT_STATUS}</span></td>
+                        <td data-label="Sow Share" style="text-align:right; font-family:var(--font-mono); color:var(--pink);">+₱${sowShare}</td>
+                        <td data-label="Boar Share" style="text-align:right; font-family:var(--font-mono); color:var(--blue);">+₱${boarShare}</td>
+                        <td data-label="Total Added" style="text-align:right; font-family:var(--font-mono); color:var(--emerald); font-weight:700;">+₱${totalAdded}</td>
                     </tr>
                 `;
             });
             tbody.innerHTML = html;
         } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#f87171;">No piglet data found for this transfer.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color:var(--red);"><i class="fa-solid fa-ghost display-block margin-bottom"></i> No piglet data found for this transfer.</td></tr>';
         }
     }
 

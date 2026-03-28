@@ -136,202 +136,320 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Group Vaccination | FarmPro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <style>
+        /* ─── CSS VARIABLES ─── */
         :root {
-            --accent: #8b5cf6; --accent-dark: #6d28d9;
-            --bg: #0f172a; --card: #1e293b; --border: #334155;
-            --text: #e2e8f0; --muted: #94a3b8; --success: #22c55e; --danger: #ef4444; --warning: #facc15;
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            
+            --purple:         #a855f7;
+            --purple-dim:     rgba(168,85,247,0.12);
+            --purple-glow:    rgba(168,85,247,0.25);
+            --indigo:         #6366f1;
+            
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(239,68,68,0.12);
+            --blue:           #3b82f6;
+            --amber:          #f59e0b;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:linear-gradient(135deg,var(--bg) 0%,#1e293b 100%); min-height:100vh; color:var(--text); }
-        .container { max-width:1600px; margin:0 auto; padding:1.5rem; }
 
-        .back-link { display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:var(--muted); font-weight:600; font-size:.95rem; margin-bottom:1.5rem; transition:color .2s; }
-        .back-link:hover { color:white; }
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168,85,247,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        /* ── Sync Banner ── */
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--purple); background: var(--bg-hover); }
+
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--purple); background: var(--purple-dim); border: 1px solid rgba(168,85,247,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        /* ─── ALERTS & BANNERS ─── */
         #sync-alert {
-            padding:1rem 1.5rem; border-radius:12px; margin-bottom:1.5rem;
-            font-weight:600; font-size:.95rem; display:none;
-            align-items:center; justify-content:center; gap:10px;
+            display: none; padding: 1rem 1.5rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;
+            text-align: center; font-weight: 600; font-size: 0.95rem; font-family: var(--font); animation: fadeIn 0.3s ease-out;
         }
-        #sync-alert.loading { display:flex; background:rgba(139,92,246,.15); border:1px solid var(--accent); color:#c4b5fd; }
-        #sync-alert.success { display:flex; background:rgba(34,197,94,.1);  border:1px solid var(--success); color:#4ade80; }
-        #sync-alert.error   { display:flex; background:rgba(239,68,68,.1);  border:1px solid var(--danger);  color:#f87171; }
+        #sync-alert.loading { background: var(--blue-dim); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; }
+        #sync-alert.success { background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.3); color: #4ade80; }
+        #sync-alert.error   { background: var(--red-dim); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
 
-        .spinner { width:18px; height:18px; border:2px solid rgba(196,181,253,.3); border-top-color:#c4b5fd; border-radius:50%; animation:spin .6s linear infinite; flex-shrink:0; }
-        @keyframes spin { to { transform:rotate(360deg); } }
-
-        /* ── Lock banner ── */
         #lock-banner {
-            display:none; background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.35);
-            border-radius:12px; padding:.9rem 1.25rem; margin-bottom:1.25rem;
-            color:#c4b5fd; font-size:.9rem; gap:10px; align-items:center;
+            display: none; background: var(--purple-dim); border: 1px solid rgba(168,85,247,0.35);
+            border-radius: var(--radius-md); padding: 1rem 1.5rem; margin-bottom: 1.5rem; color: #d8b4fe;
+            font-size: 0.95rem; gap: 10px; align-items: center; animation: fadeIn 0.3s ease-out; font-weight: 500;
         }
-        #lock-banner.show { display:flex; }
+        #lock-banner.show { display: flex; }
 
-        /* ── Context card ── */
+        /* Context Card (For Auto-Sync) */
         #context-card {
-            display:none; margin-top:1rem; background:rgba(0,0,0,.3);
-            border:1px solid #334155; border-radius:10px; padding:.9rem 1.25rem; font-size:.85rem;
+            display: none; margin-top: 1rem; background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; font-size: 0.85rem;
         }
-        #context-card.show { display:block; }
-        .ctx-row { display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); border-bottom:1px solid rgba(255,255,255,.05); }
-        .ctx-row:last-child { border-bottom:none; }
-        .ctx-row strong { color:#e2e8f0; max-width:60%; text-align:right; }
+        #context-card.show { display: block; }
+        .ctx-row { display: flex; justify-content: space-between; padding: 6px 0; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .ctx-row:last-child { border-bottom: none; }
+        .ctx-row strong { color: #fff; max-width: 60%; text-align: right; font-weight: 600; }
 
-        /* ── Layout ── */
-        .main-grid { display:grid; grid-template-columns:380px 1fr; gap:1.5rem; align-items:start; }
+        /* ─── LAYOUT GRID ─── */
+        .main-grid { display: grid; grid-template-columns: 400px 1fr; gap: 1.5rem; align-items: start; }
 
+        /* ─── CONTROL PANEL (LEFT) ─── */
         .control-panel {
-            background:rgba(30,41,59,.7); backdrop-filter:blur(12px);
-            border:1px solid rgba(148,163,184,.2); border-radius:16px; padding:1.5rem;
-            position:sticky; top:1.5rem; box-shadow:0 10px 25px -5px rgba(0,0,0,.3);
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; position: sticky; top: 1.5rem;
+            box-shadow: var(--shadow-md); z-index: 10; display: flex; flex-direction: column;
         }
-        .panel-title    { font-size:1.25rem; font-weight:700; color:#fff; margin-bottom:5px; display:flex; align-items:center; gap:8px; }
-        .panel-subtitle { font-size:.85rem; color:var(--muted); margin-bottom:1.5rem; }
+        .panel-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 10px;}
+        .panel-title i { color: var(--purple); }
+        .panel-subtitle { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 2rem; }
 
-        .form-group { margin-bottom:1rem; }
-        .form-label { display:block; font-size:.85rem; color:#cbd5e1; margin-bottom:.4rem; font-weight:500; }
-
-        /* ── Select wrapper with lock icon ── */
-        .select-wrap { position:relative; }
-        .select-wrap .form-control { padding-right: 2.2rem; }
-        .select-wrap .lock-badge {
-            display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%);
-            font-size:.8rem; pointer-events:none; z-index:2;
+        .step-label { color: var(--purple); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; display: block;}
+        
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;}
+        
+        .form-control, .form-select {
+            width: 100%; padding: 12px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; transition: var(--transition); outline: none; box-sizing: border-box; font-family: var(--font);
         }
-        .select-wrap.locked .lock-badge { display:inline; }
-        .select-wrap.locked .form-control {
-            border-color:#4c1d95; background:#0d0b1e;
-            opacity:.85; cursor:not-allowed;
+        .form-select {
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
         }
+        .form-control:focus, .form-select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-glow); background: var(--bg-hover); }
+        .form-control:disabled, .form-select:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); }
 
-        .form-control {
-            width:100%; padding:.75rem; background:var(--bg); border:1px solid var(--border);
-            border-radius:8px; color:#fff; font-size:.95rem; transition:border-color .2s;
-            appearance:auto; outline:none;
+        /* Lock Badge Wrapper */
+        .select-wrap { position: relative; display: flex; align-items: center;}
+        .select-wrap .form-control, .select-wrap .form-select { flex: 1; }
+        .select-wrap .lock-badge { display: none; position: absolute; right: 14px; color: var(--purple); font-size: 0.9rem; pointer-events: none;}
+        .select-wrap.locked .lock-badge { display: block; }
+        .select-wrap.locked .form-select, .select-wrap.locked .form-control { border-color: rgba(168,85,247,0.4); background: var(--purple-dim); opacity: 0.9; cursor: not-allowed; padding-right: 35px;}
+
+        .input-with-btn { display: flex; gap: 8px; }
+        .input-with-btn .form-control, .input-with-btn .form-select { flex: 1; }
+        
+        .btn-mini {
+            background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary);
+            border-radius: var(--radius-md); padding: 0 16px; cursor: pointer; font-size: 0.85rem; font-weight: 700;
+            white-space: nowrap; flex-shrink: 0; transition: var(--transition); font-family: var(--font);
         }
-        .form-control:focus   { border-color:var(--accent); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1); }
-        .form-control:disabled { opacity:.55; cursor:not-allowed; }
+        .btn-mini:hover { background: var(--bg-hover); color: var(--purple); border-color: var(--purple); }
 
-        .stock-ok  { color:#4ade80; font-size:.85rem; margin-top:5px; display:block; }
-        .stock-low { color:#f87171; font-size:.85rem; margin-top:5px; display:block; }
+        .resource-link { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--blue); text-decoration: none; transition: color 0.2s; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;}
+        .resource-link:hover { color: #93c5fd; text-decoration: underline; }
+        
+        .stock-ok  { color: var(--emerald); font-size: 0.85rem; margin-top: 5px; display: block; font-family: var(--font-mono); font-weight: 700;}
+        .stock-low { color: var(--red); font-size: 0.85rem; margin-top: 5px; display: block; font-family: var(--font-mono); font-weight: 700; background: var(--red-dim); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(239,68,68,0.2);}
 
-        .summary-box { margin-top:1.5rem; background:var(--bg); padding:1rem; border-radius:12px; border-left:4px solid var(--accent); }
-        .summary-row { display:flex; justify-content:space-between; margin-bottom:5px; font-size:.9rem; color:var(--muted); }
-        .summary-total { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-weight:700; color:#fff; display:flex; justify-content:space-between; }
-
-        .resource-link { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; color: #a78bfa; text-decoration: none; transition: color 0.2s; font-weight: 600; }
-        .resource-link:hover { color: #c4b5fd; text-decoration: underline; }
+        /* Summary Box */
+        .summary-box { margin-top: 1.5rem; background: var(--bg-elevated); padding: 1.25rem; border-radius: var(--radius-md); border-left: 4px solid var(--purple); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);}
+        .summary-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-secondary); font-weight: 600;}
+        .summary-row span#sum-count { color: #fff; font-size: 1.25rem; font-weight: 800; font-family: var(--font-mono);}
+        
+        .summary-total { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; }
+        .summary-total span#sum-total { color: var(--purple); font-size: 1.25rem; font-weight: 800; font-family: var(--font-mono);}
 
         .btn-submit {
-            width:100%; margin-top:1.5rem; padding:1rem;
-            background:linear-gradient(135deg,var(--accent),var(--accent-dark));
-            border:none; border-radius:12px; color:white; font-weight:700; font-size:1rem;
-            cursor:pointer; transition:all .2s;
+            width: 100%; margin-top: 1.5rem; padding: 14px; background: var(--purple); border: none;
+            border-radius: var(--radius-md); color: #fff; font-weight: 700; font-size: 1rem; font-family: var(--font);
+            cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-submit:disabled { opacity:.5; cursor:not-allowed; filter:grayscale(1); }
-        .btn-submit:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 4px 12px rgba(139,92,246,.4); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border);}
+        .btn-submit:hover:not(:disabled) { background: #c084fc; box-shadow: 0 4px 15px var(--purple-glow); transform: translateY(-2px); }
 
-        .workspace-panel { display:flex; flex-direction:column; gap:1.5rem; }
-        .picker-section { background:rgba(30,41,59,.4); border:1px solid rgba(255,255,255,.05); border-radius:16px; padding:1.5rem; }
-        .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
-        .section-title  { font-size:1.1rem; font-weight:600; color:#fff; }
+        /* ─── WORKSPACE (RIGHT) ─── */
+        .workspace-panel { display: flex; flex-direction: column; gap: 2rem; }
+        
+        .picker-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 2rem; box-shadow: var(--shadow-md);}
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .section-title { font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;}
+        .section-title i { color: var(--blue); }
 
         .select-all-container {
-            display:flex; align-items:center; gap:8px; font-size:.9rem; color:#a78bfa;
-            cursor:pointer; padding:5px 10px; border-radius:6px;
-            background:rgba(139,92,246,.1); border:1px solid rgba(139,92,246,.2);
+            display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; color: var(--blue);
+            cursor: pointer; padding: 6px 12px; border-radius: 99px; background: var(--blue-dim); border: 1px solid rgba(59,130,246,0.3); transition: var(--transition);
         }
-        .select-all-container input { cursor:pointer; accent-color:var(--accent); width:16px; height:16px; }
+        .select-all-container:hover { background: rgba(59,130,246,0.2); }
+        .select-all-container input { cursor: pointer; accent-color: var(--blue); width: 16px; height: 16px; margin: 0; }
 
-        .animal-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:.75rem; max-height:250px; overflow-y:auto; padding-right:5px; }
-        .animal-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:.75rem; cursor:pointer; text-align:center; transition:all .2s; }
-        .animal-card:hover  { border-color:var(--muted); transform:translateY(-2px); }
-        .animal-card.in-table { opacity:.45; pointer-events:none; border-color:#4ade80; }
+        /* Animal Selection Grid */
+        .animal-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1rem;
+            max-height: 300px; overflow-y: auto; padding-right: 5px;
+        }
+        /* Custom Scrollbar for list */
+        .animal-grid::-webkit-scrollbar { width: 6px; }
+        .animal-grid::-webkit-scrollbar-track { background: transparent; }
+        .animal-grid::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-        .table-section { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
-        .custom-table  { width:100%; border-collapse:collapse; }
-        .custom-table th { background:var(--bg); color:var(--muted); font-size:.8rem; text-transform:uppercase; padding:1rem; text-align:left; font-weight:600; border-bottom:1px solid var(--border); }
-        .custom-table td { padding:.75rem 1rem; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; color:var(--text); font-size:.95rem; }
-        .custom-table input { background:var(--bg); border:1px solid #475569; color:#fff; padding:6px 10px; border-radius:6px; width:100%; outline:none; }
-        .custom-table input:focus { border-color:var(--accent); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1); }
-        .btn-remove { background:transparent; border:none; color:#f87171; cursor:pointer; font-size:1.1rem; padding:5px; transition:color .2s; }
-        .btn-remove:hover { color:var(--danger); transform:scale(1.1); }
+        .animal-card {
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md);
+            padding: 1rem; cursor: pointer; text-align: center; transition: var(--transition); display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center;
+        }
+        .animal-card:hover { border-color: rgba(255,255,255,0.2); background: var(--bg-hover); transform: translateY(-2px); }
+        .animal-card i { font-size: 1.5rem; color: var(--text-muted); transition: var(--transition);}
+        .animal-card .tag { font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); font-size: 0.95rem; }
+        
+        .animal-card.in-table { background: var(--emerald-dim); border-color: rgba(16,185,129,0.4); opacity: 0.6; pointer-events: none; }
+        .animal-card.in-table i { color: var(--emerald); }
 
-        /* History Filter Styling with Width Fix */
-        .history-filters { display:flex; gap:12px; padding:1rem; background:rgba(15,23,42,0.3); border-bottom:1px solid var(--border); flex-wrap:wrap; align-items:center;}
-        .filter-input { width: 180px !important; padding:8px 12px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:0.9rem; outline:none; }
-        .filter-input:focus { border-color:var(--accent); }
+        /* Action Table */
+        .table-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-md);}
+        .custom-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .custom-table th {
+            background: var(--bg-elevated); color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;
+            letter-spacing: 0.05em; padding: 16px; text-align: left; font-weight: 700; border-bottom: 1px solid var(--border);
+        }
+        .custom-table td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; color: var(--text-primary); }
+        .custom-table tbody tr:hover { background: rgba(255,255,255,0.01); }
 
-        .pagination { display:flex; justify-content:center; gap:8px; padding:1.5rem; background:rgba(15,23,42,0.2); flex-wrap:wrap; }
-        .pg-btn { background:var(--border); border:none; color:#fff; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:0.9rem; transition:background .2s; }
-        .pg-btn.active { background:var(--accent); }
-        .pg-btn:disabled { opacity:0.3; cursor:not-allowed; }
-        .pg-btn:hover:not(.active):not(:disabled) { background:#475569; }
+        .custom-table select, .custom-table input {
+            background: var(--bg-base); border: 1px solid var(--border); color: #fff; padding: 10px 12px;
+            border-radius: 8px; width: 100%; font-size: 0.95rem; font-family: var(--font); outline: none; transition: var(--transition); box-sizing: border-box;
+        }
+        .custom-table input.qty-input, .custom-table input.dosage-input { font-family: var(--font-mono); font-weight: 600;}
+        .custom-table input:focus, .custom-table select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-glow); }
+        
+        .btn-remove { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem; transition: color var(--transition); display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px;}
+        .btn-remove:hover { color: var(--red); background: var(--red-dim); }
+
+        .btn-clear { background: var(--red-dim); border: 1px solid rgba(239,68,68,0.3); color: var(--red); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 700; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px;}
+        .btn-clear:hover { background: rgba(239,68,68,0.2); }
+
+        /* History Filters */
+        .history-filters { display: flex; gap: 1rem; padding: 1.5rem; background: var(--bg-elevated); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+        .filter-input {
+            width: auto; min-width: 180px; flex: 1; padding: 12px 14px; background: var(--bg-base); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: #fff; font-size: 0.95rem; font-family: var(--font); outline: none; transition: var(--transition); box-sizing: border-box;
+        }
+        .filter-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-glow);}
+
+        .pagination { display: flex; justify-content: center; gap: 8px; padding: 1.5rem; flex-wrap: wrap; background: var(--bg-elevated);}
+        .pg-btn {
+            background: var(--bg-base); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 700; font-family: var(--font); transition: var(--transition);
+        }
+        .pg-btn.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+        .pg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pg-btn:hover:not(.active):not(:disabled) { background: var(--bg-hover); color: #fff; border-color: var(--text-muted); }
+
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         @media(max-width:1024px) {
-            .main-grid { grid-template-columns:1fr; }
-            .control-panel { position:static; }
-            .custom-table thead { display:none; }
-            .custom-table tr { display:block; background:rgba(30,41,59,.3); margin-bottom:1rem; border:1px solid var(--border); border-radius:12px; padding:1rem; }
-            .custom-table td { display:flex; justify-content:space-between; align-items:center; border:none; padding:8px 0; }
-            .custom-table td::before { content:attr(data-label); font-weight:600; font-size:.85rem; color:var(--muted); text-transform:uppercase; }
-            .custom-table select, .custom-table input { width:60%; }
+            .main-grid { grid-template-columns: 1fr; }
+            .control-panel { position: static; }
         }
         @media(max-width:768px) {
-            .filter-input { width: 100% !important; }
-            .history-filters { flex-direction:column; }
+            .container { padding: 1rem; }
+            .filter-input { width: 100% !important; flex: none;}
+            .history-filters { flex-direction: column; align-items: stretch; }
+            .input-with-btn { flex-direction: column; }
+            .input-with-btn .btn-mini { width: 100%; padding: 12px; }
+            
+            .custom-table thead { display: none; }
+            .custom-table, .custom-table tbody, .custom-table tr, .custom-table td { display: block; width: 100%; box-sizing: border-box; }
+            
+            .custom-table tr { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1rem; padding: 1rem; }
+            .custom-table td { display: flex; flex-direction: column; gap: 6px; padding: 0.75rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: left; }
+            .custom-table td:last-child { border-bottom: none; align-items: flex-end;}
+            .custom-table td::before { content: attr(data-label); font-weight: 700; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
+            
+            .table-section { border: none; background: transparent; box-shadow: none;}
+            .section-header { padding: 0 0 1rem 0; border: none;}
         }
     </style>
 </head>
 <body>
+
+<div id="toastContainer"></div>
+
 <div class="container">
 
-    <a href="<?= $event_ids ? 'events_scheduler.php' : 'transactions.php' ?>" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-        </svg>
-        <?= $event_ids ? 'Back to Event Scheduler' : 'Back to Transactions' ?>
-    </a>
+    <div class="top-bar">
+        <a href="<?= $event_ids ? 'events_scheduler.php' : 'transactions.php' ?>" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> 
+            <?= $event_ids ? 'Back to Event Scheduler' : 'Back to Transactions' ?>
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-syringe"></i> Immunization Center</span>
+    </div>
 
     <div id="sync-alert">
-        <span class="spinner" id="sync-spinner"></span>
-        <span id="sync-msg">Initializing…</span>
+        <span id="sync-msg"></span>
     </div>
 
     <div id="lock-banner">
-        🔒 <strong style="margin-right:4px;">Scheduler Mode:</strong>
-        Location, building, pen, and vaccine are pre-loaded from the event schedule.
-        Review dosages then click <em>Record Vaccination</em>.
+        <i class="fa-solid fa-lock" style="color:var(--purple); font-size: 1.2rem;"></i> 
+        <div><strong>Scheduler Mode Active:</strong> Location, building, pen, and vaccine are pre-loaded from the event schedule. Review dosages then click <em>Record Vaccination</em>.</div>
     </div>
 
     <div class="main-grid">
 
         <div class="control-panel">
-            <div class="panel-title">💉 Group Vaccination</div>
+            <div class="panel-title"><i class="fa-solid fa-shield-virus"></i> Group Vaccination</div>
             <div class="panel-subtitle">Configure vaccine batch and default dosage.</div>
 
             <form id="settingsForm">
 
-                <div style="background:rgba(255,255,255,.03);padding:12px;border-radius:8px;margin-bottom:1rem;border:1px dashed #475569;">
-                    <label class="form-label" style="color:#a78bfa;margin-bottom:8px;display:block;">
-                        STEP 1: Locate Group
-                    </label>
+                <div style="background:rgba(255,255,255,.03);padding:15px;border-radius:8px;margin-bottom:1.5rem;border:1px dashed #475569;">
+                    <label class="step-label">STEP 1: Locate Group</label>
 
                     <div class="form-group" style="margin-bottom:.5rem;">
                         <div class="select-wrap" id="wrap-location">
-                            <select id="location_id" class="form-control" onchange="handleLocationChange(this.value)" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #0d0b1e; pointer-events: none; color: #94a3b8;"' : ''; ?>>
+                            <select id="location_id" class="form-control" onchange="handleLocationChange(this.value)" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
                                 <?php if($USER_LOCATION_ == 1000): ?>
-                                    <option value="">Select Location</option>
+                                    <option value="">-- Select Location --</option>
                                 <?php endif; ?>
                                 <?php foreach($locs as $l): ?>
                                     <option value="<?= $l['LOCATION_ID'] ?>" <?php echo ($USER_LOCATION_ != 1000 && $l['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
@@ -339,25 +457,25 @@ try {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <span class="lock-badge">🔒</span>
+                            <i class="fa-solid fa-lock lock-badge"></i>
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-bottom:.5rem;">
                         <div class="select-wrap" id="wrap-building">
                             <select id="building_id" class="form-control" onchange="handleBuildingChange(this.value)" disabled>
-                                <option value="">Select Building</option>
+                                <option value="">-- Select Building --</option>
                             </select>
-                            <span class="lock-badge">🔒</span>
+                            <i class="fa-solid fa-lock lock-badge"></i>
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-bottom:0;">
                         <div class="select-wrap" id="wrap-pen">
                             <select id="pen_id" class="form-control" onchange="loadAnimals(this.value)" disabled>
-                                <option value="">Select Pen</option>
+                                <option value="">-- Select Pen --</option>
                             </select>
-                            <span class="lock-badge">🔒</span>
+                            <i class="fa-solid fa-lock lock-badge"></i>
                         </div>
                     </div>
 
@@ -369,76 +487,77 @@ try {
                     </div>
                 </div>
 
-                <label class="form-label" style="color:#a78bfa;">STEP 2: Batch Details</label>
+                <label class="step-label">STEP 2: Batch Details</label>
 
                 <div class="form-group">
-                    <label class="form-label">Vaccine <span style="color:#f87171">*</span></label>
+                    <div class="form-label">
+                        <span>Vaccine <span style="color:var(--red);">*</span></span>
+                        <a href="purch_vaccines.php" target="_blank" class="resource-link" title="Opens in a new tab">Manage Inventory <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    </div>
                     <div class="select-wrap" id="wrap-vaccine">
                         <select id="vaccine_id" class="form-control" onchange="updateCalculations()" disabled required>
                             <option value="" data-stock="0">Select Location First</option>
                         </select>
-                        <span class="lock-badge">🔒</span>
+                        <i class="fa-solid fa-lock lock-badge"></i>
                     </div>
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                        <a href="purch_vaccines.php" target="_blank" class="resource-link" title="Opens in a new tab">
-                            Manage / Purchase Vaccines ↗
-                        </a>
-                        <button type="button" id="refresh-vax-btn" class="btn-mini" onclick="refreshVaccineList()" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3);">
-                            ↻ Refresh
+                    <div style="display: flex; justify-content: flex-start; align-items: center; margin-top: 8px;">
+                        <button type="button" id="refresh-vax-btn" class="btn-mini" onclick="refreshVaccineList()" style="background:transparent; border-color:var(--border); color:var(--text-secondary); padding: 4px 8px;">
+                            <i class="fa-solid fa-rotate-right"></i> Sync Options
                         </button>
                     </div>
-                    <div id="stock-display" style="margin-top: 5px;"></div>
+                    <div id="stock-display"></div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Quantity / Head <span style="color:#f87171">*</span></label>
-                    <div style="display:flex;gap:5px;">
+                    <label class="form-label">Quantity / Head <span style="color:var(--red);">*</span></label>
+                    <div class="input-with-btn">
                         <input type="number" id="default_dosage" class="form-control" step="0.01" value="1.00" oninput="updateAllDosages()" placeholder="Qty">
-                        <button type="button" onclick="updateAllDosages()" style="background:#334155;border:1px solid #475569;color:#fff;border-radius:8px;padding:0 10px;cursor:pointer;" title="Apply to all rows">All</button>
+                        <button type="button" class="btn-mini" onclick="updateAllDosages()" title="Apply to all rows"><i class="fa-solid fa-check"></i> Apply</button>
                     </div>
-                    <small style="color:#64748b;font-size:.75rem;">Can be overridden per-row below.</small>
+                    <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:6px;">Can be overridden per-row below.</small>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Default Remarks</label>
-                    <div style="display:flex;gap:5px;">
+                    <div class="input-with-btn">
                         <input type="text" id="default_remarks" class="form-control" placeholder="e.g. Routine Booster">
-                        <button type="button" onclick="updateAllRemarks()" style="background:#334155;border:1px solid #475569;color:#fff;border-radius:8px;padding:0 10px;cursor:pointer;">All</button>
+                        <button type="button" class="btn-mini" onclick="updateAllRemarks()"><i class="fa-solid fa-check"></i> Apply</button>
                     </div>
                 </div>
 
+                <div style="border-top: 1px dashed var(--border); margin: 1.5rem 0;"></div>
+
                 <div class="form-group">
-                    <label class="form-label">Veterinarian / Personnel</label>
+                    <label class="form-label">Administered By (Personnel)</label>
                     <select id="administered_by" class="form-control">
                         <option value="">— Select Person —</option>
                         <?php foreach($personnel as $p): ?>
                             <option value="<?= htmlspecialchars($p['FULL_NAME']) ?>">
-                                <?= htmlspecialchars($p['FULL_NAME']) ?>
-                                (<?= htmlspecialchars($p['POSITION']) ?>)
+                                <?= htmlspecialchars($p['FULL_NAME']) ?> (<?= htmlspecialchars($p['POSITION']) ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Date Administered</label>
-                    <input type="text" id="vaccination_date" class="form-control" placeholder="Select Date & Time">
+                    <label class="form-label">Date &amp; Time Administered</label>
+                    <input type="text" id="vaccination_date" class="form-control date-picker" placeholder="Select Date & Time">
                 </div>
 
                 <div class="summary-box">
                     <div class="summary-row">
                         <span>Animals Selected:</span>
-                        <span id="sum-count" style="color:#fff">0</span>
+                        <span id="sum-count">0</span>
                     </div>
                     <div class="summary-total">
                         <span>Total Vol Required:</span>
-                        <span id="sum-total" style="color:#a78bfa">0 units</span>
+                        <span id="sum-total">0 units</span>
                     </div>
                 </div>
 
                 <button type="button" class="btn-submit" id="btn-submit" onclick="submitBatch()" disabled>
-                    Record Vaccination
+                    <i class="fa-solid fa-floppy-disk"></i> Record Vaccination
                 </button>
             </form>
         </div>
@@ -447,41 +566,49 @@ try {
 
             <div class="picker-section" id="pickerSection">
                 <div class="section-header">
-                    <div class="section-title">🐷 Step 3: Click to Add Animals</div>
+                    <div class="section-title"><i class="fa-solid fa-paw"></i> Step 3: Click to Add Animals</div>
                     <label class="select-all-container" style="display:none;" id="select-all-wrapper">
                         <input type="checkbox" id="select-all-check" onchange="toggleSelectAll(this)"> Select All
                     </label>
                 </div>
                 <div id="animal-grid" class="animal-grid">
-                    <div style="grid-column:1/-1;text-align:center;padding:2rem;color:#64748b;border:1px dashed #475569;border-radius:8px;">
-                        Select a Pen from the left to load animals.
+                    <div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--text-muted); font-style:italic; border: 1px dashed var(--border); border-radius: var(--radius-md);">
+                        <i class="fa-solid fa-arrow-left" style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        Select a Pen from the control panel to load animals.
                     </div>
                 </div>
             </div>
 
             <div class="table-section">
-                <div class="section-header" style="padding:1rem;border-bottom:1px solid var(--border);margin-bottom:0;">
-                    <div class="section-title">📋 Step 4: Confirm Dosages</div>
-                    <button onclick="clearTable()" style="background:transparent;border:1px solid #f87171;color:#f87171;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:.8rem;">Clear All</button>
+                <div class="section-header" style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom:1px solid var(--border); margin:0;">
+                    <div class="section-title"><i class="fa-solid fa-list-check"></i> Step 4: Confirm Dosages</div>
+                    <button class="btn-clear" onclick="clearTable()"><i class="fa-solid fa-trash-can"></i> Clear All</button>
                 </div>
-                <table class="custom-table">
-                    <thead>
-                        <tr>
-                            <th style="width:15%;">Tag No</th>
-                            <th style="width:25%;">Dosage (Qty)</th>
-                            <th>Remarks (Optional)</th>
-                            <th style="width:50px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="vaccination-list">
-                        <tr id="empty-row"><td colspan="4" style="text-align:center;padding:2rem;color:#64748b;">No animals added yet.</td></tr>
-                    </tbody>
-                </table>
+                <div style="overflow-x: auto; width: 100%;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th style="width:15%; padding-left: 1.5rem;">Tag No</th>
+                                <th style="width:25%;">Dosage (Qty)</th>
+                                <th>Remarks (Optional)</th>
+                                <th style="width:50px; text-align:center;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="vaccination-list">
+                            <tr id="empty-row">
+                                <td colspan="4" style="text-align:center;padding:3rem 1rem;color:var(--text-muted); font-style:italic;">
+                                    <i class="fa-solid fa-arrow-up" style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                    Click on animals above to add them to the vaccination list.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="table-section">
-                <div class="section-header" style="padding:1rem;border-bottom:1px solid var(--border);margin-bottom:0;">
-                    <div class="section-title">🕒 Recent Vaccination Logs</div>
+                <div class="section-header" style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom:1px solid var(--border); margin:0;">
+                    <div class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Vaccination Logs</div>
                 </div>
                 
                 <div class="history-filters">
@@ -494,26 +621,28 @@ try {
                         <?php endforeach; ?>
                     </select>
                     <?php endif; ?>
-                    <input type="text" id="histFrom" class="filter-input" placeholder="Date From...">
-                    <input type="text" id="histTo"   class="filter-input" placeholder="Date To...">
+                    <input type="text" id="histFrom" class="filter-input date-picker" placeholder="Date From...">
+                    <input type="text" id="histTo"   class="filter-input date-picker" placeholder="Date To...">
                 </div>
 
-                <table class="custom-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Tag</th>
-                            <th>Administered By</th>
-                            <th>Vaccine</th>
-                            <th>Dosage</th>
-                            <th>Remarks</th>
-                            <th>Cost</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-list">
-                        <tr><td colspan="7" style="text-align:center;padding:2rem;color:#64748b;">Loading...</td></tr>
-                    </tbody>
-                </table>
+                <div style="overflow-x: auto; width: 100%;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th style="padding-left: 1.5rem;">Date</th>
+                                <th>Tag</th>
+                                <th>Administered By</th>
+                                <th>Vaccine</th>
+                                <th>Dosage</th>
+                                <th>Remarks</th>
+                                <th style="text-align:right; padding-right:1.5rem;">Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-list">
+                            <tr><td colspan="7" style="text-align:center;padding:3rem 1rem;color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin me-2"></i> Loading history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
                 <div class="pagination" id="pagination"></div>
             </div>
 
@@ -541,13 +670,13 @@ document.addEventListener('DOMContentLoaded', () => {
         enableTime: true,
         dateFormat: "Y-m-d H:i", 
         altInput: true,
-        altFormat: "m/d/Y h:i K", 
+        altFormat: "M j, Y h:i K", 
         allowInput: true
     });
     fpVaccineDate.clear();
 
-    flatpickr("#histFrom", { dateFormat:"Y-m-d", altInput:true, altFormat:"m/d/Y", onChange: () => loadHistory(1) });
-    flatpickr("#histTo",   { dateFormat:"Y-m-d", altInput:true, altFormat:"m/d/Y", onChange: () => loadHistory(1) });
+    flatpickr("#histFrom", { dateFormat:"Y-m-d", altInput:true, altFormat:"M j, Y", onChange: () => loadHistory(1) });
+    flatpickr("#histTo",   { dateFormat:"Y-m-d", altInput:true, altFormat:"M j, Y", onChange: () => loadHistory(1) });
 
     if (incomingEventIds) {
         schedulerMode = true;
@@ -562,15 +691,34 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHistory(1);
 });
 
+// ── TOAST NOTIFICATIONS ───────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : (type === 'loading' ? 'var(--blue)' : 'var(--emerald)')}`;
+    
+    let icon = '<i class="fa-solid fa-check"></i>';
+    if(type === 'error') icon = '<i class="fa-solid fa-xmark"></i>';
+    if(type === 'loading') icon = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    
+    t.innerHTML = `${icon} ${msg}`;
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(() => t.remove(), type === 'error' ? 5000 : 3500);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    BANNER HELPERS
 ═══════════════════════════════════════════════════════════════ */
 function showBanner(type, msg) {
     const el      = document.getElementById('sync-alert');
-    const spinner = document.getElementById('sync-spinner');
     el.className  = type;
-    spinner.style.display = (type === 'loading') ? 'inline-block' : 'none';
-    document.getElementById('sync-msg').textContent = msg;
+    
+    let icon = '<i class="fa-solid fa-circle-check"></i>';
+    if(type === 'error') icon = '<i class="fa-solid fa-circle-xmark"></i>';
+    if(type === 'loading') icon = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    document.getElementById('sync-msg').innerHTML = `${icon} ${msg}`;
+    el.style.display = 'block';
 }
 function hideBanner() {
     const el = document.getElementById('sync-alert');
@@ -601,13 +749,13 @@ function lockField(wrapId, selectId) {
    AUTO-SELECT  ── Scheduler / Blocker entry point
 ═══════════════════════════════════════════════════════════════ */
 async function handleEventAutoSelect(eventIds) {
-    showBanner('loading', 'Loading scheduled animals and vaccine…');
+    showBanner('loading', 'Auto-Sync Active: Loading scheduled animals and vaccine…');
     try {
         const res  = await fetch(`../process/eventManager.php?action=get_events_details&ids=${eventIds}`);
         const data = await res.json();
 
         if (!data.success || !data.events || data.events.length === 0) {
-            showBanner('error', '❌ No event details returned. Check eventManager.php?action=get_events_details');
+            showBanner('error', 'No event details returned.');
             return;
         }
 
@@ -618,28 +766,25 @@ async function handleEventAutoSelect(eventIds) {
         const itemId   = String(ev.ITEM_ID);
 
         if (!setSelectValue('location_id', locId)) {
-            showBanner('error', `❌ Location ID "${locId}" not in dropdown.`); return;
+            showBanner('error', `Location ID "${locId}" not in dropdown.`); return;
         }
         lockField('wrap-location', 'location_id');
 
-        showBanner('loading', 'Loading buildings…');
         await fetchBuildings(locId);
         if (!setSelectValue('building_id', bldgId)) {
-            showBanner('error', `❌ Building ID "${bldgId}" not found.`); return;
+            showBanner('error', `Building ID "${bldgId}" not found.`); return;
         }
         lockField('wrap-building', 'building_id');
 
-        showBanner('loading', 'Loading pens…');
         await fetchPens(bldgId);
         if (!setSelectValue('pen_id', penId)) {
-            showBanner('error', `❌ Pen ID "${penId}" not found.`); return;
+            showBanner('error', `Pen ID "${penId}" not found.`); return;
         }
         lockField('wrap-pen', 'pen_id');
 
-        showBanner('loading', 'Loading vaccines…');
         await fetchVaccines(locId);
         if (!setSelectValue('vaccine_id', itemId)) {
-            showBanner('error', `❌ Vaccine ID "${itemId}" not found in this location.`); return;
+            showBanner('error', `Vaccine ID "${itemId}" not found in this location.`); return;
         }
         lockField('wrap-vaccine', 'vaccine_id');
         updateCalculations();
@@ -650,21 +795,21 @@ async function handleEventAutoSelect(eventIds) {
             }
         });
 
-        document.getElementById('ctx-loc').textContent  = ev.LOCATION_NAME || locId;
-        document.getElementById('ctx-bldg').textContent = ev.BUILDING_NAME || bldgId;
-        document.getElementById('ctx-pen').textContent  = ev.PEN_NAME      || penId;
-        document.getElementById('ctx-vax').textContent  = ev.ITEM_NAME     || itemId;
+        document.getElementById('ctx-loc').innerHTML  = ev.LOCATION_NAME || locId;
+        document.getElementById('ctx-bldg').innerHTML = ev.BUILDING_NAME || bldgId;
+        document.getElementById('ctx-pen').innerHTML  = ev.PEN_NAME      || penId;
+        document.getElementById('ctx-vax').innerHTML  = ev.ITEM_NAME     || itemId;
         document.getElementById('context-card').classList.add('show');
 
         document.getElementById('pickerSection').style.display = 'none';
         document.getElementById('lock-banner').classList.add('show');
 
-        showBanner('success', `✅ ${data.events.length} animal(s) loaded from schedule — review dosages and save.`);
+        showBanner('success', `${data.events.length} animal(s) loaded from schedule — review dosages and save.`);
         setTimeout(hideBanner, 5000);
         document.querySelector('.table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     } catch (err) {
-        showBanner('error', `❌ Auto-sync failed.`);
+        showBanner('error', `Auto-sync failed. Selected animals manually.`);
     }
 }
 
@@ -673,10 +818,10 @@ async function handleEventAutoSelect(eventIds) {
 ═══════════════════════════════════════════════════════════════ */
 async function refreshVaccineList() {
     const locId = document.getElementById('location_id').value;
-    if (!locId) { alert("Please select a Location first."); return; }
+    if (!locId) { showToast("Please select a Location first.", "error"); return; }
 
     const btn = document.getElementById('refresh-vax-btn');
-    btn.innerHTML = '↻ Loading...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
     btn.disabled = true;
 
     try {
@@ -685,11 +830,13 @@ async function refreshVaccineList() {
         if (currentSelection) setSelectValue('vaccine_id', currentSelection);
         updateCalculations(); 
         
-        btn.innerHTML = '↻ Refresh';
+        btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Sync Options';
         btn.disabled = false;
+        showToast("Vaccine inventory synced.", "success");
     } catch (e) {
-        btn.innerHTML = '❌ Error';
-        setTimeout(() => { btn.innerHTML = '↻ Refresh'; btn.disabled = false; }, 2000);
+        btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Error';
+        showToast("Failed to sync inventory.", "error");
+        setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Sync Options'; btn.disabled = false; }, 2000);
     }
 }
 
@@ -701,15 +848,15 @@ function fetchBuildings(locId) {
         const sel = document.getElementById('building_id');
         sel.innerHTML = '<option value="">Loading buildings…</option>';
         sel.disabled  = true;
-        document.getElementById('pen_id').innerHTML = '<option value="">Select Pen</option>';
+        document.getElementById('pen_id').innerHTML = '<option value="">-- Select Pen --</option>';
         document.getElementById('pen_id').disabled  = true;
 
-        if (!locId) { sel.innerHTML = '<option value="">Select Building</option>'; resolve([]); return; }
+        if (!locId) { sel.innerHTML = '<option value="">-- Select Building --</option>'; resolve([]); return; }
 
         fetch(`../process/getBuildingsByLocation.php?location_id=${locId}`)
             .then(r => r.json())
             .then(data => {
-                sel.innerHTML = '<option value="">Select Building</option>';
+                sel.innerHTML = '<option value="">-- Select Building --</option>';
                 const list = data.buildings || data || [];
                 list.forEach(b => sel.add(new Option(b.BUILDING_NAME, b.BUILDING_ID)));
                 sel.disabled = false;
@@ -725,12 +872,12 @@ function fetchPens(bldgId) {
         sel.innerHTML = '<option value="">Loading pens…</option>';
         sel.disabled  = true;
 
-        if (!bldgId) { sel.innerHTML = '<option value="">Select Pen</option>'; resolve([]); return; }
+        if (!bldgId) { sel.innerHTML = '<option value="">-- Select Pen --</option>'; resolve([]); return; }
 
         fetch(`../process/getPensByBuilding.php?building_id=${bldgId}`)
             .then(r => r.json())
             .then(data => {
-                sel.innerHTML = '<option value="">Select Pen</option>';
+                sel.innerHTML = '<option value="">-- Select Pen --</option>';
                 const list = data.pens || data || [];
                 list.forEach(p => sel.add(new Option(p.PEN_NAME, p.PEN_ID)));
                 sel.disabled = false;
@@ -753,7 +900,7 @@ function fetchVaccines(locId) {
         fetch(`?action=get_vaccines&location_id=${locId}`)
             .then(r => r.json())
             .then(data => {
-                sel.innerHTML = '<option value="" data-stock="0">Select Vaccine</option>';
+                sel.innerHTML = '<option value="" data-stock="0">-- Select Vaccine --</option>';
                 data.forEach(v => {
                     const opt          = new Option(`${v.SUPPLY_NAME} (Stock: ${v.TOTAL_STOCK} ${v.UNIT_ABBR})`, v.SUPPLY_ID);
                     opt.dataset.stock  = v.TOTAL_STOCK;
@@ -773,9 +920,9 @@ function fetchVaccines(locId) {
 ═══════════════════════════════════════════════════════════════ */
 function handleLocationChange(locId) {
     Array.from(selectedAnimals).forEach(id => removeAnimal(id));
-    document.getElementById('building_id').innerHTML = '<option value="">Select Building</option>';
+    document.getElementById('building_id').innerHTML = '<option value="">-- Select Building --</option>';
     document.getElementById('building_id').disabled  = true;
-    document.getElementById('pen_id').innerHTML      = '<option value="">Select Pen</option>';
+    document.getElementById('pen_id').innerHTML      = '<option value="">-- Select Pen --</option>';
     document.getElementById('pen_id').disabled       = true;
     document.getElementById('vaccine_id').innerHTML  = '<option value="" data-stock="0">Select Location First</option>';
     document.getElementById('vaccine_id').disabled   = true;
@@ -787,7 +934,7 @@ function handleLocationChange(locId) {
 }
 
 function handleBuildingChange(bldgId) {
-    document.getElementById('pen_id').innerHTML = '<option value="">Select Pen</option>';
+    document.getElementById('pen_id').innerHTML = '<option value="">-- Select Pen --</option>';
     document.getElementById('pen_id').disabled  = true;
     if (!bldgId) return;
     fetchPens(bldgId);
@@ -796,18 +943,18 @@ function handleBuildingChange(bldgId) {
 function loadAnimals(penId) {
     const grid    = document.getElementById('animal-grid');
     const wrapper = document.getElementById('select-all-wrapper');
-    grid.innerHTML        = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;">Loading…</div>';
+    grid.innerHTML        = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin me-2"></i> Loading animals…</div>';
     wrapper.style.display = 'none';
     if (!penId) return;
 
-    fetch(`../process/getAnimalsByPen.php?pen_id=${penId}`)
+    fetch(`?action=get_animals&pen_id=${penId}`)
         .then(r => r.json())
         .then(data => {
             grid.innerHTML    = '';
-            currentPenAnimals = (data.animal_record || []).filter(a => a.IS_ACTIVE == 1);
+            currentPenAnimals = data || [];
 
             if (!currentPenAnimals.length) {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;">No animals in this pen.</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted); padding: 2rem; font-style:italic;">No active animals found in this pen.</div>';
                 return;
             }
             wrapper.style.display = 'flex';
@@ -818,8 +965,7 @@ function loadAnimals(penId) {
                 card.className = `animal-card ${selectedAnimals.has(String(a.ANIMAL_ID)) ? 'in-table' : ''}`;
                 card.id        = `card-${a.ANIMAL_ID}`;
                 card.onclick   = () => addAnimalToTable(a);
-                card.innerHTML = `<div style="font-size:1.5rem;">🐖</div>
-                                  <div style="font-weight:700;color:#fff;">${a.TAG_NO}</div>`;
+                card.innerHTML = `<i class="fa-solid fa-paw"></i><div class="tag">${a.TAG_NO}</div>`;
                 grid.appendChild(card);
             });
         });
@@ -851,12 +997,12 @@ function addAnimalToTable(animal) {
     tr.id         = `row-${animal.ANIMAL_ID}`;
     tr.dataset.id = String(animal.ANIMAL_ID);
     tr.innerHTML  = `
-        <td data-label="Tag No" style="font-weight:600;color:#fff;">${animal.TAG_NO}</td>
-        <td data-label="Dosage"><input type="number" class="dosage-input" value="${defDose}"
+        <td data-label="Tag No" style="font-weight:700; font-family:var(--font-mono); padding-left: 1.5rem;">${animal.TAG_NO}</td>
+        <td data-label="Dosage (Qty)"><input type="number" class="dosage-input form-control" value="${defDose}"
                    step="0.01" min="0.01" oninput="updateCalculations()"></td>
-        <td data-label="Remarks"><input type="text" class="rem-input" value="${defRem}" placeholder="Notes…"></td>
-        <td style="text-align:right;">
-            <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})">×</button>
+        <td data-label="Remarks (Optional)"><input type="text" class="rem-input form-control" value="${defRem}" placeholder="Notes…"></td>
+        <td style="text-align:center;">
+            <button type="button" class="btn-remove" onclick="removeAnimal(${animal.ANIMAL_ID})" title="Remove"><i class="fa-solid fa-xmark"></i></button>
         </td>`;
     document.getElementById('vaccination-list').appendChild(tr);
 
@@ -878,7 +1024,7 @@ function removeAnimal(id) {
 
     if (!selectedAnimals.size) {
         document.getElementById('vaccination-list').innerHTML =
-            '<tr id="empty-row"><td colspan="4" style="text-align:center;padding:2rem;color:#64748b;">No animals added yet.</td></tr>';
+            '<tr id="empty-row"><td colspan="4" style="text-align:center;padding:3rem 1rem;color:var(--text-muted); font-style:italic;"><i class="fa-solid fa-arrow-up" style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>Click on animals above to add them to the vaccination list.</td></tr>';
     }
     updateCalculations();
     updateSelectAllState();
@@ -925,17 +1071,14 @@ function updateCalculations() {
 
     const display = document.getElementById('stock-display');
     if (total > stock) {
-        display.innerHTML = `<span class="stock-low">⚠ Stock Low: ${stock} available, need ${total.toFixed(2)}</span>`;
+        display.innerHTML = `<span class="stock-low"><i class="fa-solid fa-triangle-exclamation"></i> Deficit: ${stock} available, need ${total.toFixed(2)}</span>`;
         btn.disabled      = true;
-        btn.textContent   = 'Insufficient Stock';
     } else {
-        display.innerHTML = `<span class="stock-ok">✓ Stock OK: ${stock} ${unit} available</span>`;
+        display.innerHTML = `<span class="stock-ok"><i class="fa-solid fa-boxes-stacked"></i> Stock OK: ${stock} ${unit} available</span>`;
         if (selectedAnimals.size > 0 && total > 0) {
             btn.disabled    = false;
-            btn.textContent = 'Record Vaccination';
         } else {
             btn.disabled    = true;
-            btn.textContent = 'Add Animals / Set Dosage';
         }
     }
 }
@@ -946,7 +1089,7 @@ function updateCalculations() {
 async function loadHistory(page) {
     const list = document.getElementById('history-list');
     const pg   = document.getElementById('pagination');
-    list.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1rem;color:#64748b;">Loading history...</td></tr>';
+    list.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:3rem 1rem;color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin me-2"></i> Loading history...</td></tr>';
 
     const search = document.getElementById('histSearch').value;
     const loc    = document.getElementById('histLoc')?.value || '';
@@ -958,26 +1101,26 @@ async function loadHistory(page) {
         const result = await res.json();
 
         if (!result.success || !result.data) {
-            list.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger);">Error: ${result.error || 'Unknown error'}</td></tr>`;
+            list.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);">Error: ${result.error || 'Unknown error'}</td></tr>`;
             if (pg) pg.innerHTML = '';
             return;
         }
 
         if (!result.data.length) {
-            list.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:#64748b;">No records found.</td></tr>';
+            list.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:3rem 1rem;color:var(--text-muted); font-style:italic;"><i class="fa-solid fa-ghost display-block margin-bottom opacity-50 font-size-2rem"></i> No vaccination records found.</td></tr>';
             if (pg) pg.innerHTML = '';
             return;
         }
 
         list.innerHTML = result.data.map(row => `
             <tr>
-                <td style="font-size:.85rem;color:var(--muted);white-space:nowrap;">${row.FORMATTED_DATE}</td>
-                <td><span style="color:var(--accent);font-weight:bold;">${row.TAG_NO}</span></td>
-                <td style="font-size:.9rem;">${row.ADMINISTERED_BY || '—'}</td>
-                <td><span style="color:#a78bfa;font-weight:bold;">${row.SUPPLY_NAME || '—'}</span></td>
-                <td style="font-size:.9rem;text-align:center;">${row.DOSAGE_ML ?? '—'}</td>
-                <td style="font-size:.9rem;">${row.REMARKS || '—'}</td>
-                <td style="color:var(--warning);font-weight:bold;white-space:nowrap;">₱ ${parseFloat(row.TOTAL_COST || row.VACCINATION_COST || 0).toFixed(2)}</td>
+                <td data-label="Date" style="font-size:0.9rem; color:var(--text-secondary); font-family:var(--font-mono); padding-left: 1.5rem;">${row.FORMATTED_DATE}</td>
+                <td data-label="Tag"><span style="background:var(--purple-dim); color:var(--purple); padding:4px 10px; border-radius:6px; font-weight:700; font-family:var(--font-mono); border:1px solid rgba(168,85,247,0.3);"><i class="fa-solid fa-tag"></i> ${row.TAG_NO}</span></td>
+                <td data-label="Admin By" style="font-size:0.95rem; color:var(--text-primary);">${row.ADMINISTERED_BY || '—'}</td>
+                <td data-label="Vaccine" style="font-weight:700; color:var(--text-primary);">${row.SUPPLY_NAME || '—'}</td>
+                <td data-label="Dosage" style="font-size:1.05rem; font-family:var(--font-mono); font-weight:700; text-align:center; color:var(--emerald);">${row.DOSAGE_ML ?? '—'}</td>
+                <td data-label="Remarks" style="font-size:0.9rem; color:var(--text-muted);">${row.REMARKS || '—'}</td>
+                <td data-label="Cost" style="color:var(--amber); font-weight:700; font-family:var(--font-mono); white-space:nowrap; padding-right:1.5rem; text-align:right;">₱ ${parseFloat(row.TOTAL_COST || row.VACCINATION_COST || 0).toFixed(2)}</td>
             </tr>
         `).join('');
 
@@ -992,7 +1135,7 @@ async function loadHistory(page) {
             }
         }
     } catch (e) {
-        list.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--danger);">System Error. Check console.</td></tr>';
+        list.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);">System Error. Check console.</td></tr>';
     }
 }
 
@@ -1004,13 +1147,14 @@ async function submitBatch() {
 
     const dateInput = document.getElementById('vaccination_date').value;
     if(!dateInput) {
-        alert("Please select a valid Date Administered.");
+        showToast("Please select a valid Date Administered.", "error");
         return;
     }
 
     const btn = document.getElementById('btn-submit');
+    const ogText = btn.innerHTML;
     btn.disabled    = true;
-    btn.textContent = 'Processing…';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
 
     const vacOpt  = document.getElementById('vaccine_id').selectedOptions[0];
     const records = [];
@@ -1041,9 +1185,9 @@ async function submitBatch() {
         const data = await res.json();
 
         if (!data.success) {
-            alert('❌ Error: ' + (data.message || 'Unknown error'));
+            showToast('Error: ' + (data.message || 'Unknown error'), "error");
             btn.disabled    = false;
-            btn.textContent = 'Record Vaccination';
+            btn.innerHTML = ogText;
             return;
         }
 
@@ -1058,15 +1202,17 @@ async function submitBatch() {
             }
         }
 
-        alert('✅ Batch vaccination recorded successfully!');
-        loadHistory(1); // Live refresh history
-        window.location.href = incomingEventIds ? 'events_scheduler.php' : window.location.pathname;
+        showToast('Batch vaccination recorded successfully!', "success");
+        loadHistory(1); 
+        setTimeout(() => {
+            window.location.href = incomingEventIds ? 'events_scheduler.php' : window.location.pathname;
+        }, 1500);
 
     } catch (e) {
         console.error(e);
-        alert('System error. Please try again.');
+        showToast('System connection error. Please try again.', "error");
         btn.disabled    = false;
-        btn.textContent = 'Record Vaccination';
+        btn.innerHTML = ogText;
     }
 }
 </script>

@@ -10,7 +10,6 @@ checkAccess('others_analytics');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
-
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
@@ -63,135 +62,250 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>General Supplies Analytics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>General Supplies Analytics | FarmPro</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     
     <style>
-        /* --- THEME: ZINC / NEUTRAL --- */
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
-            color: #e2e8f0; 
-            margin: 0; padding-bottom: 40px; 
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(161,161,170,0.5); /* Zinc Accent */
+            
+            --zinc:           #a1a1aa;
+            --zinc-dim:       rgba(161,161,170,0.12);
+            --zinc-glow:      rgba(161,161,170,0.25);
+            --blue:           #3b82f6;
+            --emerald:        #10b981;
+            --amber:          #f59e0b;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-md:      0 4px 16px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        
-        /* Navigation Style */
-        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(161,161,170,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: #d4d4d8; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .header { text-align: center; margin-bottom: 2rem; }
-        .title { 
-            font-size: 2.2rem; font-weight: 800; 
-            background: linear-gradient(135deg, #a1a1aa, #52525b); 
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
-            margin-bottom: 0.5rem;
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--zinc); background: var(--zinc-dim); border: 1px solid rgba(161,161,170,0.2);
+            padding: 6px 12px; border-radius: 99px;
         }
-        .subtitle { color: #71717a; font-size: 1rem; margin: 0; }
 
-        /* KPI Grid */
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        /* ─── HEADER ─── */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1.5rem; flex-wrap: wrap; }
+        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em;}
+        .header-info h1 span { background: linear-gradient(135deg, var(--zinc), #52525b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
+
+        .btn-view {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px 24px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-weight: 700; font-size: 0.95rem; font-family: var(--font);
+            cursor: pointer; transition: var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-view:hover { background: var(--zinc-dim); border-color: var(--zinc); color: #fff; transform: translateY(-2px);}
+
+        /* ─── DASHBOARD STATS ─── */
+        .kpi-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 1.5rem; margin-bottom: 2.5rem; 
+        }
         .kpi-card { 
-            background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); 
-            border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(10px); 
-            position: relative; overflow: hidden;
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            box-shadow: var(--shadow-md); position: relative; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
-        .kpi-card::after { 
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; 
-            background: linear-gradient(90deg, #a1a1aa, #3f3f46); 
-        }
-        .kpi-label { color: #a1a1aa; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-        .kpi-value { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
-        .kpi-sub { font-size: 0.85rem; color: #71717a; }
+        
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .stat-zinc::before { background: var(--zinc); }
+        .stat-blue::before { background: var(--blue); }
+        .stat-emerald::before { background: var(--emerald); }
+        .stat-amber::before { background: var(--amber); }
 
-        /* Chart Grid */
+        .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .kpi-title { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;}
+        .kpi-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #fff;}
+        .stat-zinc .kpi-icon { background: linear-gradient(135deg, var(--zinc), #52525b); }
+        .stat-blue .kpi-icon { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .stat-emerald .kpi-icon { background: linear-gradient(135deg, var(--emerald), #047857); }
+        .stat-amber .kpi-icon { background: linear-gradient(135deg, var(--amber), #b45309); }
+
+        .kpi-value { font-size: 2.5rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; margin-bottom: 0.5rem;}
+        .stat-zinc .kpi-value { color: var(--zinc); }
+        .stat-blue .kpi-value { color: var(--blue); }
+        .stat-emerald .kpi-value { color: var(--emerald); }
+        .stat-amber .kpi-value { color: var(--amber); }
+
+        .kpi-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
+
+        /* ─── CHARTS GRID ─── */
         .charts-container { 
-            display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem; 
+            width: 100%; overflow: hidden; /* Prevent container blowout */
         }
-        .chart-box { 
-            background: rgba(39, 39, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); 
-            border-radius: 16px; padding: 1.5rem; min-height: 350px; display: flex; flex-direction: column;
-        }
-        .chart-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
 
-        @media (max-width: 1024px) { .charts-container { grid-template-columns: 1fr; } }
+        .chart-box { 
+            background: var(--bg-surface); border: 1px solid var(--border); 
+            border-radius: var(--radius-xl); padding: 1.5rem; 
+            display: flex; flex-direction: column; width: 100%; max-width: 100%; 
+            overflow: hidden; box-sizing: border-box; box-shadow: var(--shadow-md);
+        }
+        .chart-box.full-width { grid-column: 1 / -1; }
+
+        .chart-title { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 10px;}
+
+        /* Chart canvas wrapper */
+        .chart-canvas-wrapper {
+            position: relative; width: 100%; max-width: 100%; height: 300px; margin: 0 auto;
+        }
+
+        .chart-canvas-wrapper canvas {
+            width: 100% !important; /* Force canvas to respect wrapper */
+            height: 100% !important;
+        }
+
+        /* ===== MOBILE OVERRIDES ===== */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .btn-view { width: 100%; }
+            .charts-container { grid-template-columns: 1fr; }
+            .chart-canvas-wrapper { height: 250px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="nav-header">
+    <div class="top-bar">
         <a href="analytics_dashboard.php" class="back-link">
             <i class="fa-solid fa-arrow-left"></i> Back to Analytics Dashboard
         </a>
+        <span class="page-badge"><i class="fa-solid fa-chart-line"></i> Asset Data</span>
     </div>
 
-    <div class="header">
-        <h1 class="title">General Supplies Analytics</h1>
-        <p class="subtitle">Miscellaneous inventory, general assets, and cost tracking.</p>
-    </div>
+    <header class="page-header">
+        <div class="header-info">
+            <h1>General Supplies <span>Analytics</span></h1>
+            <p>Miscellaneous inventory, general assets, and cost tracking.</p>
+        </div>
+        <a href="general_supplies_report.php" class="btn-view"><i class="fa-solid fa-file-invoice"></i> View Detailed Report</a>
+    </header>
 
     <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-wallet"></i> Total Asset Value</div>
-            <div class="kpi-value text-white">₱<?= number_format($kpi['total_value'] / 1000, 1) ?>k</div>
+        <div class="kpi-card stat-zinc">
+            <div class="kpi-header">
+                <div class="kpi-title">Total Asset Value</div>
+                <div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div>
+            </div>
+            <div class="kpi-value" style="color: #fff;">₱<?= number_format($kpi['total_value'] / 1000, 1) ?>k</div>
             <div class="kpi-sub">Investment in General Items</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-tags"></i> Distinct Items</div>
-            <div class="kpi-value" style="color: #d4d4d8;"><?= number_format($kpi['distinct_items']) ?></div>
+
+        <div class="kpi-card stat-blue">
+            <div class="kpi-header">
+                <div class="kpi-title">Distinct Items</div>
+                <div class="kpi-icon"><i class="fa-solid fa-tags"></i></div>
+            </div>
+            <div class="kpi-value"><?= number_format($kpi['distinct_items']) ?></div>
             <div class="kpi-sub">Miscellaneous Types</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-cubes"></i> Total Units</div>
+
+        <div class="kpi-card stat-emerald">
+            <div class="kpi-header">
+                <div class="kpi-title">Total Units</div>
+                <div class="kpi-icon"><i class="fa-solid fa-cubes"></i></div>
+            </div>
             <div class="kpi-value"><?= number_format($kpi['total_units']) ?></div>
             <div class="kpi-sub">Stock Count</div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-label"><i class="fa-solid fa-calculator"></i> Avg. Cost / Unit</div>
-            <div class="kpi-value" style="color: #a1a1aa;">₱<?= number_format($avg_cost, 0) ?></div>
+
+        <div class="kpi-card stat-amber">
+            <div class="kpi-header">
+                <div class="kpi-title">Avg. Cost / Unit</div>
+                <div class="kpi-icon"><i class="fa-solid fa-calculator"></i></div>
+            </div>
+            <div class="kpi-value">₱<?= number_format($avg_cost, 0) ?></div>
             <div class="kpi-sub">Per Item Value</div>
         </div>
     </div>
 
     <div class="charts-container">
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Spending Trend (Last 12 Months)</div>
-            <div style="flex-grow: 1; position: relative;">
+            <div class="chart-title"><i class="fa-solid fa-chart-line" style="color:var(--zinc);"></i> Spending Trend (Last 12 Months)</div>
+            <div class="chart-canvas-wrapper">
                 <canvas id="trendChart"></canvas>
             </div>
         </div>
 
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Value Distribution by Item</div>
-            <div style="flex-grow: 1; position: relative;">
+            <div class="chart-title"><i class="fa-solid fa-chart-pie" style="color:var(--blue);"></i> Value Distribution by Item</div>
+            <div class="chart-canvas-wrapper">
                 <canvas id="distChart"></canvas>
             </div>
         </div>
 
-        <div class="chart-box" style="grid-column: 1 / -1;">
-            <div class="chart-title"><i class="fa-solid fa-list-ol"></i> Top 5 General Items by Quantity</div>
-            <div style="flex-grow: 1; position: relative; max-height: 300px;">
-                <canvas id="qtyChart"></canvas>
+        <div class="chart-box full-width">
+            <div class="chart-title"><i class="fa-solid fa-list-ol" style="color:var(--emerald);"></i> Top 5 General Items by Quantity</div>
+            <div class="chart-canvas-wrapper" style="height: 350px;"> <canvas id="qtyChart"></canvas>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    Chart.defaults.color = '#a1a1aa';
-    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    Chart.defaults.font.family = 'system-ui';
-
-    // 1. Trend Line Chart
     const trendData = <?= json_encode($trend_data) ?>;
+    const distData = <?= json_encode($dist_data) ?>;
+    const qtyData = <?= json_encode($qty_data) ?>;
+
+    /* ---- Global Chart.js defaults ---- */
+    Chart.defaults.color       = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+    Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+
+    /* Responsive legend helper: bottom on small screens, right on large */
+    function legendPos() {
+        return window.innerWidth < 640 ? 'bottom' : 'right';
+    }
+
+    /* ---- Trend Line Chart ---- */
     new Chart(document.getElementById('trendChart'), {
         type: 'line',
         data: {
@@ -199,42 +313,51 @@ try {
             datasets: [{
                 label: 'Cost (PHP)',
                 data: trendData.map(d => d.cost),
-                borderColor: '#d4d4d8',
-                backgroundColor: 'rgba(212, 212, 216, 0.1)',
+                borderColor: '#a1a1aa', // Zinc
+                backgroundColor: 'rgba(161, 161, 170, 0.1)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false, // CRITICAL: Allows wrapper CSS to dictate height/width
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: { 
+                y: { beginAtZero: true },
+                x: { ticks: { maxRotation: 45, minRotation: 0 } }
+            }
         }
     });
 
-    // 2. Cost Distribution Pie Chart
-    const distData = <?= json_encode($dist_data) ?>;
+    /* ---- Cost Distribution Doughnut ---- */
     new Chart(document.getElementById('distChart'), {
         type: 'doughnut',
         data: {
             labels: distData.map(d => d.ITEM_NAME),
             datasets: [{
                 data: distData.map(d => d.TOTAL_COST),
-                backgroundColor: ['#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7'],
-                borderWidth: 0
+                backgroundColor: ['#52525b', '#71717a', '#a1a1aa', '#d4d4d8', '#e4e4e7'], // Zinc palette
+                borderWidth: 0,
+                hoverOffset: 6
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
+            maintainAspectRatio: false, // CRITICAL
+            plugins: { 
+                legend: { 
+                    position: legendPos(),
+                    labels: { boxWidth: 12, padding: 14, font: { size: 12, family: "'DM Sans', sans-serif" } }
+                } 
+            }
         }
     });
 
-    // 3. Quantity Bar Chart
-    const qtyData = <?= json_encode($qty_data) ?>;
+    /* ---- Quantity Bar Chart ---- */
     new Chart(document.getElementById('qtyChart'), {
         type: 'bar',
         data: {
@@ -242,17 +365,29 @@ try {
             datasets: [{
                 label: 'Units Available',
                 data: qtyData.map(d => d.QUANTITY),
-                backgroundColor: 'rgba(161, 161, 170, 0.7)',
-                borderColor: '#71717a',
+                backgroundColor: 'rgba(16, 185, 129, 0.6)', // Emerald
+                borderColor: '#10b981',
                 borderWidth: 1,
                 borderRadius: 4
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false, // CRITICAL
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: { 
+                y: { beginAtZero: true },
+                x: { ticks: { maxRotation: 45, minRotation: 0 } }
+            }
+        }
+    });
+
+    // Optional: Re-render chart legend position if user rotates phone
+    window.addEventListener('resize', () => {
+        const doughnutChart = Chart.getChart('distChart');
+        if (doughnutChart) {
+            doughnutChart.options.plugins.legend.position = legendPos();
+            doughnutChart.update();
         }
     });
 </script>

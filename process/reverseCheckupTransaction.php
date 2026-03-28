@@ -14,29 +14,25 @@ try {
         throw new Exception("Invalid Request Method.");
     }
 
-    $conn->beginTransaction();
-
-    // 1. Identify the LATEST timestamp used in the check_ups table
-    $timeSql = "SELECT CHECKUP_DATE FROM check_ups ORDER BY CHECKUP_DATE DESC LIMIT 1";
-    $timeStmt = $conn->prepare($timeSql);
-    $timeStmt->execute();
-    $latest_time = $timeStmt->fetchColumn();
-
-    if (!$latest_time) {
-        throw new Exception("No check-up records found to reverse.");
+    // --- THE FIX: Get the target batch date sent from the frontend ---
+    $target_date = $_POST['batch_date'] ?? null;
+    if (empty($target_date)) {
+        throw new Exception("No target batch timestamp provided for reversal.");
     }
 
-    // 2. Fetch ALL transactions that occurred at this exact timestamp
+    $conn->beginTransaction();
+
+    // 1. Fetch ALL transactions that occurred at this exact timestamp
     $sql = "SELECT c.*, a.TAG_NO 
             FROM check_ups c
             LEFT JOIN animal_records a ON c.ANIMAL_ID = a.ANIMAL_ID
             WHERE c.CHECKUP_DATE = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->execute([$latest_time]);
+    $stmt->execute([$target_date]);
     $batch_transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (empty($batch_transactions)) {
-        throw new Exception("Error retrieving batch records.");
+        throw new Exception("Batch records not found or already reversed.");
     }
 
     $total_restored_count = count($batch_transactions);
@@ -44,29 +40,31 @@ try {
     $animal_tags = [];
 
     // Prepared statement for removing financial impact (Operational Cost)
+    // Added 'description LIKE' safety check
     $deleteOp = $conn->prepare("DELETE FROM operational_cost 
                                 WHERE animal_id = ? 
-                                AND datetime_created = ?");
+                                AND datetime_created = ?
+                                AND description LIKE 'Check-up:%'");
 
-    // 3. Process each transaction in the batch
+    // 2. Process each transaction in the batch
     foreach ($batch_transactions as $trans) {
         $animal_id = $trans['ANIMAL_ID'];
         $total_cost_removed += $trans['COST'];
         
         // Remove Financial Impact from operational_cost
-        $deleteOp->execute([$animal_id, $latest_time]);
+        $deleteOp->execute([$animal_id, $target_date]);
 
         // Track for logs
         $animal_tags[] = $trans['TAG_NO'];
     }
 
-    // 4. Delete the check-up records for this batch
+    // 3. Delete the check-up records for this batch
     $deleteTrans = $conn->prepare("DELETE FROM check_ups WHERE CHECKUP_DATE = ?");
-    $deleteTrans->execute([$latest_time]);
+    $deleteTrans->execute([$target_date]);
 
-    // 5. Audit Log
+    // 4. Audit Log
     $summary = "Animals: " . implode(', ', array_unique($animal_tags));
-    $details = "Batch Reversal at $latest_time. Removed $total_restored_count check-up records. Total cost removed: ₱" . number_format($total_cost_removed, 2) . ". $summary";
+    $details = "Batch Reversal at $target_date. Removed $total_restored_count check-up records. Total cost removed: ₱" . number_format($total_cost_removed, 2) . ". $summary";
     
     $audit = $conn->prepare("INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
                              VALUES (?, ?, 'REVERSE_BATCH_CHECKUP', 'CHECK_UPS', ?, ?)");
@@ -80,7 +78,7 @@ try {
     ]);
 
 } catch (Exception $e) {
-    if ($conn->inTransaction()) {
+    if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
     echo json_encode([

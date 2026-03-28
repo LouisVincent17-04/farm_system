@@ -1,4 +1,5 @@
 <?php
+// views/reports.php
 error_reporting(0);
 ini_set('display_errors', 0);
 $page = "reports";
@@ -15,680 +16,529 @@ include '../common/chat_support.php';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmPro Reports Dashboard</title>
-    <link rel="stylesheet" href="../css/admin_dashboard.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Farm Reports Dashboard | FarmPro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(20,184,166,0.5); /* Teal Accent */
+            
+            /* Theme Colors */
+            --teal:           #14b8a6; --teal-dim: rgba(20,184,166,0.12); --teal-glow: rgba(20,184,166,0.25);
+            --emerald:        #10b981; --emerald-dim: rgba(16,185,129,0.12);
+            --blue:           #3b82f6; --blue-dim: rgba(59,130,246,0.12);
+            --amber:          #f59e0b; --amber-dim: rgba(245,158,11,0.12); --amber-glow: rgba(245,158,11,0.25);
+            --orange:         #f97316;
+            --rose:           #e11d48;
+            --cyan:           #06b6d4;
+            --purple:         #a855f7;
+            --slate:          #64748b;
+            --red:            #f87171;
+            
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
             min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(20,184,166,0.06) 0%, transparent 60%);
+        }
+        
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── HEADER ─── */
+        .page-header { text-align: center; margin-bottom: 3.5rem; margin-top: 1rem; }
+        .page-title {
+            font-size: clamp(2rem, 4vw, 3rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.75rem;
+        }
+        .page-title span {
+            background: linear-gradient(135deg, var(--teal), #0f766e);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .page-subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .page-description { color: var(--text-muted); font-size: 0.95rem; max-width: 600px; margin: 0 auto; }
+
+        /* ─── SEARCH BAR ─── */
+        .search-filter-section {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 1.5rem;
+            margin-bottom: 2.5rem; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            max-width: 800px; margin-left: auto; margin-right: auto;
         }
 
-        .admin-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
+        .search-bar { position: relative; display: flex; gap: 1rem; }
+        .search-icon {
+            position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted); font-size: 1.1rem; pointer-events: none;
         }
-
-        .admin-header {
-            text-align: center;
-            margin-bottom: 3rem;
+        .search-input {
+            flex: 1; padding: 14px 16px 14px 3rem; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+            color: var(--text-primary); font-size: 1rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
         }
+        .search-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-glow); background: var(--bg-hover); }
+        .search-input::placeholder { color: var(--text-muted); }
 
-        .admin-title {
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .admin-subtitle {
-            color: #94a3b8;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .admin-description {
-            color: #64748b;
-            font-size: 1rem;
-        }
-
+        /* ─── QUICK STATS ─── */
         .quick-stats {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            margin-bottom: 2rem;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; margin-bottom: 3.5rem;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
         }
-
-        .stats-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #22c55e;
-            margin-bottom: 1.5rem;
-            text-align: center;
+        .stats-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1.5rem; text-align: center; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+        
+        .stat-card { 
+            text-align: center; padding: 1.5rem 1rem; background: var(--bg-elevated); 
+            border: 1px solid var(--border); border-radius: var(--radius-lg); 
+            transition: all var(--transition); 
         }
+        .stat-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.15); background: var(--bg-hover); }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--teal); margin-bottom: 0.25rem; font-family: var(--font-mono); line-height: 1;}
+        .stat-desc { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
+        /* ─── SECTION HEADERS ─── */
+        .section-header {
+            font-size: 1.25rem; font-weight: 700; color: var(--text-primary); 
+            margin-bottom: 1.5rem; padding-left: 1rem; border-left: 4px solid var(--teal);
+            display: flex; align-items: center; gap: 10px;
         }
+        .section-header i { color: var(--teal); }
 
-        .stat-card {
-            text-align: center;
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            background: rgba(15, 23, 42, 0.7);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #22c55e;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-desc {
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-
+        /* ─── MANAGEMENT GRID ─── */
         .management-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem; margin-bottom: 3rem;
         }
 
         .management-card {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 16px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            min-height: 280px;
-            display: flex;
-            flex-direction: column;
-            text-decoration: none;
-            color: inherit;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem; position: relative;
+            overflow: hidden; display: flex; flex-direction: column;
+            text-decoration: none; color: inherit; transition: all var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); min-height: 250px;
         }
+        .management-card::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+            transition: left 0.8s ease; pointer-events: none;
+        }
+        .management-card:hover { transform: translateY(-4px); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.5); }
+        .management-card:hover::before { left: 100%; }
 
-        .management-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            border-color: rgba(34, 197, 94, 0.4);
-            box-shadow: 0 20px 40px rgba(34, 197, 94, 0.15);
-        }
+        /* Card Specific Hover Borders */
+        .management-card:hover { border-color: rgba(20,184,166,0.4); } /* Default Teal Hover */
 
         .card-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            width: 64px; height: 64px; border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; color: white; box-shadow: 0 8px 16px rgba(0,0,0,0.3); 
+            margin-bottom: 1.5rem; flex-shrink: 0; position: relative;
         }
 
-        .card-icon.animal { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .card-icon.users { background: linear-gradient(135deg, #84cc16, #65a30d); }
-        .card-icon.medicine { background: linear-gradient(135deg, #06b6d4, #0891b2); }
-        .card-icon.feeds { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .card-icon.housing { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .card-icon.equipment { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-        .card-icon.sanitation { background: linear-gradient(135deg, #14b8a6, #0d9488); }
-        .card-icon.breeding { background: linear-gradient(135deg, #ec4899, #db2777); }
-        .card-icon.admin { background: linear-gradient(135deg, #f97316, #ea580c); }
-        .card-icon.maintenance { background: linear-gradient(135deg, #a855f7, #9333ea); }
-        .card-icon.utilities { background: linear-gradient(135deg, #06b6d4, #0284c7); }
-        .card-icon.vitamins { background: linear-gradient(135deg, #10b981, #059669); }
-        .card-icon.vaccine { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .card-icon.others { background: linear-gradient(135deg, #64748b, #475569); }
-        .card-icon.audit { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-        .card-icon.medication { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
-        .card-icon.vaccination { background: linear-gradient(135deg, #0891b2, #0e7490); }
-        .card-icon.vitamins-trans { background: linear-gradient(135deg, #16a34a, #15803d); }
-        .card-icon.feeding-trans { background: linear-gradient(135deg, #ea580c, #c2410c); }
-        .card-icon.financial { background: linear-gradient(135deg, #22c55e, #16a34a); }
-        .card-icon.usage { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+        /* Icon Colors */
+        .card-icon.animal { background: linear-gradient(135deg, var(--amber), #b45309); }
+        .card-icon.users { background: linear-gradient(135deg, #84cc16, #4d7c0f); } /* Lime */
+        .card-icon.medicine { background: linear-gradient(135deg, var(--cyan), #0891b2); }
+        .card-icon.feeds { background: linear-gradient(135deg, var(--purple), #7e22ce); }
+        .card-icon.housing { background: linear-gradient(135deg, var(--red), #b91c1c); }
+        .card-icon.equipment { background: linear-gradient(135deg, var(--blue), #1d4ed8); }
+        .card-icon.sanitation { background: linear-gradient(135deg, var(--teal), #0f766e); }
+        .card-icon.breeding { background: linear-gradient(135deg, var(--rose), #be123c); }
+        .card-icon.admin { background: linear-gradient(135deg, var(--orange), #c2410c); }
+        .card-icon.maintenance { background: linear-gradient(135deg, #8b5cf6, #5b21b6); }
+        .card-icon.utilities { background: linear-gradient(135deg, var(--cyan), #0369a1); }
+        .card-icon.vitamins { background: linear-gradient(135deg, var(--emerald), #047857); }
+        .card-icon.vaccine { background: linear-gradient(135deg, var(--amber), #b45309); }
+        .card-icon.others { background: linear-gradient(135deg, var(--slate), #1e293b); }
+        .card-icon.audit { background: linear-gradient(135deg, var(--red), #991b1b); }
+        .card-icon.financial { background: linear-gradient(135deg, var(--emerald), #065f46); }
+        .card-icon.usage { background: linear-gradient(135deg, var(--blue), #0369a1); }
 
-        .card-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #22c55e;
-            margin-bottom: 1rem;
-        }
-
-        .card-description {
-            color: #94a3b8;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
-            flex-grow: 1;
-        }
-
+        .card-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .card-description { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; flex-grow: 1; }
+        
         .card-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: auto;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(30, 41, 59, 0.8);
+            display: flex; justify-content: space-between; align-items: flex-end;
+            padding-top: 1.25rem; border-top: 1px solid var(--border); margin-top: auto;
         }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #22c55e;
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 0.25rem;
-        }
-
+        .stat-group { display: flex; flex-direction: column; gap: 2px; }
+        .stat-group .num { font-size: 1.1rem; font-weight: 700; color: #fff; font-family: var(--font-mono); line-height: 1; }
+        .stat-group .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
+        
         .card-action {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #64748b;
-            font-size: 0.9rem;
-            transition: color 0.3s ease;
+            font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);
+            transition: color var(--transition); display: flex; align-items: center; gap: 6px;
         }
+        .management-card:hover .card-action { color: var(--teal); }
 
-        .management-card:hover .card-action {
-            color: #22c55e;
+        .no-results-message {
+            grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;
+            color: var(--text-muted); border: 1px dashed var(--border); border-radius: var(--radius-xl);
+            background: rgba(255,255,255,0.01);
         }
+        .no-results-message i { font-size: 3rem; opacity: 0.2; margin-bottom: 1rem; display: block; }
+        .no-results-message strong { color: var(--text-primary); }
 
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            body {
-                padding: 1rem;
-            }
-
-            .admin-title {
-                font-size: 2rem;
-            }
-
-            .admin-subtitle {
-                font-size: 1rem;
-            }
-
-            .management-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .management-card {
-                padding: 1.5rem;
-                min-height: auto;
-            }
-
-            .card-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 1.5rem;
-            }
-
-            .card-title {
-                font-size: 1.25rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .container { padding: 1rem; }
+            .page-header { margin-bottom: 2rem;}
+            .management-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .search-bar { flex-direction: column; }
+            .search-input { width: 100%; }
         }
-
         @media (max-width: 480px) {
-            .admin-title {
-                font-size: 1.5rem;
-            }
-
-            .management-card {
-                padding: 1rem;
-            }
-
-            .card-stats {
-                flex-direction: column;
-                gap: 0.5rem;
-                align-items: stretch;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="admin-container">
-        <header class="admin-header">
-            <h1 class="admin-title">Report Dashboard</h1>
-            <p class="admin-subtitle">Comprehensive Farm Reporting System</p>
-            <p class="admin-description">Generate detailed reports and insights for all farm operations and activities</p>
-        </header>
 
-        <div class="quick-stats">
-            <h2 class="stats-title">Reporting Overview</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">20</div>
-                    <div class="stat-desc">Report Types</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">342</div>
-                    <div class="stat-desc">Generated Today</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">1,847</div>
-                    <div class="stat-desc">This Month</div>
-                </div>
+<div class="container">
+
+    <header class="page-header">
+        <div class="header-info">
+            <h1 class="page-title">Reports <span>Dashboard</span></h1>
+            <p class="page-subtitle">Comprehensive Farm Reporting System</p>
+            <p class="page-description">Generate detailed reports and insights for all farm operations, inventory, and activities.</p>
+        </div>
+    </header>
+
+    <div class="quick-stats">
+        <h2 class="stats-title">Reporting Overview</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">20</div>
+                <div class="stat-desc">Report Types</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">342</div>
+                <div class="stat-desc">Generated Today</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1,847</div>
+                <div class="stat-desc">This Month</div>
             </div>
         </div>
+    </div>
 
-        <div class="management-grid">
-            <a href="animal_report.php" class="management-card">
-                <div class="card-icon animal">🐮</div>
-                <h3 class="card-title">Animal Report</h3>
-                <p class="card-description">Comprehensive livestock reports including population statistics, health records, and individual animal tracking data.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">1,247</div>
-                        <div class="stat-label">Records</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">15</div>
-                        <div class="stat-label">Species</div>
-                    </div>
-                    <div class="card-action">
-                        Generate →
-                    </div>
-                </div>
-            </a>
-
-            <a href="active_users_report.php" class="management-card">
-                <div class="card-icon users">👥</div>
-                <h3 class="card-title">Active Users Report</h3>
-                <p class="card-description">Monitor user activity, access logs, and system usage patterns across all farm management personnel.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">42</div>
-                        <div class="stat-label">Active</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">8</div>
-                        <div class="stat-label">Roles</div>
-                    </div>
-                    <div class="card-action">
-                        View →
-                    </div>
-                </div>
-            </a>
-
-            <a href="medicine_report.php" class="management-card">
-                <div class="card-icon medicine">💊</div>
-                <h3 class="card-title">Medicine Inventory Report</h3>
-                <p class="card-description">Track medicine inventory levels, usage rates, expiration dates, and procurement history.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">340</div>
-                        <div class="stat-label">Items</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">15</div>
-                        <div class="stat-label">Low Stock</div>
-                    </div>
-                    <div class="card-action">
-                        Analyze →
-                    </div>
-                </div>
-            </a>
-
-            <a href="feeds_report.php" class="management-card">
-                <div class="card-icon feeds">🌾</div>
-                <h3 class="card-title">Feeds Inventory Report</h3>
-                <p class="card-description">Monitor feed inventory, stock thresholds, supplier information, and general nutritional data.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">2,450</div>
-                        <div class="stat-label">Kg Stock</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">28</div>
-                        <div class="stat-label">Types</div>
-                    </div>
-                    <div class="card-action">
-                        Review →
-                    </div>
-                </div>
-            </a>
-
-            <a href="housing_report.php" class="management-card">
-                <div class="card-icon housing">🏠</div>
-                <h3 class="card-title">Housing & Facilities Report</h3>
-                <p class="card-description">Overview of buildings, pens, enclosures, capacity utilization, and infrastructure maintenance status.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">89</div>
-                        <div class="stat-label">Buildings</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">156</div>
-                        <div class="stat-label">Pens</div>
-                    </div>
-                    <div class="card-action">
-                        Inspect →
-                    </div>
-                </div>
-            </a>
-
-            <a href="equipment_report.php" class="management-card">
-                <div class="card-icon equipment">🔧</div>
-                <h3 class="card-title">Farm Equipment Report</h3>
-                <p class="card-description">Track equipment inventory, usage logs, maintenance schedules, and operational efficiency metrics.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">234</div>
-                        <div class="stat-label">Equipment</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Maintenance</div>
-                    </div>
-                    <div class="card-action">
-                        Check →
-                    </div>
-                </div>
-            </a>
-
-            <a href="sanitation_report.php" class="management-card">
-                <div class="card-icon sanitation">♻️</div>
-                <h3 class="card-title">Sanitation & Waste Report</h3>
-                <p class="card-description">Monitor cleaning schedules, waste disposal records, biosecurity measures, and hygiene compliance data.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">145</div>
-                        <div class="stat-label">Tasks</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">98%</div>
-                        <div class="stat-label">Completed</div>
-                    </div>
-                    <div class="card-action">
-                        Monitor →
-                    </div>
-                </div>
-            </a>
-
-            <a href="breeding_report.php" class="management-card">
-                <div class="card-icon breeding">🧬</div>
-                <h3 class="card-title">Breeding & Reproduction Report</h3>
-                <p class="card-description">Track breeding programs, reproductive cycles, genetic lineages, and offspring performance metrics.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">67</div>
-                        <div class="stat-label">Breeding</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">23</div>
-                        <div class="stat-label">Expected</div>
-                    </div>
-                    <div class="card-action">
-                        Track →
-                    </div>
-                </div>
-            </a>
-
-            <a href="admin_records_report.php" class="management-card">
-                <div class="card-icon admin">📋</div>
-                <h3 class="card-title">Administration Report</h3>
-                <p class="card-description">Comprehensive administrative documentation, regulatory compliance records, and official certifications.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">567</div>
-                        <div class="stat-label">Documents</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">100%</div>
-                        <div class="stat-label">Compliant</div>
-                    </div>
-                    <div class="card-action">
-                        Access →
-                    </div>
-                </div>
-            </a>
-
-            <a href="maintenance_report.php" class="management-card">
-                <div class="card-icon maintenance">🔩</div>
-                <h3 class="card-title">Maintenance Report</h3>
-                <p class="card-description">Monitor maintenance activities, spare parts inventory, repair histories, and preventive care schedules.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">89</div>
-                        <div class="stat-label">Tasks</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">456</div>
-                        <div class="stat-label">Parts</div>
-                    </div>
-                    <div class="card-action">
-                        Review →
-                    </div>
-                </div>
-            </a>
-
-            <a href="utilities_report.php" class="management-card">
-                <div class="card-icon utilities">⚡</div>
-                <h3 class="card-title">Utilities & Consumables</h3>
-                <p class="card-description">Track utility usage, consumable supplies, energy consumption, and resource efficiency metrics.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">12.5k</div>
-                        <div class="stat-label">kWh</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">₱45k</div>
-                        <div class="stat-label">Cost</div>
-                    </div>
-                    <div class="card-action">
-                        Analyze →
-                    </div>
-                </div>
-            </a>
-
-            <a href="vitamins_report.php" class="management-card">
-                <div class="card-icon vitamins">💚</div>
-                <h3 class="card-title">Vitamins Inventory</h3>
-                <p class="card-description">Monitor vitamin inventory levels, supplement stock thresholds, and expiration data.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">178</div>
-                        <div class="stat-label">Items</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">8</div>
-                        <div class="stat-label">Categories</div>
-                    </div>
-                    <div class="card-action">
-                        Report →
-                    </div>
-                </div>
-            </a>
-
-            <a href="vaccine_report.php" class="management-card">
-                <div class="card-icon vaccine">💉</div>
-                <h3 class="card-title">Vaccine Inventory</h3>
-                <p class="card-description">Track vaccine inventory, procurement records, expiration dates, and safe storage requirements.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">234</div>
-                        <div class="stat-label">Vials</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Types</div>
-                    </div>
-                    <div class="card-action">
-                        View →
-                    </div>
-                </div>
-            </a>
-
-            <a href="others_report.php" class="management-card">
-                <div class="card-icon others">📊</div>
-                <h3 class="card-title">Others Report</h3>
-                <p class="card-description">Miscellaneous reports including custom queries, special requests, and ad-hoc analytical reports.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">45</div>
-                        <div class="stat-label">Custom</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">12</div>
-                        <div class="stat-label">Pending</div>
-                    </div>
-                    <div class="card-action">
-                        Create →
-                    </div>
-                </div>
-            </a>
-
-            <a href="audit_log_report.php" class="management-card">
-                <div class="card-icon audit">📜</div>
-                <h3 class="card-title">Audit Log Report</h3>
-                <p class="card-description">Comprehensive system audit trails, user activity logs, and security compliance monitoring reports.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">2,345</div>
-                        <div class="stat-label">Entries</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">Today</div>
-                        <div class="stat-label">Updated</div>
-                    </div>
-                    <div class="card-action">
-                        Audit →
-                    </div>
-                </div>
-            </a>
-            
-            <a href="animal_sales_reports.php" class="management-card">
-                <div class="card-icon financial">💰</div>
-                <h3 class="card-title">Animal Sales Reports</h3>
-                <p class="card-description">Track animal sales, revenue streams, buyer demographics, and sales performance metrics.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">₱2.4M</div>
-                        <div class="stat-label">Revenue</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">15%</div>
-                        <div class="stat-label">Growth</div>
-                    </div>
-                    <div class="card-action">
-                        Financial →
-                    </div>
-                </div>
-            </a>
-
-            <a href="feeds_usage_report.php" class="management-card">
-                <div class="card-icon usage">📉</div>
-                <h3 class="card-title">Feeds Usage Report</h3>
-                <p class="card-description">Analyze feed consumption rates, conversion efficiency, and overall feed usage across different pens and buildings.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">2.1k</div>
-                        <div class="stat-label">Logs</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">Avg</div>
-                        <div class="stat-label">Consumption</div>
-                    </div>
-                    <div class="card-action">Generate →</div>
-                </div>
-            </a>
-
-            <a href="vaccines_usage_report.php" class="management-card">
-                <div class="card-icon usage">📈</div>
-                <h3 class="card-title">Vaccines Usage Report</h3>
-                <p class="card-description">Track vaccine administration, monitor batch usage, and analyze vaccination costs over time.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">850</div>
-                        <div class="stat-label">Doses</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">95%</div>
-                        <div class="stat-label">Efficacy</div>
-                    </div>
-                    <div class="card-action">Generate →</div>
-                </div>
-            </a>
-
-            <a href="vitamins_usage_report.php" class="management-card">
-                <div class="card-icon usage">📊</div>
-                <h3 class="card-title">Vitamins Usage Report</h3>
-                <p class="card-description">Review vitamin and supplement administration trends, tracking distribution volumes and overall expenses.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">1.2k</div>
-                        <div class="stat-label">Doses</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">Daily</div>
-                        <div class="stat-label">Frequency</div>
-                    </div>
-                    <div class="card-action">Generate →</div>
-                </div>
-            </a>
-
-            <a href="medicine_usage_report.php" class="management-card">
-                <div class="card-icon usage">📋</div>
-                <h3 class="card-title">Medicine Usage Report</h3>
-                <p class="card-description">Monitor therapeutic drug usage, track treatment regimens, and evaluate overall medication expenditures.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">420</div>
-                        <div class="stat-label">Treatments</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">15</div>
-                        <div class="stat-label">Diseases</div>
-                    </div>
-                    <div class="card-action">Generate →</div>
-                </div>
-            </a>
-            
+    <div class="search-filter-section">
+        <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search reports by name, category, or keywords...">
         </div>
     </div>
+
+    <h2 class="section-header"><i class="fa-solid fa-chart-pie"></i> Available Reports</h2>
+    
+    <div class="management-grid">
+        
+        <a href="animal_report.php" class="management-card">
+            <div class="card-icon animal"><i class="fa-solid fa-cow"></i></div>
+            <h3 class="card-title">Animal Report</h3>
+            <p class="card-description">Comprehensive livestock reports including population statistics, health records, and individual tracking data.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">1,247</span><span class="lbl">Records</span></div>
+                <div class="stat-group"><span class="num">15</span><span class="lbl">Species</span></div>
+                <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="active_users_report.php" class="management-card">
+            <div class="card-icon users"><i class="fa-solid fa-users"></i></div>
+            <h3 class="card-title">Active Users Report</h3>
+            <p class="card-description">Monitor user activity, access logs, and system usage patterns across all farm management personnel.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">42</span><span class="lbl">Active</span></div>
+                <div class="stat-group"><span class="num">8</span><span class="lbl">Roles</span></div>
+                <div class="card-action">View <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="medicine_report.php" class="management-card">
+            <div class="card-icon medicine"><i class="fa-solid fa-pills"></i></div>
+            <h3 class="card-title">Medicine Inventory Report</h3>
+            <p class="card-description">Track medicine inventory levels, usage rates, expiration dates, and procurement history.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">340</span><span class="lbl">Items</span></div>
+                <div class="stat-group"><span class="num" style="color:var(--red);">15</span><span class="lbl">Low Stock</span></div>
+                <div class="card-action">Analyze <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="feeds_report.php" class="management-card">
+            <div class="card-icon feeds"><i class="fa-solid fa-wheat-awn"></i></div>
+            <h3 class="card-title">Feeds Inventory Report</h3>
+            <p class="card-description">Monitor feed inventory, stock thresholds, supplier information, and general nutritional data.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">2,450</span><span class="lbl">Kg Stock</span></div>
+                <div class="stat-group"><span class="num">28</span><span class="lbl">Types</span></div>
+                <div class="card-action">Review <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="housing_report.php" class="management-card">
+            <div class="card-icon housing"><i class="fa-solid fa-house-chimney-window"></i></div>
+            <h3 class="card-title">Housing &amp; Facilities</h3>
+            <p class="card-description">Overview of buildings, pens, enclosures, capacity utilization, and infrastructure maintenance status.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">89</span><span class="lbl">Buildings</span></div>
+                <div class="stat-group"><span class="num">156</span><span class="lbl">Pens</span></div>
+                <div class="card-action">Inspect <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="equipment_report.php" class="management-card">
+            <div class="card-icon equipment"><i class="fa-solid fa-tractor"></i></div>
+            <h3 class="card-title">Farm Equipment Report</h3>
+            <p class="card-description">Track equipment inventory, usage logs, maintenance schedules, and operational efficiency metrics.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">234</span><span class="lbl">Equipment</span></div>
+                <div class="stat-group"><span class="num">12</span><span class="lbl">Maintenance</span></div>
+                <div class="card-action">Check <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="sanitation_report.php" class="management-card">
+            <div class="card-icon sanitation"><i class="fa-solid fa-pump-soap"></i></div>
+            <h3 class="card-title">Sanitation &amp; Waste</h3>
+            <p class="card-description">Monitor cleaning schedules, waste disposal records, biosecurity measures, and hygiene compliance data.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">145</span><span class="lbl">Tasks</span></div>
+                <div class="stat-group"><span class="num" style="color:var(--emerald);">98%</span><span class="lbl">Completed</span></div>
+                <div class="card-action">Monitor <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="breeding_report.php" class="management-card">
+            <div class="card-icon breeding"><i class="fa-solid fa-dna"></i></div>
+            <h3 class="card-title">Breeding &amp; Reproduction</h3>
+            <p class="card-description">Track breeding programs, reproductive cycles, genetic lineages, and offspring performance metrics.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">67</span><span class="lbl">Breeding</span></div>
+                <div class="stat-group"><span class="num">23</span><span class="lbl">Expected</span></div>
+                <div class="card-action">Track <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="admin_records_report.php" class="management-card">
+            <div class="card-icon admin"><i class="fa-solid fa-file-contract"></i></div>
+            <h3 class="card-title">Administration Report</h3>
+            <p class="card-description">Comprehensive administrative documentation, regulatory compliance records, and official certifications.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">567</span><span class="lbl">Documents</span></div>
+                <div class="stat-group"><span class="num" style="color:var(--emerald);">100%</span><span class="lbl">Compliant</span></div>
+                <div class="card-action">Access <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="maintenance_report.php" class="management-card">
+            <div class="card-icon maintenance"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <h3 class="card-title">Maintenance Report</h3>
+            <p class="card-description">Monitor maintenance activities, spare parts inventory, repair histories, and preventive care schedules.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">89</span><span class="lbl">Tasks</span></div>
+                <div class="stat-group"><span class="num">456</span><span class="lbl">Parts</span></div>
+                <div class="card-action">Review <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="utilities_report.php" class="management-card">
+            <div class="card-icon utilities"><i class="fa-solid fa-bolt"></i></div>
+            <h3 class="card-title">Utilities &amp; Consumables</h3>
+            <p class="card-description">Track utility usage, consumable supplies, energy consumption, and resource efficiency metrics.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">12.5k</span><span class="lbl">kWh</span></div>
+                <div class="stat-group"><span class="num" style="color:var(--text-secondary);">₱45k</span><span class="lbl">Cost</span></div>
+                <div class="card-action">Analyze <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="vitamins_report.php" class="management-card">
+            <div class="card-icon vitamins"><i class="fa-solid fa-flask"></i></div>
+            <h3 class="card-title">Vitamins Inventory</h3>
+            <p class="card-description">Monitor vitamin inventory levels, supplement stock thresholds, and expiration data.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">178</span><span class="lbl">Items</span></div>
+                <div class="stat-group"><span class="num">8</span><span class="lbl">Categories</span></div>
+                <div class="card-action">Report <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="vaccine_report.php" class="management-card">
+            <div class="card-icon vaccine"><i class="fa-solid fa-syringe"></i></div>
+            <h3 class="card-title">Vaccine Inventory</h3>
+            <p class="card-description">Track vaccine inventory, procurement records, expiration dates, and safe storage requirements.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">234</span><span class="lbl">Vials</span></div>
+                <div class="stat-group"><span class="num">12</span><span class="lbl">Types</span></div>
+                <div class="card-action">View <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="others_report.php" class="management-card">
+            <div class="card-icon others"><i class="fa-solid fa-box-open"></i></div>
+            <h3 class="card-title">Others Report</h3>
+            <p class="card-description">Miscellaneous reports including custom queries, special requests, and ad-hoc analytical reports.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">45</span><span class="lbl">Custom</span></div>
+                <div class="stat-group"><span class="num">12</span><span class="lbl">Pending</span></div>
+                <div class="card-action">Create <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="audit_log_report.php" class="management-card">
+            <div class="card-icon audit"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3 class="card-title">Audit Log Report</h3>
+            <p class="card-description">Comprehensive system audit trails, user activity logs, and security compliance monitoring reports.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">2,345</span><span class="lbl">Entries</span></div>
+                <div class="stat-group"><span class="num">Today</span><span class="lbl">Updated</span></div>
+                <div class="card-action">Audit <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+        
+        <a href="animal_sales_reports.php" class="management-card">
+            <div class="card-icon financial"><i class="fa-solid fa-sack-dollar"></i></div>
+            <h3 class="card-title">Animal Sales Reports</h3>
+            <p class="card-description">Track animal sales, revenue streams, buyer demographics, and sales performance metrics.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num" style="color:var(--text-secondary);">₱2.4M</span><span class="lbl">Revenue</span></div>
+                <div class="stat-group"><span class="num" style="color:var(--emerald);">15%</span><span class="lbl">Growth</span></div>
+                <div class="card-action">Financial <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="feeds_usage_report.php" class="management-card">
+            <div class="card-icon usage"><i class="fa-solid fa-chart-area"></i></div>
+            <h3 class="card-title">Feeds Usage Report</h3>
+            <p class="card-description">Analyze feed consumption rates, conversion efficiency, and overall feed usage across different pens and buildings.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">2.1k</span><span class="lbl">Logs</span></div>
+                <div class="stat-group"><span class="num">Avg</span><span class="lbl">Consumption</span></div>
+                <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="vaccines_usage_report.php" class="management-card">
+            <div class="card-icon usage"><i class="fa-solid fa-chart-simple"></i></div>
+            <h3 class="card-title">Vaccines Usage Report</h3>
+            <p class="card-description">Track vaccine administration, monitor batch usage, and analyze vaccination costs over time.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">850</span><span class="lbl">Doses</span></div>
+                <div class="stat-group"><span class="num" style="color:var(--emerald);">95%</span><span class="lbl">Efficacy</span></div>
+                <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="vitamins_usage_report.php" class="management-card">
+            <div class="card-icon usage"><i class="fa-solid fa-chart-column"></i></div>
+            <h3 class="card-title">Vitamins Usage Report</h3>
+            <p class="card-description">Review vitamin and supplement administration trends, tracking distribution volumes and overall expenses.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">1.2k</span><span class="lbl">Doses</span></div>
+                <div class="stat-group"><span class="num">Daily</span><span class="lbl">Frequency</span></div>
+                <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="medicine_usage_report.php" class="management-card">
+            <div class="card-icon usage"><i class="fa-solid fa-chart-pie"></i></div>
+            <h3 class="card-title">Medicine Usage Report</h3>
+            <p class="card-description">Monitor therapeutic drug usage, track treatment regimens, and evaluate overall medication expenditures.</p>
+            <div class="card-stats">
+                <div class="stat-group"><span class="num">420</span><span class="lbl">Treatments</span></div>
+                <div class="stat-group"><span class="num">15</span><span class="lbl">Diseases</span></div>
+                <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+        
+    </div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const categoryCards = document.querySelectorAll('.management-card');
+
+    searchInput.addEventListener('input', searchCategories);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchCategories();
+    });
+
+    function searchCategories() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        categoryCards.forEach(card => {
+            const title = card.querySelector('.card-title').textContent.toLowerCase();
+            const subtitle = card.querySelector('.card-description').textContent.toLowerCase();
+            
+            // Collect any additional stats or labels for robust searching
+            const stats = Array.from(card.querySelectorAll('.stat-group'))
+                .map(stat => stat.textContent.toLowerCase())
+                .join(' ');
+
+            const searchableContent = `${title} ${subtitle} ${stats}`;
+
+            if (searchTerm === '' || searchableContent.includes(searchTerm)) {
+                card.style.display = 'flex';
+                visibleCount++;
+                card.style.animation = 'fadeIn 0.3s ease';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        showNoResultsMessage(visibleCount, searchTerm);
+    }
+
+    function showNoResultsMessage(count, term) {
+        const existingMessage = document.querySelector('.no-results-message');
+        if (existingMessage) existingMessage.remove();
+
+        if (count === 0 && term !== '') {
+            const grid = document.querySelector('.management-grid');
+            const message = document.createElement('div');
+            message.className = 'no-results-message';
+            message.innerHTML = `
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <h3 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.25rem;">No reports found for "<strong>${term}</strong>"</h3>
+                <p style="margin:0;">Try searching for: medicine, sales, usage, audit, etc.</p>
+            `;
+            grid.appendChild(message);
+        }
+    }
+</script>
 </body>
 </html>

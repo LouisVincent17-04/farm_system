@@ -18,7 +18,7 @@ if (!empty($_SESSION['active_farm']['db_name'])) {
     $db = $_SESSION['active_farm']['db_name'];
 } else {
     // No active farm in session — send user back to the portal to select one
-    header('Location: /globalxadminzportal/my_farms.php');
+    header('Location: ../globalxadminzportal/my_farms.php');
     exit;
 }
 

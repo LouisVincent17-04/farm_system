@@ -14,29 +14,25 @@ try {
         throw new Exception("Invalid Request Method.");
     }
 
-    $conn->beginTransaction();
-
-    // 1. Identify the LATEST timestamp used in the sales table
-    $timeSql = "SELECT sale_date FROM ANIMAL_SALES ORDER BY sale_date DESC LIMIT 1";
-    $timeStmt = $conn->prepare($timeSql);
-    $timeStmt->execute();
-    $latest_time = $timeStmt->fetchColumn();
-
-    if (!$latest_time) {
-        throw new Exception("No sale records found to reverse.");
+    // --- THE FIX: Get the target batch date sent from the frontend ---
+    $target_date = $_POST['batch_date'] ?? null;
+    if (empty($target_date)) {
+        throw new Exception("No target batch timestamp provided for reversal.");
     }
 
-    // 2. Fetch ALL sale transactions that occurred at this exact timestamp
+    $conn->beginTransaction();
+
+    // 1. Fetch ALL sale transactions that occurred at this exact timestamp
     $sql = "SELECT s.*, a.TAG_NO 
             FROM ANIMAL_SALES s
             LEFT JOIN animal_records a ON s.animal_id = a.ANIMAL_ID
             WHERE s.sale_date = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->execute([$latest_time]);
+    $stmt->execute([$target_date]);
     $batch_transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (empty($batch_transactions)) {
-        throw new Exception("Error retrieving batch records.");
+        throw new Exception("Batch sale records not found or already reversed.");
     }
 
     $total_restored_count = count($batch_transactions);
@@ -50,7 +46,7 @@ try {
                                          IS_ACTIVE = 1 
                                      WHERE ANIMAL_ID = ?");
 
-    // 3. Process each transaction in the batch
+    // 2. Process each transaction in the batch
     foreach ($batch_transactions as $trans) {
         $animal_id = $trans['animal_id'];
         $total_revenue_removed += $trans['final_sale_price'];
@@ -62,13 +58,13 @@ try {
         $animal_tags[] = $trans['TAG_NO'];
     }
 
-    // 4. Delete the sales records for this batch
+    // 3. Delete the sales records for this batch
     $deleteTrans = $conn->prepare("DELETE FROM ANIMAL_SALES WHERE sale_date = ?");
-    $deleteTrans->execute([$latest_time]);
+    $deleteTrans->execute([$target_date]);
 
-    // 5. Audit Log
+    // 4. Audit Log
     $summary = "Animals Restored: " . implode(', ', array_unique($animal_tags));
-    $details = "Batch Sale Reversal at $latest_time. Reversed $total_restored_count sales. Removed Revenue: ₱" . number_format($total_revenue_removed, 2) . ". $summary";
+    $details = "Batch Sale Reversal at $target_date. Reversed $total_restored_count sales. Removed Revenue: ₱" . number_format($total_revenue_removed, 2) . ". $summary";
     
     $audit = $conn->prepare("INSERT INTO audit_logs (USER_ID, USERNAME, ACTION_TYPE, TABLE_NAME, ACTION_DETAILS, IP_ADDRESS) 
                              VALUES (?, ?, 'REVERSE_BATCH_SALE', 'ANIMAL_SALES', ?, ?)");
@@ -82,7 +78,7 @@ try {
     ]);
 
 } catch (Exception $e) {
-    if ($conn->inTransaction()) {
+    if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
     echo json_encode([

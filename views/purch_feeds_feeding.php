@@ -6,487 +6,658 @@ include '../config/Connection.php';
 
 include '../security/checkAccess.php';
 checkAccess('purchases');
-$page="transactions";
+$page = "transactions";
 include '../common/navbar.php';
 include '../common/chat_support.php';
-include '../functions/getUsersLocation.php'; // ADDED LOCATION FUNCTION
+include '../functions/getUsersLocation.php';
 
-// --- CONFIGURATION ---
-$ITEM_TYPE_ID = 2; // Feeds & Feeding Supplies
-// ---------------------
+$ITEM_TYPE_ID = 2;
 
 try {
-    if (!isset($conn)) {
-        throw new Exception("Database connection failed.");
-    }
+    if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
-    $items_sql = "";
-
-    // 1. Fetch Items based on Location Access
     if ($USER_LOCATION_ != 1000) {
-        $items_sql = "SELECT i.*, 
-                  it.ITEM_TYPE_NAME,
-                  u.UNIT_NAME,
-                  DATE_FORMAT(i.DATE_OF_PURCHASE, '%m/%d/%Y') as DATE_OF_PURCHASE_FMT,
-                  DATE_FORMAT(i.EXPIRATION_DATE, '%m/%d/%Y') as EXPIRATION_DATE_FMT,
-                  DATE_FORMAT(i.CREATED_AT, '%m/%d/%Y %h:%i %p') as CREATED_AT_FMT
-                  FROM ITEMS i
-                  LEFT JOIN ITEM_TYPES it ON i.ITEM_TYPE_ID = it.ITEM_TYPE_ID
-                  LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
-                  WHERE i.ITEM_TYPE_ID = :type_id AND LOCATION_ID = :location_id
-                  ORDER BY i.CREATED_AT DESC";
-    
+        $items_sql = "SELECT i.*, it.ITEM_TYPE_NAME, u.UNIT_NAME,
+                      DATE_FORMAT(i.DATE_OF_PURCHASE, '%m/%d/%Y') as DATE_OF_PURCHASE_FMT,
+                      DATE_FORMAT(i.EXPIRATION_DATE, '%m/%d/%Y') as EXPIRATION_DATE_FMT,
+                      DATE_FORMAT(i.CREATED_AT, '%m/%d/%Y %h:%i %p') as CREATED_AT_FMT
+                      FROM ITEMS i
+                      LEFT JOIN ITEM_TYPES it ON i.ITEM_TYPE_ID = it.ITEM_TYPE_ID
+                      LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
+                      WHERE i.ITEM_TYPE_ID = :type_id AND LOCATION_ID = :location_id
+                      ORDER BY i.CREATED_AT DESC";
         $stmt = $conn->prepare($items_sql);
         $stmt->execute([':type_id' => $ITEM_TYPE_ID, ':location_id' => $USER_LOCATION_]);
         $items_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Fetch Units
-        $units_sql = "SELECT * FROM UNITS WHERE UNIT_NAME = 'kilograms'";
-        $stmt = $conn->prepare($units_sql);
-        $stmt->execute();
-        $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM UNITS WHERE UNIT_NAME = 'kilograms'");
+        $stmt->execute(); $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Location Hierarchy (Restricted to user's location)
-        $loc_sql = "SELECT * FROM LOCATIONS WHERE LOCATION_ID = :location_id ORDER BY LOCATION_NAME ASC";
-        $stmt = $conn->prepare($loc_sql);
-        $stmt->execute([':location_id' => $USER_LOCATION_]);
-        $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM LOCATIONS WHERE LOCATION_ID = :lid ORDER BY LOCATION_NAME ASC");
+        $stmt->execute([':lid' => $USER_LOCATION_]); $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $bldg_sql = "SELECT * FROM BUILDINGS ORDER BY BUILDING_NAME ASC";
-        $stmt = $conn->prepare($bldg_sql);
-        $stmt->execute();
-        $buildings_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM BUILDINGS ORDER BY BUILDING_NAME ASC");
+        $stmt->execute(); $buildings_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $pens_sql = "SELECT * FROM PENS ORDER BY PEN_NAME ASC";
-        $stmt = $conn->prepare($pens_sql);
-        $stmt->execute();
-        $pens_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM PENS ORDER BY PEN_NAME ASC");
+        $stmt->execute(); $pens_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     } else {
-        $items_sql = "SELECT i.*, 
-                  it.ITEM_TYPE_NAME,
-                  u.UNIT_NAME,
-                  DATE_FORMAT(i.DATE_OF_PURCHASE, '%m/%d/%Y') as DATE_OF_PURCHASE_FMT,
-                  DATE_FORMAT(i.EXPIRATION_DATE, '%m/%d/%Y') as EXPIRATION_DATE_FMT,
-                  DATE_FORMAT(i.CREATED_AT, '%m/%d/%Y %h:%i %p') as CREATED_AT_FMT
-                  FROM ITEMS i
-                  LEFT JOIN ITEM_TYPES it ON i.ITEM_TYPE_ID = it.ITEM_TYPE_ID
-                  LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
-                  WHERE i.ITEM_TYPE_ID = :type_id
-                  ORDER BY i.CREATED_AT DESC";
-    
+        $items_sql = "SELECT i.*, it.ITEM_TYPE_NAME, u.UNIT_NAME,
+                      DATE_FORMAT(i.DATE_OF_PURCHASE, '%m/%d/%Y') as DATE_OF_PURCHASE_FMT,
+                      DATE_FORMAT(i.EXPIRATION_DATE, '%m/%d/%Y') as EXPIRATION_DATE_FMT,
+                      DATE_FORMAT(i.CREATED_AT, '%m/%d/%Y %h:%i %p') as CREATED_AT_FMT
+                      FROM ITEMS i
+                      LEFT JOIN ITEM_TYPES it ON i.ITEM_TYPE_ID = it.ITEM_TYPE_ID
+                      LEFT JOIN UNITS u ON i.UNIT_ID = u.UNIT_ID
+                      WHERE i.ITEM_TYPE_ID = :type_id
+                      ORDER BY i.CREATED_AT DESC";
         $stmt = $conn->prepare($items_sql);
         $stmt->execute([':type_id' => $ITEM_TYPE_ID]);
         $items_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Fetch Units
-        $units_sql = "SELECT * FROM UNITS WHERE UNIT_NAME = 'kilograms'";
-        $stmt = $conn->prepare($units_sql);
-        $stmt->execute();
-        $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM UNITS WHERE UNIT_NAME = 'kilograms'");
+        $stmt->execute(); $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Location Hierarchy (All locations)
-        $loc_sql = "SELECT * FROM LOCATIONS ORDER BY LOCATION_NAME ASC";
-        $stmt = $conn->prepare($loc_sql);
-        $stmt->execute();
-        $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM LOCATIONS ORDER BY LOCATION_NAME ASC");
+        $stmt->execute(); $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $bldg_sql = "SELECT * FROM BUILDINGS ORDER BY BUILDING_NAME ASC";
-        $stmt = $conn->prepare($bldg_sql);
-        $stmt->execute();
-        $buildings_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM BUILDINGS ORDER BY BUILDING_NAME ASC");
+        $stmt->execute(); $buildings_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $pens_sql = "SELECT * FROM PENS ORDER BY PEN_NAME ASC";
-        $stmt = $conn->prepare($pens_sql);
-        $stmt->execute();
-        $pens_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $conn->prepare("SELECT * FROM PENS ORDER BY PEN_NAME ASC");
+        $stmt->execute(); $pens_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    $total_items     = count($items_data);
+    $confirmed_count = 0; $pending_count = 0; $total_value = 0;
+    foreach ($items_data as $it) {
+        if ((int)($it['STATUS'] ?? 0) === 1) $confirmed_count++;
+        else $pending_count++;
+        $total_value += $it['TOTAL_COST'] ?? ($it['QUANTITY'] * $it['UNIT_COST']);
     }
 
 } catch (Exception $e) {
-    $items_data = [];
-    $units = [];
-    $locations = [];
-    $buildings_raw = [];
-    $pens_raw = [];
-    echo "<script>console.error('Database Error: " . addslashes($e->getMessage()) . "');</script>";
+    $items_data = []; $units = []; $locations = [];
+    $buildings_raw = []; $pens_raw = [];
+    $total_items = $confirmed_count = $pending_count = $total_value = 0;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Feed Purchase Management</title>
+    <title>Feed Purchase Management | FarmPro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+
     <style>
-        /* --- CORE STYLES --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ─── CSS VARIABLES — identical token set to audit_log_report ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(148,163,184,0.5);
+            --slate:          #94a3b8;
+            --slate-dim:      rgba(148,163,184,0.12);
+            --slate-glow:     rgba(148,163,184,0.25);
+            --blue:           #3b82f6;
+            --blue-dim:       rgba(59,130,246,0.15);
+            --green:          #22c55e;
+            --green-dim:      rgba(34,197,94,0.15);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.15);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.15);
+            --purple:         #a855f7;
+            --purple-dim:     rgba(168,85,247,0.15);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-sm:      6px;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
             min-height: 100vh;
-            color: white;
             padding-bottom: 80px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(148,163,184,0.05) 0%, transparent 60%);
         }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; width: 100%; }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        .autocomplete-wrapper { position: relative; }
-        .autocomplete-list { position: absolute; z-index: 1000; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #475569; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5); display: none; }
-        .autocomplete-list.show { display: block; }
-        .autocomplete-item { padding: 12px 15px; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid #334155; color: #e2e8f0; }
-        .autocomplete-item:last-child { border-bottom: none; }
-        .autocomplete-item:hover, .autocomplete-item.active { background-color: #334155; }
-        .autocomplete-item strong { color: #60a5fa; }
-        .autocomplete-loading, .autocomplete-no-results { padding: 12px 15px; text-align: center; color: #94a3b8; font-size: 14px; }
-        
-        input[readonly], select[disabled] {
-            background-color: #1e293b;
-            cursor: not-allowed;
-            color: #94a3b8;
+        /* ─── TOP BAR ─── */
+        .top-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-secondary); background: var(--slate-dim);
+            border: 1px solid rgba(148,163,184,0.2); padding: 6px 12px; border-radius: 99px;
         }
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1.5rem; }
-        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: bold; margin-bottom: 0.5rem; line-height: 1.2; }
-        .header-info p { color: #cbd5e1; font-size: 0.95rem; }
-
-        .back-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #94a3b8; font-weight: 600; font-size: 0.95rem; margin-bottom: 10px; transition: color 0.2s; }
-        .back-link:hover { color: white; }
-
-        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-
-        /* Buttons */
-        .add-btn {
-            display: flex; align-items: center; gap: 0.5rem; justify-content: center;
-            background: linear-gradient(135deg, #2563eb, #9333ea);
-            color: white; border: none; padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem; font-weight: 600; cursor: pointer;
-            transition: all 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); white-space: nowrap;
+        /* ─── PAGE HEADER ─── */
+        .page-header { margin-bottom: 2rem; }
+        .page-title {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
         }
-        .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: translateY(-2px); }
-
-        .confirm-all-btn {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white; border: none; padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
-            transition: all 0.2s; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+        .page-title span {
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .confirm-all-btn:hover { background: linear-gradient(135deg, #d97706, #b45309); transform: translateY(-1px); box-shadow: 0 6px 8px rgba(245, 158, 11, 0.4); }
+        .page-subtitle { color: var(--text-secondary); font-size: 0.95rem; }
 
-        .confirm-btn {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white; border: none; padding: 0.5rem 1rem;
-            border-radius: 0.5rem; font-weight: 600; font-size: 0.75rem;
-            cursor: pointer; transition: all 0.2s; text-transform: uppercase;
-            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-            white-space: nowrap; width: 100%;
+        /* ─── STAT CARDS ─── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
         }
-        .confirm-btn:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-1px); }
-
-        .confirmed-badge {
-            display: inline-block; padding: 0.5rem 1rem; width: 100%;
-            background: rgba(16, 185, 129, 0.1); color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; text-align: center;
-            font-weight: 700; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;
+        .stat-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;
+            position: relative; overflow: hidden;
+            transition: border-color var(--transition), transform var(--transition);
         }
+        .stat-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity var(--transition); }
+        .stat-card:hover { transform: translateY(-1px); }
+        .stat-card:hover::before { opacity: 1; }
+        .stat-card.slate { border-color: rgba(148,163,184,0.15); }
+        .stat-card.slate::before { background: linear-gradient(135deg, rgba(148,163,184,0.04), transparent); }
+        .stat-card.blue  { border-color: rgba(59,130,246,0.15); }
+        .stat-card.blue::before  { background: linear-gradient(135deg, rgba(59,130,246,0.04), transparent); }
+        .stat-card.green { border-color: rgba(34,197,94,0.15); }
+        .stat-card.green::before { background: linear-gradient(135deg, rgba(34,197,94,0.04), transparent); }
+        .stat-card.amber { border-color: rgba(245,158,11,0.15); }
+        .stat-card.amber::before { background: linear-gradient(135deg, rgba(245,158,11,0.04), transparent); }
 
-        /* Search */
-        .search-container { position: relative; margin-bottom: 2rem; }
+        .stat-icon {
+            width: 32px; height: 32px; border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; margin-bottom: 0.75rem;
+        }
+        .stat-icon.slate { background: var(--slate-dim); color: var(--slate); }
+        .stat-icon.blue  { background: var(--blue-dim);  color: var(--blue); }
+        .stat-icon.green { background: var(--green-dim); color: var(--green); }
+        .stat-icon.amber { background: var(--amber-dim); color: var(--amber); }
+
+        .stat-val {
+            font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em;
+            line-height: 1; margin-bottom: 4px; font-family: var(--font-mono);
+        }
+        .stat-val.slate { color: var(--text-primary); }
+        .stat-val.blue  { color: var(--blue); }
+        .stat-val.green { color: var(--green); }
+        .stat-val.amber { color: var(--amber); }
+        .stat-lbl { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* ─── ACTION BAR ─── */
+        .action-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;
+        }
+        .action-bar-left { display: flex; gap: 8px; flex-wrap: wrap; }
+        .search-wrap { position: relative; flex: 1; min-width: 220px; max-width: 400px; }
+        .search-wrap i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem; pointer-events: none; }
         .search-input {
-            width: 100%; padding: 14px 14px 14px 45px;
-            background: rgba(30, 41, 59, 0.5); border: 1px solid #475569;
-            border-radius: 0.5rem; color: white; font-size: 1rem;
-            backdrop-filter: blur(10px); outline: none; transition: border-color 0.2s;
+            width: 100%; height: 38px; padding: 0 12px 0 36px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary);
+            font-size: 0.875rem; font-family: var(--font); outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
-        .search-input:focus { border-color: #3b82f6; }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
+        .search-input:focus { border-color: var(--border-active); box-shadow: 0 0 0 3px var(--slate-glow); background: var(--bg-hover); }
+        .search-input::placeholder { color: var(--text-muted); }
 
-        /* --- TABLE SCROLL FIX (DARK THEME) --- */
-        .table-container {
-            width: 100%;
-            overflow-x: auto; 
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-            border: 1px solid #475569;
-            background: rgba(30, 41, 59, 0.5);
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 0 16px; height: 38px; border-radius: var(--radius-md);
+            font-size: 0.8rem; font-weight: 600; font-family: var(--font);
+            border: 1px solid transparent; cursor: pointer; transition: all var(--transition);
+            text-decoration: none; white-space: nowrap; letter-spacing: 0.01em;
         }
-        
-        .table-container::-webkit-scrollbar { height: 10px; }
-        .table-container::-webkit-scrollbar-track { background: #0f172a; border-radius: 0 0 12px 12px; }
-        .table-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; border: 2px solid #0f172a; }
-        .table-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .btn-primary { background: var(--slate); color: #000; }
+        .btn-primary:hover { background: #cbd5e1; box-shadow: 0 0 16px var(--slate-glow); }
+        .btn-blue { background: var(--blue); color: #fff; }
+        .btn-blue:hover { background: #2563eb; box-shadow: 0 0 14px rgba(59,130,246,0.4); }
+        .btn-amber { background: var(--amber); color: #000; }
+        .btn-amber:hover { background: #d97706; box-shadow: 0 0 14px rgba(245,158,11,0.35); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+        .btn-sm { height: 32px; padding: 0 12px; font-size: 0.75rem; }
 
-        table.table { width: 100%; min-width: 1600px; border-collapse: collapse; }
-        table.table th {
-            background: rgba(15, 23, 42, 0.5); color: #e2e8f0; font-size: 0.85rem;
-            text-transform: uppercase; padding: 1rem 1.5rem; text-align: left;
-            font-weight: 600; border-bottom: 1px solid #475569; white-space: nowrap;
+        /* ─── TABLE CARD ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
         }
-        table.table td { padding: 1rem 1.5rem; vertical-align: middle; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap; }
-        table.table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+        .table-wrap { overflow-x: auto; }
+        .table-wrap::-webkit-scrollbar { height: 6px; }
+        .table-wrap::-webkit-scrollbar-track { background: var(--bg-base); }
+        .table-wrap::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 3px; }
 
-        .ref-no { font-weight: 600; color: #93c5fd; font-family: monospace; font-size: 0.95rem; }
-        .supplier-name { color: #f1f5f9; font-weight: 500; font-size: 0.95rem; }
-        .item-name { font-weight: 600; color: #fff; font-size: 1rem; margin-bottom: 4px; }
-        .item-unit { color: #cbd5e1; font-size: 0.875rem; }
-        .amount { color: #86efac; font-weight: 600; font-family: monospace; font-size: 1.1rem; }
+        table { width: 100%; border-collapse: collapse; min-width: 1060px; }
+        thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 12px 16px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td { padding: 12px 16px; font-size: 0.85rem; color: var(--text-primary); vertical-align: middle; white-space: nowrap; }
 
-        /* Categories */
-        .category-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; text-transform: uppercase; }
-        .category-consumable { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-        .category-nonconsumable { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .td-ref   { font-family: var(--font-mono); font-size: 0.8rem; color: var(--blue); font-weight: 600; }
+        .td-name  { font-weight: 600; color: var(--text-primary); }
+        .td-muted { color: var(--text-secondary); font-size: 0.82rem; }
+        .td-cost  { font-family: var(--font-mono); color: var(--green); font-weight: 600; }
+        .td-total { font-family: var(--font-mono); color: #4ade80; font-weight: 700; }
+        .td-expiry{ color: var(--red); font-family: var(--font-mono); font-size: 0.82rem; }
+        .td-date  { font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-secondary); }
 
-        /* Actions */
-        .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .action-btn { padding: 0.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;}
-        .action-btn.view { color: #60a5fa; } .action-btn.view:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; }
-        .action-btn.edit { color: #a78bfa; } .action-btn.edit:hover { color: #c4b5fd; background: rgba(139, 92, 246, 0.2); border-color: #8b5cf6; }
-        .action-btn.delete { color: #f87171; } .action-btn.delete:hover { color: #fca5a5; background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
-        .action-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
-        .icon { width: 18px; height: 18px; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+            border-radius: var(--radius-sm); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em;
+        }
+        .b-consumable    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .b-nonconsumable { background: var(--blue-dim);  color: var(--blue);  border: 1px solid rgba(59,130,246,0.2); }
 
-        /* MODAL */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+        .status-locked {
+            display: block; padding: 4px 10px; text-align: center;
+            background: var(--green-dim); color: var(--green);
+            border: 1px solid rgba(34,197,94,0.2); border-radius: var(--radius-sm);
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .confirm-btn {
+            display: block; width: 100%; padding: 5px 10px;
+            background: var(--red-dim); color: var(--red);
+            border: 1px solid rgba(248,113,113,0.25); border-radius: var(--radius-sm);
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+            cursor: pointer; transition: all var(--transition); font-family: var(--font);
+        }
+        .confirm-btn:hover { background: rgba(248,113,113,0.25); }
+
+        .actions { display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .action-btn {
+            width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius-sm); border: 1px solid var(--border);
+            background: var(--bg-elevated); cursor: pointer; transition: all var(--transition);
+            font-size: 0.75rem;
+        }
+        .action-btn.view   { color: var(--blue); }
+        .action-btn.view:hover   { background: var(--blue-dim);   border-color: rgba(59,130,246,0.35); }
+        .action-btn.edit   { color: var(--purple); }
+        .action-btn.edit:hover   { background: var(--purple-dim); border-color: rgba(168,85,247,0.35); }
+        .action-btn.delete { color: var(--red); }
+        .action-btn.delete:hover { background: var(--red-dim);    border-color: rgba(248,113,113,0.35); }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+        .empty-state i { font-size: 2.5rem; opacity: 0.3; margin-bottom: 1rem; display: block; }
+
+        /* ─── MODALS ─── */
+        .modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+            z-index: 1000; align-items: center; justify-content: center; padding: 1rem;
+        }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 20px; width: 100%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column; border: 1px solid #475569; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); animation: slideUp 0.3s ease; }
-        .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid #334155; }
-        .modal-header h2 { font-size: 1.4rem; font-weight: bold; color: white; margin: 0; }
-        .modal-body { padding: 1.5rem; overflow-y: auto; flex-grow: 1; }
-        .modal-footer { padding: 1.5rem 2rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 0.75rem; }
-
-        /* Form */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
-        .form-group label { color: #94a3b8; font-size: 0.85rem; font-weight: 500; }
-        .form-group label span { color: #ef4444; }
-        .form-group input, .form-group textarea, .form-group select {
-            padding: 0.75rem; background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; color: white; font-size: 0.95rem; transition: border-color 0.2s; outline: none;
+        .modal-content {
+            background: var(--bg-surface); border-radius: var(--radius-xl);
+            width: 100%; max-width: 920px; max-height: 92vh;
+            display: flex; flex-direction: column;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 32px 64px rgba(0,0,0,0.6);
+            animation: modalIn 0.22s ease;
         }
-        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-            border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        @keyframes modalIn { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
         }
-        select[disabled], input[readonly] { opacity: 0.5; cursor: not-allowed; background-color: #1f2937;}
-
-        .btn-cancel { padding: 0.75rem 1.5rem; background: transparent; border: 1px solid #475569; border-radius: 0.5rem; color: #cbd5e1; cursor: pointer; transition: all 0.2s; font-weight: 600; }
-        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: white; }
-        .btn-save { padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-        .btn-save:hover { background: #1d4ed8; }
-
-        .info-group { margin-bottom: 1.5rem; }
-        .info-group h3 { font-size: 1.1rem; color: #93c5fd; margin-bottom: 1rem; font-weight: 600; border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top: 10px; }
-        .info-group p { margin-bottom: 0.5rem; color: #cbd5e1; }
-        .info-group p strong { color: #e2e8f0; display: inline-block; width: 140px; }
-        
-        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: none; font-weight: 600; text-align: center; }
-        .alert.success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; }
-        .alert.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; }
-
-        .confirm-content { text-align: center; padding: 1.5rem 1rem; }
-        .confirm-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
-        .warning-text { color: #f87171; font-size: 0.85rem; margin: 1rem 0; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); }
-
-        @media (max-width: 900px) {
-            .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .header-info { text-align: left; }
-            .header-actions { flex-direction: column; width: 100%; gap: 10px; }
-            .add-btn, .confirm-all-btn { width: 100%; justify-content: center; }
-            
-            .form-row { grid-template-columns: 1fr; gap: 0; }
-            .modal-footer { flex-direction: column; }
-            .modal-footer button { width: 100%; margin-left: 0; }
-            .info-group p strong { width: 100%; display: block; margin-bottom: 4px; }
-            .info-group p { margin-bottom: 12px; }
-
-            /* Table to Card Layout */
-            .table-container { border: none; background: transparent; overflow: visible; box-shadow: none; }
-            table.table { min-width: 0; display: block; }
-            table.table thead { display: none; }
-            table.table tbody { display: block; width: 100%; }
-            table.table tr { 
-                display: block; 
-                background: rgba(30, 41, 59, 0.6); 
-                border: 1px solid #475569; 
-                border-radius: 12px; 
-                margin-bottom: 1rem; 
-                padding: 1rem; 
-            }
-            table.table td { 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                padding: 0.75rem 0; 
-                border-bottom: 1px dashed rgba(255,255,255,0.1); 
-                text-align: right; 
-                font-size: 0.95rem;
-                white-space: normal;
-            }
-            table.table td:last-child { border-bottom: none; }
-            
-            table.table td::before { 
-                content: attr(data-label); 
-                font-weight: 700; 
-                color: #94a3b8; 
-                font-size: 0.8rem; 
-                text-transform: uppercase; 
-                margin-right: 1rem; 
-                text-align: left;
-                flex-shrink: 0;
-            }
-
-            .actions { justify-content: flex-end; width: 100%; }
-            .item-name, .supplier-name { margin-bottom: 0; text-align: right; }
+        .modal-header h2 { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin: 0; letter-spacing: -0.02em; }
+        .modal-close {
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted);
+            transition: all var(--transition); font-size: 0.8rem;
         }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-close:hover { background: var(--red-dim); color: var(--red); border-color: rgba(248,113,113,0.3); }
+        .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+        .modal-footer {
+            padding: 1rem 1.5rem; border-top: 1px solid var(--border);
+            display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+        }
+
+        /* ─── FORM CONTROLS ─── */
+        .section-label {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-secondary); margin-bottom: 1rem; margin-top: 1.25rem;
+            padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 7px;
+        }
+        .section-label:first-child { margin-top: 0; }
+        .form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+        .form-group:last-child { margin-bottom: 0; }
+
+        .form-label {
+            font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--text-secondary); display: flex; align-items: center; gap: 5px;
+        }
+        .form-label .req { color: var(--red); }
+
+        .form-control {
+            width: 100%; padding: 0 12px; height: 40px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); border-radius: var(--radius-md);
+            font-size: 0.875rem; font-family: var(--font);
+            outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+            appearance: none; -webkit-appearance: none;
+        }
+        select.form-control {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer;
+        }
+        textarea.form-control { height: auto; padding: 10px 12px; resize: vertical; min-height: 70px; line-height: 1.5; }
+        .form-control:focus { border-color: var(--border-active); box-shadow: 0 0 0 3px var(--slate-glow); background: var(--bg-hover); }
+        .form-control::placeholder { color: var(--text-muted); }
+        .form-control option { background: #1e293b; color: var(--text-primary); }
+        .form-control:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* ─── AUTOCOMPLETE ─── */
+        .autocomplete-wrapper { position: relative; }
+        .autocomplete-list {
+            position: absolute; z-index: 9999; top: calc(100% + 2px); left: 0; right: 0;
+            background: var(--bg-elevated); border: 1px solid var(--border-active);
+            border-radius: var(--radius-md); max-height: 200px; overflow-y: auto;
+            box-shadow: 0 16px 32px rgba(0,0,0,0.5); display: none;
+        }
+        .autocomplete-list.show { display: block; }
+        .autocomplete-item {
+            padding: 9px 12px; cursor: pointer; color: var(--text-secondary);
+            font-size: 0.875rem; border-bottom: 1px solid var(--border);
+            transition: background var(--transition);
+        }
+        .autocomplete-item:last-child { border-bottom: none; }
+        .autocomplete-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .autocomplete-item strong { color: var(--blue); font-weight: 700; }
+        .autocomplete-loading, .autocomplete-no-results { padding: 10px 12px; color: var(--text-muted); font-size: 0.8rem; text-align: center; }
+
+        /* ─── DYNAMIC TABLE ─── */
+        .dynamic-table-wrap { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 10px; }
+        .dynamic-table { width: 100%; border-collapse: collapse; min-width: 680px; }
+        .dynamic-table th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
+            padding: 10px; text-align: left; white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+        }
+        .dynamic-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .dynamic-table tr:last-child td { border-bottom: none; }
+        .dynamic-table .form-control { height: 36px; font-size: 0.82rem; }
+
+        .add-row-btn {
+            width: 100%; padding: 9px; margin-top: 10px;
+            background: var(--green-dim); border: 1px dashed rgba(34,197,94,0.35);
+            border-radius: var(--radius-md); color: var(--green);
+            font-size: 0.82rem; font-weight: 600; font-family: var(--font);
+            cursor: pointer; transition: all var(--transition);
+        }
+        .add-row-btn:hover { background: rgba(34,197,94,0.22); }
+
+        .del-row-btn {
+            width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+            background: var(--red-dim); border: 1px solid rgba(248,113,113,0.25);
+            border-radius: var(--radius-sm); color: var(--red); cursor: pointer;
+            transition: all var(--transition); font-size: 0.8rem;
+        }
+        .del-row-btn:hover { background: rgba(248,113,113,0.25); }
+
+        /* ─── ALERT ─── */
+        .alert {
+            padding: 0.875rem 1rem; border-radius: var(--radius-md);
+            margin-bottom: 1rem; font-size: 0.875rem; font-weight: 600;
+            text-align: center; display: none;
+        }
+        .alert.success { background: var(--green-dim); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+        .alert.error   { background: var(--red-dim);   border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+
+        /* ─── CONFIRM MODAL ─── */
+        .confirm-body { text-align: center; padding: 2rem 1.5rem 1rem; }
+        .confirm-icon { font-size: 2.5rem; display: block; margin-bottom: 1rem; }
+        .confirm-body h2 { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+        .confirm-body p  { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; }
+        .confirm-warning {
+            display: inline-block; padding: 0.6rem 1rem;
+            background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.25);
+            border-radius: var(--radius-md); color: var(--amber); font-size: 0.8rem; font-weight: 600;
+        }
+
+        /* ─── VIEW MODAL ─── */
+        .view-section { margin-bottom: 1.5rem; }
+        .view-section-title {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 0.75rem;
+            padding-bottom: 7px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 7px;
+        }
+        .view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .view-item { display: flex; flex-direction: column; gap: 3px; }
+        .view-item .vl { font-size: 0.68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .view-item .vv { font-size: 0.875rem; color: var(--text-primary); font-weight: 500; }
+        .view-item .vv.mono   { font-family: var(--font-mono); color: var(--green); }
+        .view-item .vv.danger { color: var(--red); }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .action-bar { flex-direction: column; align-items: stretch; }
+            .action-bar-left .btn { flex: 1; justify-content: center; }
+            .search-wrap { max-width: 100%; }
+            .form-row, .form-row-3 { grid-template-columns: 1fr; }
+            .view-grid { grid-template-columns: 1fr; }
+
+            .table-card { background: transparent; border: none; }
+            .table-wrap { overflow: visible; }
+            table { min-width: 0; display: block; }
+            thead { display: none; }
+            tbody { display: block; }
+            tbody tr {
+                display: block; background: var(--bg-surface); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); margin-bottom: 0.75rem; padding: 1.25rem; box-shadow: var(--shadow-sm);
+            }
+            td {
+                display: flex; justify-content: space-between; align-items: flex-start;
+                gap: 1rem; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+                white-space: normal; text-align: right;
+            }
+            td:last-child { border-bottom: none; }
+            td::before {
+                content: attr(data-label); font-size: 0.68rem; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+                white-space: nowrap; flex-shrink: 0; padding-top: 2px; text-align: left;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+<div class="container">
+
+    <div class="top-bar">
         <a href="purchase_dashboard.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Purchase Dashboard
+            <i class="fa-solid fa-arrow-left"></i> Back to Purchase Dashboard
         </a>
+        <span class="page-badge"><i class="fa-solid fa-wheat-awn"></i> Purchases</span>
+    </div>
 
-        <div class="header">
-            <div class="header-info">
-                <h1>Feed Purchase Management</h1>
-                <p>Manage and track feed & feeding supply purchases</p>
-            </div>
-            
-            <div class="header-actions">
-                <button class="confirm-all-btn" onclick="openConfirmAllModal()">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Confirm All Pending
-                </button>
+    <div class="page-header">
+        <h1 class="page-title">Feed <span>Purchase Management</span></h1>
+        <p class="page-subtitle">Track and manage feed & feeding supply purchase records.</p>
+    </div>
 
-                <button class="add-btn" onclick="openAddModal()">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Add Purchase
-                </button>
-            </div>
+    <div class="stats-grid">
+        <div class="stat-card slate">
+            <div class="stat-icon slate"><i class="fa-solid fa-boxes-stacked"></i></div>
+            <div class="stat-val slate"><?= number_format($total_items) ?></div>
+            <div class="stat-lbl">Total Records</div>
         </div>
-
-        <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search by feed name, unit, or category..." onkeyup="filterTable()">
+        <div class="stat-card green">
+            <div class="stat-icon green"><i class="fa-solid fa-lock"></i></div>
+            <div class="stat-val green"><?= number_format($confirmed_count) ?></div>
+            <div class="stat-lbl">Confirmed & Locked</div>
         </div>
+        <div class="stat-card amber">
+            <div class="stat-icon amber"><i class="fa-solid fa-clock"></i></div>
+            <div class="stat-val amber"><?= number_format($pending_count) ?></div>
+            <div class="stat-lbl">Pending Confirmation</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-icon blue"><i class="fa-solid fa-peso-sign"></i></div>
+            <div class="stat-val blue">₱<?= number_format($total_value, 0) ?></div>
+            <div class="stat-lbl">Total Purchase Value</div>
+        </div>
+    </div>
 
-        <div class="table-container">
-            <table class="table">
+    <div class="action-bar">
+        <div class="action-bar-left">
+            <button class="btn btn-amber" onclick="openConfirmAllModal()">
+                <i class="fa-solid fa-circle-check"></i> Confirm All Pending
+            </button>
+            <button class="btn btn-blue" onclick="openAddModal()">
+                <i class="fa-solid fa-plus"></i> Add Batch Purchase
+            </button>
+        </div>
+        <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search name, supplier, category…" onkeyup="filterTable()">
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-wrap">
+            <table>
                 <thead>
                     <tr>
                         <th>Ref No</th>
                         <th>Supplier</th>
                         <th>Feed Name</th>
-                        <th>Quantity</th>
+                        <th>Qty</th>
                         <th>Unit</th>
-                        <th>Net Weight</th>
-                        <th>Unit Cost Per Sack</th>
-                        <th>Total Cost</th> 
+                        <th>Net Wt.</th>
+                        <th>Unit Cost</th>
+                        <th>Total Cost</th>
                         <th>Category</th>
                         <th>Purchase Date</th>
-                        <th>Expiry Date</th> 
-                        <th style="text-align: center; width: 150px;">Confirmation</th>
-                        <th style="text-align: center;">Actions</th>
+                        <th>Expiry</th>
+                        <th style="text-align:center; min-width:100px;">Status</th>
+                        <th style="text-align:center; min-width:95px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="item-table">
-                    <?php 
+                    <?php
                     $categoryLabels = [0 => 'Non-Consumable', 1 => 'Consumable'];
-                    $categoryClasses = [0 => 'category-nonconsumable', 1 => 'category-consumable'];
+                    $categoryBadges = [0 => 'b-nonconsumable', 1 => 'b-consumable'];
 
-                    if(empty($items_data)): ?>
-                        <tr>
-                            <td colspan="13" style="text-align:center; padding:3rem; color:#64748b;">No purchases recorded yet.</td>
-                        </tr>
+                    if (empty($items_data)): ?>
+                        <tr><td colspan="13">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                                No purchases recorded yet.
+                            </div>
+                        </td></tr>
                     <?php else: ?>
-                        <?php foreach($items_data as $item): 
-                            $status = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
+                        <?php foreach ($items_data as $item):
+                            $status      = isset($item['STATUS']) ? (int)$item['STATUS'] : 0;
                             $isConfirmed = ($status === 1);
-                            $totalCost = $item['TOTAL_COST'] ?? ($item['QUANTITY'] * $item['UNIT_COST']);
+                            $totalCost   = $item['TOTAL_COST'] ?? ($item['QUANTITY'] * $item['UNIT_COST']);
                         ?>
-                        <tr data-item-id="<?php echo $item['ITEM_ID']; ?>"
-                            data-item-name="<?php echo htmlspecialchars($item['ITEM_NAME']); ?>"
-                            data-item-desc="<?php echo htmlspecialchars($item['ITEM_DESCRIPTION'] ?? ''); ?>"
-                            data-unit-id="<?php echo $item['UNIT_ID']; ?>"
-                            data-unit-cost="<?php echo $item['UNIT_COST']; ?>"
-                            data-item-category="<?php echo $item['ITEM_CATEGORY']; ?>"
-                            data-unit-name="<?php echo htmlspecialchars($item['UNIT_NAME']); ?>"
-                            data-net-weight="<?php echo $item['ITEM_NET_WEIGHT'] ?? '0'; ?>"
-                            data-quantity="<?php echo $item['QUANTITY'] ?? '0'; ?>"
-                            data-purchase-date-raw="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE'] ?? ''); ?>"
-                            data-purchase-date-fmt="<?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? ''); ?>"
-                            data-expiration-date-raw="<?php echo htmlspecialchars($item['EXPIRATION_DATE'] ?? ''); ?>" 
-                            data-expiration-date-fmt="<?php echo htmlspecialchars($item['EXPIRATION_DATE_FMT'] ?? ''); ?>" 
-                            data-location-id="<?php echo $item['LOCATION_ID'] ?? ''; ?>"
-                            data-building-id="<?php echo $item['BUILDING_ID'] ?? ''; ?>"
-                            data-pen-id="<?php echo $item['PEN_ID'] ?? ''; ?>"
-                            data-supplier="<?php echo htmlspecialchars($item['SUPPLIER'] ?? ''); ?>"
-                            data-reference-no="<?php echo htmlspecialchars($item['REFERENCE_NO'] ?? ''); ?>"
-                            data-created-at="<?php echo htmlspecialchars($item['CREATED_AT_FMT'] ?? ''); ?>">
-                            
-                            <td data-label="Ref No"><div class="ref-no"><?php echo !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : '—'; ?></div></td>
-                            <td data-label="Supplier"><div class="supplier-name"><?php echo !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier'; ?></div></td>
-                            <td data-label="Feed Name"><div class="item-name"><?php echo htmlspecialchars($item['ITEM_NAME']); ?></div></td>
-                            <td data-label="Quantity"><div class="item-unit" style="color:white; font-weight:600;"><?php echo number_format($item['QUANTITY'] ?? 0, 2); ?></div></td>
-                            <td data-label="Unit"><div class="item-unit"><?php echo htmlspecialchars($item['UNIT_NAME']); ?></div></td>
-                            <td data-label="Net Weight"><div class="item-unit"><?php echo htmlspecialchars($item['ITEM_NET_WEIGHT'] ?? 'N/A'); ?></div></td>
-                            <td data-label="Unit Cost"><div class="amount">₱<?php echo number_format($item['UNIT_COST'], 2); ?></div></td>
-                            <td data-label="Total Cost"><div class="amount" style="font-weight:bold; color:#86efac;">₱<?php echo number_format($totalCost, 2); ?></div></td>
+                        <tr
+                            data-item-id="<?= $item['ITEM_ID'] ?>"
+                            data-item-name="<?= htmlspecialchars($item['ITEM_NAME']) ?>"
+                            data-item-desc="<?= htmlspecialchars($item['ITEM_DESCRIPTION'] ?? '') ?>"
+                            data-unit-id="<?= $item['UNIT_ID'] ?>"
+                            data-unit-cost="<?= $item['UNIT_COST'] ?>"
+                            data-item-category="<?= $item['ITEM_CATEGORY'] ?>"
+                            data-unit-name="<?= htmlspecialchars($item['UNIT_NAME']) ?>"
+                            data-net-weight="<?= $item['ITEM_NET_WEIGHT'] ?? '0' ?>"
+                            data-quantity="<?= $item['QUANTITY'] ?? '0' ?>"
+                            data-purchase-date-raw="<?= htmlspecialchars($item['DATE_OF_PURCHASE'] ?? '') ?>"
+                            data-purchase-date-fmt="<?= htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? '') ?>"
+                            data-expiration-date-raw="<?= htmlspecialchars($item['EXPIRATION_DATE'] ?? '') ?>"
+                            data-expiration-date-fmt="<?= htmlspecialchars($item['EXPIRATION_DATE_FMT'] ?? '') ?>"
+                            data-location-id="<?= $item['LOCATION_ID'] ?? '' ?>"
+                            data-building-id="<?= $item['BUILDING_ID'] ?? '' ?>"
+                            data-pen-id="<?= $item['PEN_ID'] ?? '' ?>"
+                            data-supplier="<?= htmlspecialchars($item['SUPPLIER'] ?? '') ?>"
+                            data-reference-no="<?= htmlspecialchars($item['REFERENCE_NO'] ?? '') ?>"
+                            data-created-at="<?= htmlspecialchars($item['CREATED_AT_FMT'] ?? '') ?>">
 
-                            <td data-label="Category">
-                                <span class="category-badge <?php echo $categoryClasses[$item['ITEM_CATEGORY']]; ?>">
-                                    <?php echo $categoryLabels[$item['ITEM_CATEGORY']]; ?>
-                                </span>
-                            </td>
-                            <td data-label="Purchase Date"><div class="item-unit"><?php echo htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A'); ?></div></td>
-                            <td data-label="Expiry Date">
-                                <div class="item-unit" style="color: #fca5a5; font-weight:600;"><?php echo htmlspecialchars($item['EXPIRATION_DATE_FMT'] ?? 'N/A'); ?></div>
-                            </td>
-
-                            <td data-label="Status" style="text-align: center;">
-                                <?php if(!$isConfirmed): ?>
+                            <td data-label="Ref No"><span class="td-ref"><?= !empty($item['REFERENCE_NO']) ? htmlspecialchars($item['REFERENCE_NO']) : '—' ?></span></td>
+                            <td data-label="Supplier"><span class="td-muted"><?= !empty($item['SUPPLIER']) ? htmlspecialchars($item['SUPPLIER']) : 'General Supplier' ?></span></td>
+                            <td data-label="Feed Name"><span class="td-name"><?= htmlspecialchars($item['ITEM_NAME']) ?></span></td>
+                            <td data-label="Qty"><?= number_format($item['QUANTITY'] ?? 0, 2) ?></td>
+                            <td data-label="Unit"><span class="td-muted"><?= htmlspecialchars($item['UNIT_NAME']) ?></span></td>
+                            <td data-label="Net Wt."><span class="td-muted"><?= htmlspecialchars($item['ITEM_NET_WEIGHT'] ?? 'N/A') ?></span></td>
+                            <td data-label="Unit Cost"><span class="td-cost">₱<?= number_format($item['UNIT_COST'], 2) ?></span></td>
+                            <td data-label="Total Cost"><span class="td-total">₱<?= number_format($totalCost, 2) ?></span></td>
+                            <td data-label="Category"><span class="badge <?= $categoryBadges[$item['ITEM_CATEGORY']] ?>"><?= $categoryLabels[$item['ITEM_CATEGORY']] ?></span></td>
+                            <td data-label="Purchase Date"><span class="td-date"><?= htmlspecialchars($item['DATE_OF_PURCHASE_FMT'] ?? 'N/A') ?></span></td>
+                            <td data-label="Expiry"><span class="td-expiry"><?= htmlspecialchars($item['EXPIRATION_DATE_FMT'] ?? 'N/A') ?></span></td>
+                            <td data-label="Status" style="text-align:center;">
+                                <?php if (!$isConfirmed): ?>
                                     <button class="confirm-btn" onclick="openConfirmModal(this)">Confirm</button>
                                 <?php else: ?>
-                                    <div class="confirmed-badge">Locked</div>
+                                    <span class="status-locked">Locked</span>
                                 <?php endif; ?>
                             </td>
-
                             <td data-label="Actions">
                                 <div class="actions">
-                                    <button class="action-btn view" onclick="viewItem(this)" title="View Details">
-                                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                        </svg>
+                                    <button class="action-btn view" onclick="viewItem(this)" title="View">
+                                        <i class="fa-solid fa-eye"></i>
                                     </button>
-
-                                    <?php if(!$isConfirmed): ?>
+                                    <?php if (!$isConfirmed): ?>
                                         <button class="action-btn edit" onclick="editItem(this)" title="Edit">
-                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
+                                            <i class="fa-solid fa-pen-to-square"></i>
                                         </button>
                                         <button class="action-btn delete" onclick="deleteItem(this)" title="Delete">
-                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
+                                            <i class="fa-solid fa-trash"></i>
                                         </button>
-                                    <?php else: ?>
-                                        <div style="width:70px;"></div>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -495,602 +666,602 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
-            <div id="empty-state" class="empty-state">
-                <h3>No items found</h3>
-                <p>Try adjusting your search terms</p>
-            </div>
+        </div>
+        <div id="empty-search-state" style="display:none; text-align:center; padding:2.5rem; color:var(--text-muted); font-size:0.9rem;">
+            No records match your search.
         </div>
     </div>
 
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title">Add Feed Purchase</h2>
-            </div>
-            <div class="modal-body">
-                <div id="modal-alert" class="alert"></div>
-                <form id="item-form" method="POST">
-                    <input type="hidden" id="item-id" name="item_id">
-                    <input type="hidden" name="item_type_id" value="<?php echo $ITEM_TYPE_ID; ?>">
-                    
-                    <div class="info-group" style="margin-top: 0;">
-                        <h3 style="margin-top:0;">Feed Information</h3>
-                        <div class="form-group autocomplete-wrapper">
-                            <label for="item-name">Feed Name <span>*</span></label>
-                            <input type="text" id="item-name" name="item_name" placeholder="e.g., Hog Starter" required maxlength="300" autocomplete="off">
-                            <div id="autocomplete-list" class="autocomplete-list"></div>
-                        </div>
+</div>
 
-                        <div class="form-row">
-                            <div class="form-group autocomplete-wrapper">
-                                <label>Supplier</label>
-                                <input type="text" id="supplier" name="supplier" placeholder="e.g., B-Meg Premium" autocomplete="off">
-                                <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Reference No.</label>
-                                <input type="text" id="reference-no" name="reference_no" placeholder="e.g., OR-12345">
-                            </div>
-                        </div>
+<!-- ════════════ ADD MODAL ════════════ -->
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-plus" style="color:var(--blue); margin-right:8px; font-size:0.9rem;"></i>Add Batch Feed Purchase</h2>
+            <button class="modal-close" onclick="closeAddModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="add-modal-alert" class="alert"></div>
+            <form id="add-batch-form" onsubmit="saveAddBatch(event)">
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="net-weight">Net Weight (kg) per sack</label>
-                                <input type="number" id="net-weight" name="item_net_weight" placeholder="e.g., 50" step="0.01" min="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="unit">Base Unit <span>*</span></label>
-                                <select id="unit" name="unit_id" required>
-                                    <?php foreach ($units as $unit): ?>
-                                        <option value="<?php echo $unit['UNIT_ID']; ?>" selected>
-                                            <?php echo htmlspecialchars($unit['UNIT_NAME']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
+                <div class="section-label"><i class="fa-solid fa-file-invoice"></i> Invoice Details (applies to all items)</div>
 
-                        <div class="form-group">
-                            <label for="item-quantity">Quantity <span>*</span></label>
-                            <input type="number" id="item-quantity" name="item_quantity" placeholder="e.g., 10" step="0.01" min="0" required>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="unit-cost">Unit Cost (₱) Per Sack<span>*</span></label>
-                                <input type="number" id="unit-cost" name="unit_cost" placeholder="0.00" step="0.01" min="0" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="item-category">Item Category <span>*</span></label>
-                                <select id="item-category" name="item_category" required>
-                                    <option value="">Select Category</option>
-                                    <option value="0">Non-Consumable</option>
-                                    <option value="1" selected>Consumable</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="purchase-date">Date of Purchase <span>*</span></label>
-                                <input type="text" id="purchase-date" name="date_of_purchase" class="form-input date-picker" placeholder="Date of Purchase" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="expiration-date">Expiration Date <span style="color:#fca5a5;">(Required)</span></label>
-                                <input type="text" id="expiration-date" name="expiration_date" class="form-input date-picker" placeholder="Expiration Date" required>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="item-desc">Item Description</label>
-                            <textarea id="item-desc" name="item_description" placeholder="Enter details..." rows="3" maxlength="500"></textarea>
-                        </div>
+                <div class="form-row">
+                    <div class="form-group autocomplete-wrapper">
+                        <label class="form-label"><i class="fa-solid fa-truck"></i> Supplier</label>
+                        <input type="text" id="batch-supplier" class="form-control" placeholder="e.g., B-Meg Premium" autocomplete="off">
+                        <div id="add-supplier-list" class="autocomplete-list"></div>
                     </div>
-
-                    <div class="info-group">
-                        <h3>Initial Location</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="location_id">Location</label>
-                                <select id="location_id" name="location_id" onchange="filterBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #1e293b; pointer-events: none; color: #94a3b8;"' : ''; ?> required>
-                                    <?php if($USER_LOCATION_ == 1000): ?>
-                                        <option value="">Select Location</option>
-                                    <?php endif; ?>
-                                    <?php foreach($locations as $loc): ?>
-                                        <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="building_id">Building</label>
-                                <select id="building_id" name="building_id" onchange="filterPens()" disabled>
-                                    <option value="">Select Location First</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="pen_id">Pen</label>
-                                <select id="pen_id" name="pen_id" disabled>
-                                    <option value="">Select Building First</option>
-                                </select>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-hashtag"></i> Reference No.</label>
+                        <input type="text" id="batch-reference-no" class="form-control" placeholder="e.g., OR-12345">
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="button" class="btn-save" id="btn-save" onclick="saveItem()">Save Purchase</button>
-            </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-calendar-days"></i> Date of Purchase <span class="req">*</span></label>
+                        <input type="text" id="batch-purchase-date" class="form-control date-picker" placeholder="Select date" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-location-dot"></i> Delivery Location <span class="req">*</span></label>
+                        <select id="batch-location" class="form-control" onchange="filterBuildings('batch')" required
+                            <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events:none;" disabled' : ''; ?>>
+                            <?php if ($USER_LOCATION_ == 1000): ?><option value="">Select Location</option><?php endif; ?>
+                            <?php foreach ($locations as $loc): ?>
+                                <option value="<?= $loc['LOCATION_ID'] ?>"
+                                    <?= ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-building"></i> Building (Optional)</label>
+                        <select id="batch-building" class="form-control" onchange="filterPens('batch')" disabled>
+                            <option value="">Select Location First</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-border-all"></i> Pen (Optional)</label>
+                        <select id="batch-pen" class="form-control" disabled>
+                            <option value="">Select Building First</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-label" style="margin-top:1.5rem;"><i class="fa-solid fa-list-ul"></i> Feed Items</div>
+
+                <div class="dynamic-table-wrap">
+                    <table class="dynamic-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width:155px;">Feed Name <span style="color:var(--red);">*</span></th>
+                                <th style="min-width:115px;">Category</th>
+                                <th style="min-width:85px;">Net Wt (kg)</th>
+                                <th style="min-width:105px;">Unit <span style="color:var(--red);">*</span></th>
+                                <th style="min-width:75px;">Qty <span style="color:var(--red);">*</span></th>
+                                <th style="min-width:95px;">Cost/Unit <span style="color:var(--red);">*</span></th>
+                                <th style="min-width:130px;">Expiry Date</th>
+                                <th style="width:38px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="dynamic-feed-body"></tbody>
+                    </table>
+                </div>
+                <button type="button" class="add-row-btn" onclick="addFeedRow()">
+                    <i class="fa-solid fa-plus"></i> Add Feed Item Row
+                </button>
+
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+            <button type="submit" form="add-batch-form" class="btn btn-primary" id="btn-save-batch">
+                <i class="fa-solid fa-floppy-disk"></i> Save Batch Purchase
+            </button>
         </div>
     </div>
+</div>
 
-    <div id="view-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Purchase Details</h2>
-            </div>
-            <div class="modal-body" id="view-modal-body"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeViewModal()" style="width: 100%;">Close</button>
-            </div>
+<!-- ════════════ EDIT MODAL ════════════ -->
+<div id="editModal" class="modal">
+    <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen-to-square" style="color:var(--purple); margin-right:8px; font-size:0.9rem;"></i>Edit Feed Purchase</h2>
+            <button class="modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="edit-modal-alert" class="alert"></div>
+            <form id="edit-item-form" onsubmit="saveEditItem(event)">
+                <input type="hidden" id="edit-item-id" name="item_id">
+                <input type="hidden" name="item_type_id" value="<?= $ITEM_TYPE_ID ?>">
+
+                <div class="section-label"><i class="fa-solid fa-wheat-awn"></i> Feed Information</div>
+
+                <div class="form-group autocomplete-wrapper">
+                    <label class="form-label">Feed Name <span class="req">*</span></label>
+                    <input type="text" id="edit-item-name" name="item_name" class="form-control" required maxlength="300" autocomplete="off">
+                    <div class="autocomplete-list" id="edit-item-list"></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group autocomplete-wrapper">
+                        <label class="form-label">Supplier</label>
+                        <input type="text" id="edit-supplier" name="supplier" class="form-control" autocomplete="off">
+                        <div class="autocomplete-list" id="edit-supplier-list"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Reference No.</label>
+                        <input type="text" id="edit-reference-no" name="reference_no" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Net Weight (kg) per sack</label>
+                        <input type="number" id="edit-net-weight" name="item_net_weight" class="form-control" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Base Unit <span class="req">*</span></label>
+                        <select id="edit-unit" name="unit_id" class="form-control" required>
+                            <?php foreach ($units as $unit): ?>
+                                <option value="<?= $unit['UNIT_ID'] ?>"><?= htmlspecialchars($unit['UNIT_NAME']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Quantity <span class="req">*</span></label>
+                        <input type="number" id="edit-item-quantity" name="item_quantity" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Item Category <span class="req">*</span></label>
+                        <select id="edit-item-category" name="item_category" class="form-control" required>
+                            <option value="0">Non-Consumable</option>
+                            <option value="1">Consumable</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Unit Cost (₱) per Sack <span class="req">*</span></label>
+                        <input type="number" id="edit-unit-cost" name="unit_cost" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea id="edit-item-desc" name="item_description" class="form-control" rows="2" maxlength="500" style="margin-bottom: 15px;"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-calendar-days"></i> Date of Purchase <span class="req">*</span></label>
+                        <input type="text" id="edit-purchase-date" name="date_of_purchase" class="form-control date-picker" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fa-solid fa-calendar-xmark"></i> Expiration Date</label>
+                        <input type="text" id="edit-expiration-date" name="expiration_date" class="form-control date-picker">
+                    </div>
+                </div>
+
+                <div class="section-label" style="margin-top:1.25rem;"><i class="fa-solid fa-location-dot"></i> Location</div>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Location <span class="req">*</span></label>
+                        <select id="edit-location" name="location_id" class="form-control" onchange="filterBuildings('edit')" required
+                            <?php echo ($USER_LOCATION_ != 1000) ? 'style="pointer-events:none;" disabled' : ''; ?>>
+                            <?php if ($USER_LOCATION_ == 1000): ?><option value="">Select Location</option><?php endif; ?>
+                            <?php foreach ($locations as $loc): ?>
+                                <option value="<?= $loc['LOCATION_ID'] ?>"
+                                    <?= ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($loc['LOCATION_NAME']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Building</label>
+                        <select id="edit-building" name="building_id" class="form-control" onchange="filterPens('edit')" disabled>
+                            <option value="">Select Location First</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Pen</label>
+                        <select id="edit-pen" name="pen_id" class="form-control" disabled>
+                            <option value="">Select Building First</option>
+                        </select>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+            <button type="submit" form="edit-item-form" class="btn btn-primary" id="btn-save-edit">
+                <i class="fa-solid fa-floppy-disk"></i> Update Purchase
+            </button>
         </div>
     </div>
+</div>
 
-    <div id="confirm-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-body confirm-content">
-                <span class="confirm-icon">🌾</span>
-                <h2 style="color: #fff; margin-bottom: 10px;">Confirm Purchase?</h2>
-                <p style="color: #94a3b8; margin-bottom: 5px;">You are about to confirm <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color:#86efac;"></span></strong>.</p>
-                <div class="warning-text">⚠️ Warning: Once confirmed, this record will be locked and can no longer be edited or deleted.</div>
-                <form id="confirmForm" method="POST">
-                    <input type="hidden" id="confirm_item_id" name="item_id">
-                </form>
-            </div>
-            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
-                <button type="button" class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitConfirmation()" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Yes, Confirm it!</button>
-            </div>
+<!-- ════════════ VIEW MODAL ════════════ -->
+<div id="view-modal" class="modal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-eye" style="color:var(--blue); margin-right:8px; font-size:0.9rem;"></i>Purchase Details</h2>
+            <button class="modal-close" onclick="closeViewModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" id="view-modal-body"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-ghost" onclick="closeViewModal()" style="width:100%;">Close</button>
         </div>
     </div>
+</div>
 
-    <div id="confirm-all-modal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-body confirm-content">
-                <span class="confirm-icon" style="font-size: 3rem;">📋</span>
-                <h2 style="color: #fff; margin-bottom: 10px;">Confirm All Pending?</h2>
-                <p style="color: #94a3b8;">This will confirm and lock <strong>ALL</strong> currently pending feed purchases.</p>
-                <div class="warning-text">⚠️ Warning: This action cannot be undone.</div>
-            </div>
-            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px;">
-                <button type="button" class="btn-cancel" onclick="closeConfirmAllModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitConfirmAll()" style="background: linear-gradient(135deg, #f59e0b, #d97706);">Confirm All</button>
-            </div>
+<!-- ════════════ CONFIRM SINGLE ════════════ -->
+<div id="confirm-modal" class="modal">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-body confirm-body">
+            <span class="confirm-icon">🌾</span>
+            <h2>Confirm Purchase?</h2>
+            <p>You are about to confirm <strong><span id="confirm-item-qty"></span> × <span id="confirm-item-name" style="color:var(--green);"></span></strong>.</p>
+            <div class="confirm-warning"><i class="fa-solid fa-triangle-exclamation"></i> Once confirmed, this record will be locked and cannot be edited or deleted.</div>
+            <form id="confirmForm" method="POST" style="display:none;">
+                <input type="hidden" id="confirm_item_id" name="item_id">
+            </form>
+        </div>
+        <div class="modal-footer" style="justify-content:center; border-top:none; padding-top:0; padding-bottom:1.5rem;">
+            <button type="button" class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+            <button type="button" id="btn-do-confirm"
+                onclick="submitConfirmation()"
+                style="background:var(--red-dim); color:var(--red); border-color:rgba(248,113,113,0.3);"
+                class="btn">
+                <i class="fa-solid fa-check"></i> Yes, Confirm
+            </button>
         </div>
     </div>
+</div>
 
-    <form id="deleteItemForm" method="POST" action="../process/deleteFeedAndFeedingSupplies.php" style="display: none;">
-        <input type="hidden" id="delete_item_id" name="item_id">
-    </form>
+<!-- ════════════ CONFIRM ALL ════════════ -->
+<div id="confirm-all-modal" class="modal">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-body confirm-body">
+            <span class="confirm-icon">📋</span>
+            <h2>Confirm All Pending?</h2>
+            <p>This will confirm and lock <strong>ALL</strong> currently pending feed purchases.</p>
+            <div class="confirm-warning"><i class="fa-solid fa-triangle-exclamation"></i> This action cannot be undone.</div>
+        </div>
+        <div class="modal-footer" style="justify-content:center; border-top:none; padding-top:0; padding-bottom:1.5rem;">
+            <button type="button" class="btn btn-ghost" onclick="closeConfirmAllModal()">Cancel</button>
+            <button type="button" class="btn btn-amber" onclick="submitConfirmAll()">
+                <i class="fa-solid fa-circle-check"></i> Confirm All
+            </button>
+        </div>
+    </div>
+</div>
 
-    <script>
-        const allBuildings = <?php echo json_encode($buildings_raw); ?>;
-        const allPens = <?php echo json_encode($pens_raw); ?>;
-        const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+<form id="deleteItemForm" method="POST" action="../process/deleteFeedAndFeedingSupplies.php" style="display:none;">
+    <input type="hidden" id="delete_item_id" name="item_id">
+</form>
 
-        let fpPurchaseDate;
-        let fpExpirationDate;
+<script>
+    const allBuildings   = <?= json_encode($buildings_raw) ?>;
+    const allPens        = <?= json_encode($pens_raw) ?>;
+    const availableUnits = <?= json_encode($units) ?>;
+    const USER_LOCATION  = <?= json_encode($USER_LOCATION_) ?>;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Flatpickr
-            fpPurchaseDate = flatpickr("#purchase-date", {
-                dateFormat: "Y-m-d", // Value submitted to PHP
-                altInput: true,      // Visual input
-                altFormat: "m/d/Y",  // mm/dd/yyyy format
-                allowInput: true
-            });
+    let fpEditPurchase, fpEditExpiry;
 
-            fpExpirationDate = flatpickr("#expiration-date", {
-                dateFormat: "Y-m-d", // Value submitted to PHP
-                altInput: true,      // Visual input
-                altFormat: "m/d/Y",  // mm/dd/yyyy format
-                allowInput: true
+    document.addEventListener('DOMContentLoaded', () => {
+        fpEditPurchase = flatpickr("#edit-purchase-date",   { dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y" });
+        fpEditExpiry   = flatpickr("#edit-expiration-date", { dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y" });
+        flatpickr("#batch-purchase-date", { dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y" });
+
+        attachAutocomplete(document.getElementById('batch-supplier'), '../process/searchSuppliers.php?term=');
+        attachAutocomplete(document.getElementById('edit-supplier'),  '../process/searchSuppliers.php?term=');
+        attachAutocomplete(document.getElementById('edit-item-name'), '../process/searchFeedsAndFeedingSupplies.php?term=');
+
+        ['addModal','editModal','view-modal','confirm-modal','confirm-all-modal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
+        });
+    });
+
+    // ── ADD ──
+    function openAddModal() {
+        document.getElementById('add-batch-form').reset();
+        document.getElementById('dynamic-feed-body').innerHTML = '';
+        document.getElementById('add-modal-alert').style.display = 'none';
+        if (USER_LOCATION != 1000) {
+            document.getElementById('batch-location').value = USER_LOCATION;
+            filterBuildings('batch');
+        }
+        addFeedRow();
+        document.getElementById('addModal').classList.add('show');
+    }
+    function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+    function addFeedRow() {
+        const tbody  = document.getElementById('dynamic-feed-body');
+        const tr     = document.createElement('tr');
+        const unitOpts = availableUnits.map(u => `<option value="${u.UNIT_ID}">${u.UNIT_NAME}</option>`).join('');
+        tr.innerHTML = `
+            <td><div class="autocomplete-wrapper">
+                <input type="text" class="form-control row-item-name" placeholder="Feed name" required autocomplete="off">
+                <div class="autocomplete-list"></div>
+            </div></td>
+            <td><select class="form-control row-category" required>
+                <option value="1">Consumable</option><option value="0">Non-Consumable</option>
+            </select></td>
+            <td><input type="number" class="form-control row-net-weight" placeholder="0" step="0.01" min="0"></td>
+            <td><select class="form-control row-unit" required>${unitOpts}</select></td>
+            <td><input type="number" class="form-control row-qty" placeholder="0" step="0.01" min="0" required></td>
+            <td><input type="number" class="form-control row-cost" placeholder="0.00" step="0.01" min="0" required></td>
+            <td><input type="text" class="form-control row-exp" placeholder="Expiry date"></td>
+            <td style="vertical-align:middle; text-align:center;">
+                <button type="button" class="del-row-btn" onclick="this.closest('tr').remove()" title="Remove row">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </td>`;
+        tbody.appendChild(tr);
+        flatpickr(tr.querySelector('.row-exp'), { dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y" });
+        attachAutocomplete(tr.querySelector('.row-item-name'), '../process/searchFeedsAndFeedingSupplies.php?term=');
+    }
+
+    function saveAddBatch(e) {
+        e.preventDefault();
+        const btn      = document.getElementById('btn-save-batch');
+        const alertBox = document.getElementById('add-modal-alert');
+        const rows     = document.querySelectorAll('#dynamic-feed-body tr');
+        if (!rows.length) { showAlert(alertBox, 'error', 'Please add at least one feed item row.'); return; }
+
+        const payload = {
+            supplier:         document.getElementById('batch-supplier').value,
+            reference_no:     document.getElementById('batch-reference-no').value,
+            date_of_purchase: document.getElementById('batch-purchase-date').value,
+            location_id:      document.getElementById('batch-location').value,
+            building_id:      document.getElementById('batch-building').value,
+            pen_id:           document.getElementById('batch-pen').value,
+            items: []
+        };
+        rows.forEach(tr => {
+            payload.items.push({
+                item_name:       tr.querySelector('.row-item-name').value,
+                category:        tr.querySelector('.row-category').value,
+                net_weight:      tr.querySelector('.row-net-weight').value,
+                unit_id:         tr.querySelector('.row-unit').value,
+                quantity:        tr.querySelector('.row-qty').value,
+                unit_cost:       tr.querySelector('.row-cost').value,
+                expiration_date: tr.querySelector('.row-exp').value
             });
         });
 
-        // --- CONFIRMATION ---
-        function openConfirmModal(button) {
-            const row = button.closest('tr');
-            document.getElementById('confirm_item_id').value = row.dataset.itemId;
-            document.getElementById('confirm-item-name').textContent = row.dataset.itemName;
-            document.getElementById('confirm-item-qty').textContent = row.dataset.quantity;
-            document.getElementById('confirm-modal').classList.add('show');
-        }
-        function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
-        function submitConfirmation() {
-            const formData = new FormData(document.getElementById('confirmForm'));
-            const btn = document.querySelector('#confirm-modal .btn-save');
-            btn.disabled = true; btn.innerHTML = 'Confirming...';
-            
-            fetch('../purchase_confirmations/confirmFeedAndFeedingSupplies.php', { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then(data => {
-                    if(data.success) { alert(data.message); window.location.reload(); }
-                    else { alert(data.message); btn.disabled = false; btn.innerHTML = 'Yes, Confirm it!'; }
-                })
-                .catch(() => { alert('Error confirming item'); btn.disabled = false; btn.innerHTML = 'Yes, Confirm it!'; });
-        }
-
-        function openConfirmAllModal() { document.getElementById('confirm-all-modal').classList.add('show'); }
-        function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
-        function submitConfirmAll() {
-            const btn = document.querySelector('#confirm-all-modal .btn-save');
-            btn.disabled = true; btn.innerHTML = 'Processing...';
-            
-            fetch('../purchase_confirmations/confirmAllFeedAndFeedingSupplies.php', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if(data.success) { alert(data.message); window.location.reload(); }
-                    else { alert(data.message); btn.disabled = false; btn.innerHTML = 'Confirm All'; }
-                })
-                .catch(() => { alert('Error confirming all'); btn.disabled = false; btn.innerHTML = 'Confirm All'; });
-        }
-
-        // --- FILTERING ---
-        function filterBuildings() {
-            const locationSelect = document.getElementById('location_id');
-            const buildingSelect = document.getElementById('building_id');
-            const penSelect = document.getElementById('pen_id');
-            const selectedLocId = locationSelect.value;
-
-            buildingSelect.innerHTML = '<option value="">Select Building</option>';
-            penSelect.innerHTML = '<option value="">Select Building First</option>';
-            penSelect.disabled = true;
-
-            if (selectedLocId) {
-                buildingSelect.disabled = false;
-                const filteredBuildings = allBuildings.filter(b => b.LOCATION_ID == selectedLocId);
-                filteredBuildings.forEach(b => {
-                    const option = document.createElement('option');
-                    option.value = b.BUILDING_ID;
-                    option.textContent = b.BUILDING_NAME;
-                    buildingSelect.appendChild(option);
-                });
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+        fetch('../process/addFeedAndFeedingSupplies.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(alertBox, 'success', data.message);
+                setTimeout(() => location.reload(), 1400);
             } else {
-                buildingSelect.disabled = true;
+                showAlert(alertBox, 'error', data.message);
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Batch Purchase';
             }
+        })
+        .catch(() => {
+            showAlert(alertBox, 'error', 'System error occurred.');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Batch Purchase';
+        });
+    }
+
+    // ── EDIT ──
+    function editItem(button) {
+        const d = button.closest('tr').dataset;
+        document.getElementById('edit-item-id').value       = d.itemId;
+        document.getElementById('edit-item-name').value     = d.itemName;
+        document.getElementById('edit-item-desc').value     = d.itemDesc || '';
+        document.getElementById('edit-unit').value          = d.unitId;
+        document.getElementById('edit-unit-cost').value     = d.unitCost;
+        document.getElementById('edit-item-category').value = d.itemCategory;
+        document.getElementById('edit-net-weight').value    = d.netWeight || '';
+        document.getElementById('edit-item-quantity').value = d.quantity || '0';
+        document.getElementById('edit-supplier').value      = d.supplier || '';
+        document.getElementById('edit-reference-no').value  = d.referenceNo || '';
+        fpEditPurchase.setDate(d.purchaseDateRaw || '');
+        fpEditExpiry.setDate(d.expirationDateRaw || '');
+        document.getElementById('edit-location').value = d.locationId || '';
+        filterBuildings('edit');
+        if (d.buildingId) {
+            setTimeout(() => {
+                document.getElementById('edit-building').value = d.buildingId;
+                filterPens('edit');
+                if (d.penId) setTimeout(() => { document.getElementById('edit-pen').value = d.penId; }, 0);
+            }, 0);
         }
+        document.getElementById('edit-modal-alert').style.display = 'none';
+        document.getElementById('editModal').classList.add('show');
+    }
+    function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
 
-        function filterPens() {
-            const buildingSelect = document.getElementById('building_id');
-            const penSelect = document.getElementById('pen_id');
-            const selectedBldgId = buildingSelect.value;
-
-            penSelect.innerHTML = '<option value="">Select Pen</option>';
-
-            if (selectedBldgId) {
-                penSelect.disabled = false;
-                const filteredPens = allPens.filter(p => p.BUILDING_ID == selectedBldgId);
-                filteredPens.forEach(p => {
-                    const option = document.createElement('option');
-                    option.value = p.PEN_ID;
-                    option.textContent = p.PEN_NAME;
-                    penSelect.appendChild(option);
-                });
+    function saveEditItem(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-edit');
+        const alertBox = document.getElementById('edit-modal-alert');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating…';
+        fetch('../process/editFeedAndFeedingSupplies.php', { method: 'POST', body: new FormData(document.getElementById('edit-item-form')) })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(alertBox, 'success', data.message);
+                setTimeout(() => location.reload(), 1000);
             } else {
-                penSelect.disabled = true;
+                showAlert(alertBox, 'error', data.message || 'Error updating item.');
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Update Purchase';
             }
-        }
+        })
+        .catch(() => {
+            showAlert(alertBox, 'error', 'System error.');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Update Purchase';
+        });
+    }
 
-        // --- AUTOCOMPLETE LOGIC ---
-        let autocompleteTimeout = null;
-        let currentFocus = -1;
-
-        function initAutocomplete() {
-            const itemNameInput = document.getElementById('item-name');
-            const autocompleteList = document.getElementById('autocomplete-list');
-            const newInput = itemNameInput.cloneNode(true);
-            itemNameInput.parentNode.replaceChild(newInput, itemNameInput);
-            const input = document.getElementById('item-name');
-            
-            input.addEventListener('input', function(e) {
-                const value = this.value.trim();
-                clearTimeout(autocompleteTimeout);
-                if (value.length < 2) { closeAutocomplete(); return; }
-                autocompleteList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
-                autocompleteList.classList.add('show');
-                autocompleteTimeout = setTimeout(() => { fetchAutocomplete(value); }, 300);
-            });
-            input.addEventListener('keydown', function(e) {
-                const items = autocompleteList.getElementsByClassName('autocomplete-item');
-                if (e.keyCode === 40) { e.preventDefault(); currentFocus++; addActive(items); } 
-                else if (e.keyCode === 38) { e.preventDefault(); currentFocus--; addActive(items); } 
-                else if (e.keyCode === 13) { if (currentFocus > -1 && items[currentFocus]) { e.preventDefault(); items[currentFocus].click(); } }
-                else if (e.keyCode === 27) { closeAutocomplete(); }
-            });
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.autocomplete-wrapper')) { closeAutocomplete(); }
-            });
-        }
-
-        function fetchAutocomplete(searchTerm) {
-            fetch(`../process/searchFeedsAndFeedingSupplies.php?term=${encodeURIComponent(searchTerm)}`)
-                .then(r => r.json())
-                .then(data => { displayAutocomplete(data, searchTerm); })
-                .catch(error => { console.error('Autocomplete error:', error); closeAutocomplete(); });
-        }
-
-        function displayAutocomplete(results, searchTerm) {
-            const list = document.getElementById('autocomplete-list');
-            list.innerHTML = ''; currentFocus = -1;
-            if (results.length === 0) {
-                list.innerHTML = '<div class="autocomplete-no-results">No items found</div>';
-                list.classList.add('show'); return;
-            }
-            results.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
-                const highlighted = item.replace(regex, '<strong>$1</strong>');
-                div.innerHTML = highlighted;
-                div.addEventListener('click', function() {
-                    document.getElementById('item-name').value = item;
-                    closeAutocomplete();
-                });
-                list.appendChild(div);
-            });
+    // ── AUTOCOMPLETE ──
+    function attachAutocomplete(input, endpoint) {
+        if (!input) return;
+        const list = input.nextElementSibling;
+        let timer = null;
+        input.addEventListener('input', function () {
+            const val = this.value.trim();
+            clearTimeout(timer);
+            if (val.length < 2) { list.classList.remove('show'); return; }
+            list.innerHTML = '<div class="autocomplete-loading">Searching…</div>';
             list.classList.add('show');
-        }
-
-        function addActive(items) {
-            if (!items || items.length === 0) return;
-            removeActive(items);
-            if (currentFocus >= items.length) currentFocus = 0;
-            if (currentFocus < 0) currentFocus = items.length - 1;
-            items[currentFocus].classList.add('active');
-            items[currentFocus].scrollIntoView({ block: 'nearest' });
-        }
-        function removeActive(items) { for(let i=0; i<items.length; i++) items[i].classList.remove('active'); }
-        function closeAutocomplete() {
-            const list = document.getElementById('autocomplete-list');
-            if(list) { list.classList.remove('show'); list.innerHTML = ''; }
-            currentFocus = -1;
-        }
-        function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-        // --- Supplier Autocomplete Logic ---
-        let supplierTimeout = null;
-        const supplierInput = document.getElementById('supplier');
-        const supplierList = document.getElementById('supplier-autocomplete-list');
-
-        if (supplierInput) {
-            supplierInput.addEventListener('input', function() {
-                clearTimeout(supplierTimeout);
-                const val = this.value.trim();
-                
-                if (val.length < 2) { 
-                    supplierList.classList.remove('show'); 
-                    return; 
-                }
-                
-                supplierList.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
-                supplierList.classList.add('show');
-                
-                supplierTimeout = setTimeout(() => {
-                    fetch(`../process/searchSuppliers.php?term=${encodeURIComponent(val)}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        supplierList.innerHTML = '';
-                        if (data.length === 0) {
-                            supplierList.innerHTML = '<div class="autocomplete-no-results">No matches</div>';
-                            return;
-                        }
-                        
-                        data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = 'autocomplete-item';
-                            const regex = new RegExp(`(${val})`, 'gi');
-                            div.innerHTML = item.replace(regex, '<strong>$1</strong>');
-                            
-                            div.addEventListener('click', () => {
-                                supplierInput.value = item;
-                                supplierList.classList.remove('show');
-                            });
-                            supplierList.appendChild(div);
-                        });
-                    }).catch(() => supplierList.classList.remove('show'));
-                }, 300);
-            });
-
-            document.addEventListener('click', e => {
-                if (!supplierInput.parentElement.contains(e.target)) {
-                    supplierList.classList.remove('show');
-                }
-            });
-        }
-
-        // --- CRUD & MODALS ---
-        function openAddModal() {
-            document.getElementById('modal-title').textContent = 'Add Feed Purchase';
-            document.querySelector('.btn-save').textContent = 'Save Purchase';
-            document.getElementById('item-form').reset();
-            document.getElementById('item-id').value = '';
-            document.getElementById('item-category').value = '1'; // Default to consumable for feeds
-            // Auto-select the first (and only) unit — kilograms
-            const unitSelect = document.getElementById('unit');
-            if (unitSelect.options.length > 0) {
-                unitSelect.selectedIndex = 0;
-            }            
-            // Set Flatpickr instances to blank explicitly
-            fpPurchaseDate.clear(); 
-            fpExpirationDate.clear(); 
-            
-            const locSelect = document.getElementById('location_id');
-            
-            // Auto-select location logic based on admin vs regular user
-            if (USER_LOCATION != 1000) {
-                locSelect.value = USER_LOCATION;
-                filterBuildings(); 
-            } else {
-                locSelect.value = "";
-                document.getElementById('building_id').innerHTML = '<option value="">Select Location First</option>';
-                document.getElementById('building_id').disabled = true;
-                document.getElementById('pen_id').innerHTML = '<option value="">Select Building First</option>';
-                document.getElementById('pen_id').disabled = true;
-            }
-
-            hideAlert();
-            document.getElementById('modal').classList.add('show');
-            setTimeout(() => { initAutocomplete(); }, 100);
-        }
-
-        function editItem(button) {
-            const row = button.closest('tr');
-            const data = row.dataset;
-            
-            document.getElementById('modal-title').textContent = 'Edit Feed Purchase';
-            document.querySelector('.btn-save').textContent = 'Update Purchase';
-            document.getElementById('item-id').value = data.itemId;
-            document.getElementById('item-name').value = data.itemName;
-            document.getElementById('item-desc').value = data.itemDesc || '';
-            document.getElementById('unit').value = data.unitId;
-            document.getElementById('unit-cost').value = data.unitCost;
-            document.getElementById('item-category').value = data.itemCategory;
-            document.getElementById('net-weight').value = data.netWeight || '';
-            document.getElementById('item-quantity').value = data.quantity || '0';
-            
-            // Re-populate using Flatpickr with raw dates
-            fpPurchaseDate.setDate(data.purchaseDateRaw || ''); 
-            fpExpirationDate.setDate(data.expirationDateRaw || ''); 
-            
-            document.getElementById('supplier').value = data.supplier || '';
-            document.getElementById('reference-no').value = data.referenceNo || '';
-
-            const locSelect = document.getElementById('location_id');
-            locSelect.value = data.locationId || ""; 
-            filterBuildings(); 
-
-            if(data.buildingId) {
-                document.getElementById('building_id').value = data.buildingId;
-                filterPens();
-                if(data.penId) document.getElementById('pen_id').value = data.penId;
-            }
-            hideAlert();
-            document.getElementById('modal').classList.add('show');
-            setTimeout(() => { initAutocomplete(); }, 100);
-        }
-
-        function saveItem() {
-            const form = document.getElementById('item-form');
-            if (!form.checkValidity()) { form.reportValidity(); return; }
-            const formData = new FormData(form);
-            const isEdit = document.getElementById('item-id').value !== '';
-            const url = isEdit ? '../process/editFeedAndFeedingSupplies.php' : '../process/addFeedAndFeedingSupplies.php';
-            const saveBtn = document.querySelector('.btn-save');
-            
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<span class="loading"></span> ' + (isEdit ? 'Updating...' : 'Saving...');
-
-            fetch(url, { method: 'POST', body: formData })
+            timer = setTimeout(() => {
+                fetch(endpoint + encodeURIComponent(val))
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
-                        showAlert(data.message, 'success');
-                        setTimeout(() => window.location.reload(), 1500);
-                    } else {
-                        showAlert(data.message || 'Error saving item', 'error');
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = isEdit ? 'Update Purchase' : 'Save Purchase';
-                    }
+                    list.innerHTML = '';
+                    if (!data.length) { list.innerHTML = '<div class="autocomplete-no-results">No matches</div>'; return; }
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        const rx = new RegExp(`(${val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+                        div.innerHTML = item.replace(rx, '<strong>$1</strong>');
+                        div.addEventListener('click', () => { input.value = item; list.classList.remove('show'); });
+                        list.appendChild(div);
+                    });
                 })
-                .catch(err => {
-                    console.error(err);
-                    showAlert('An error occurred', 'error');
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = isEdit ? 'Update Purchase' : 'Save Purchase';
-                });
-        }
-
-        function deleteItem(button) {
-            const row = button.closest('tr');
-            const itemId = row.dataset.itemId;
-            const itemName = row.dataset.itemName;
-            if (confirm(`Are you sure you want to delete "${itemName}"? This action cannot be undone.`)) {
-                document.getElementById('delete_item_id').value = itemId;
-                document.getElementById('deleteItemForm').submit();
-            }
-        }
-
-        function viewItem(button) {
-            const row = button.closest('tr');
-            const data = row.dataset;
-            const categoryLabels = {0: 'Non-Consumable', 1: 'Consumable'};
-            const html = `
-                <div class="info-group">
-                    <h3 style="color:#93c5fd; border-bottom:1px solid #334155; padding-bottom:5px;">Basic Information</h3>
-                    <p><strong>Ref No:</strong> ${data.referenceNo || 'N/A'}</p>
-                    <p><strong>Supplier:</strong> ${data.supplier || 'N/A'}</p>
-                    <p><strong>Item Name:</strong> ${data.itemName}</p>
-                    <p><strong>Description:</strong> ${data.itemDesc || 'N/A'}</p>
-                    <p><strong>Recorded On:</strong> ${data.createdAt}</p>
-                </div>
-                <div class="info-group">
-                    <h3 style="color:#93c5fd; border-bottom:1px solid #334155; padding-bottom:5px;">Purchase Details</h3>
-                    <p><strong>Quantity:</strong> ${data.quantity || '0'}</p>
-                    <p><strong>Unit:</strong> ${data.unitName}</p>
-                    <p><strong>Unit Cost:</strong> ₱${parseFloat(data.unitCost).toLocaleString('en-PH', {minimumFractionDigits: 2})}</p>
-                    <p><strong>Net Weight:</strong> ${data.netWeight || 'N/A'}</p>
-                    <p><strong>Category:</strong> ${categoryLabels[data.itemCategory]}</p>
-                    <p><strong>Purchase Date:</strong> ${data.purchaseDateFmt || 'N/A'}</p>
-                    <p><strong>Expiration Date:</strong> <span style="color:#fca5a5;">${data.expirationDateFmt || 'N/A'}</span></p>
-                </div>
-            `;
-            document.getElementById('view-modal-body').innerHTML = html;
-            document.getElementById('view-modal').classList.add('show');
-        }
-
-        // --- UTILS ---
-        function showAlert(msg, type) {
-            const alert = document.getElementById('modal-alert');
-            alert.textContent = msg; alert.className = 'alert ' + type; alert.style.display = 'block';
-        }
-        function hideAlert() { document.getElementById('modal-alert').style.display = 'none'; }
-        function closeModal() { closeAutocomplete(); document.getElementById('modal').classList.remove('show'); }
-        function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
-        
-        function filterTable() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('#item-table tr');
-            
-            if (rows.length === 1 && rows[0].children.length === 1) {
-                document.getElementById('empty-state').style.display = 'none';
-                return;
-            }
-
-            let count = 0;
-            rows.forEach(r => {
-                if(r.textContent.toLowerCase().includes(term)) { r.style.display = ''; count++; } 
-                else { r.style.display = 'none'; }
-            });
-            document.getElementById('empty-state').style.display = count === 0 ? 'block' : 'none';
-        }
-        
-        function checkEmptyState() { filterTable(); }
-
-        document.getElementById('view-modal').addEventListener('click', function(e) { if(e.target===this) closeViewModal(); });
-        document.getElementById('confirm-modal').addEventListener('click', function(e) { if(e.target===this) closeConfirmModal(); });
-        document.getElementById('confirm-all-modal').addEventListener('click', function(e) { if(e.target===this) closeConfirmAllModal(); });
-        
-        document.getElementById('item-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveItem();
+                .catch(() => list.classList.remove('show'));
+            }, 300);
         });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            checkEmptyState();
+        document.addEventListener('click', e => {
+            const wrapper = input.closest('.autocomplete-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) list.classList.remove('show');
         });
-    </script>
+    }
+
+    // ── DROPDOWNS ──
+    function filterBuildings(prefix) {
+        const locId  = document.getElementById(`${prefix}-location`).value;
+        const bldSel = document.getElementById(`${prefix}-building`);
+        const penSel = document.getElementById(`${prefix}-pen`);
+        bldSel.innerHTML = '<option value="">Select Building</option>';
+        penSel.innerHTML = '<option value="">Select Building First</option>';
+        penSel.disabled  = true;
+        if (locId) { bldSel.disabled = false; allBuildings.filter(b => b.LOCATION_ID == locId).forEach(b => bldSel.appendChild(new Option(b.BUILDING_NAME, b.BUILDING_ID))); }
+        else bldSel.disabled = true;
+    }
+    function filterPens(prefix) {
+        const bldId  = document.getElementById(`${prefix}-building`).value;
+        const penSel = document.getElementById(`${prefix}-pen`);
+        penSel.innerHTML = '<option value="">Select Pen</option>';
+        if (bldId) { penSel.disabled = false; allPens.filter(p => p.BUILDING_ID == bldId).forEach(p => penSel.appendChild(new Option(p.PEN_NAME, p.PEN_ID))); }
+        else penSel.disabled = true;
+    }
+
+    // ── CONFIRM ──
+    function openConfirmModal(btn) {
+        const d = btn.closest('tr').dataset;
+        document.getElementById('confirm_item_id').value = d.itemId;
+        document.getElementById('confirm-item-name').textContent = d.itemName;
+        document.getElementById('confirm-item-qty').textContent  = d.quantity;
+        document.getElementById('confirm-modal').classList.add('show');
+    }
+    function closeConfirmModal() { document.getElementById('confirm-modal').classList.remove('show'); }
+    function submitConfirmation() {
+        const btn = document.getElementById('btn-do-confirm');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Confirming…';
+        fetch('../purchase_confirmations/confirmFeedAndFeedingSupplies.php', {
+            method: 'POST', body: new FormData(document.getElementById('confirmForm'))
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) { alert(data.message); location.reload(); }
+            else { alert(data.message); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Yes, Confirm'; }
+        })
+        .catch(() => { alert('Error.'); btn.disabled = false; });
+    }
+
+    function openConfirmAllModal()  { document.getElementById('confirm-all-modal').classList.add('show'); }
+    function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
+    function submitConfirmAll() {
+        const btn = document.querySelector('#confirm-all-modal .btn-amber');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+        fetch('../purchase_confirmations/confirmAllFeedAndFeedingSupplies.php', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) { alert(data.message); location.reload(); }
+            else { alert(data.message); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Confirm All'; }
+        })
+        .catch(() => { alert('Error.'); btn.disabled = false; });
+    }
+
+    function deleteItem(btn) {
+        const d = btn.closest('tr').dataset;
+        if (confirm(`Delete "${d.itemName}"? This cannot be undone.`)) {
+            document.getElementById('delete_item_id').value = d.itemId;
+            document.getElementById('deleteItemForm').submit();
+        }
+    }
+
+    // ── VIEW ──
+    function viewItem(btn) {
+        const d = btn.closest('tr').dataset;
+        const catMap = { 0: 'Non-Consumable', 1: 'Consumable' };
+        const fmt = v => parseFloat(v).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        document.getElementById('view-modal-body').innerHTML = `
+            <div class="view-section">
+                <div class="view-section-title"><i class="fa-solid fa-circle-info"></i> Basic Information</div>
+                <div class="view-grid">
+                    <div class="view-item"><span class="vl">Ref No</span><span class="vv">${d.referenceNo || '—'}</span></div>
+                    <div class="view-item"><span class="vl">Supplier</span><span class="vv">${d.supplier || 'General Supplier'}</span></div>
+                    <div class="view-item"><span class="vl">Feed Name</span><span class="vv">${d.itemName}</span></div>
+                    <div class="view-item"><span class="vl">Recorded On</span><span class="vv">${d.createdAt || '—'}</span></div>
+                    <div class="view-item" style="grid-column:1/-1;"><span class="vl">Description</span><span class="vv">${d.itemDesc || '—'}</span></div>
+                </div>
+            </div>
+            <div class="view-section">
+                <div class="view-section-title"><i class="fa-solid fa-receipt"></i> Purchase Details</div>
+                <div class="view-grid">
+                    <div class="view-item"><span class="vl">Quantity</span><span class="vv">${d.quantity || '0'}</span></div>
+                    <div class="view-item"><span class="vl">Unit</span><span class="vv">${d.unitName}</span></div>
+                    <div class="view-item"><span class="vl">Unit Cost</span><span class="vv mono">₱${fmt(d.unitCost)}</span></div>
+                    <div class="view-item"><span class="vl">Net Weight</span><span class="vv">${d.netWeight || 'N/A'}</span></div>
+                    <div class="view-item"><span class="vl">Category</span><span class="vv">${catMap[d.itemCategory] || '—'}</span></div>
+                    <div class="view-item"><span class="vl">Purchase Date</span><span class="vv">${d.purchaseDateFmt || 'N/A'}</span></div>
+                    <div class="view-item"><span class="vl">Expiration</span><span class="vv danger">${d.expirationDateFmt || 'N/A'}</span></div>
+                </div>
+            </div>`;
+        document.getElementById('view-modal').classList.add('show');
+    }
+    function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); }
+
+    // ── SEARCH ──
+    function filterTable() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#item-table tr');
+        let count  = 0;
+        rows.forEach(r => {
+            const show = r.textContent.toLowerCase().includes(term);
+            r.style.display = show ? '' : 'none';
+            if (show) count++;
+        });
+        document.getElementById('empty-search-state').style.display = (!count && term) ? 'block' : 'none';
+    }
+
+    function showAlert(el, type, msg) {
+        el.textContent = msg; el.className = `alert ${type}`; el.style.display = 'block';
+    }
+</script>
 </body>
 </html>

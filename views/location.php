@@ -5,32 +5,25 @@ ini_set('display_errors', 0);
 
 $page = "admin_dashboard";
 include '../config/Connection.php';
-
 include '../security/checkAccess.php';
 checkAccess('location');
-
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
-if($_SESSION['user']['USER_TYPE'] < 3)
-{
+if($_SESSION['user']['USER_TYPE'] < 3) {
     echo "<script>alert('Access denied.'); window.location.href = 'admin_dashboard.php';</script>";
     exit();
 }
-// Check for status messages
+
 $status = $_GET['status'] ?? '';
 $msg = $_GET['msg'] ?? '';
 
 try {
-    if (!isset($conn)) {
-        throw new Exception("Database connection failed.");
-    }
-
+    if (!isset($conn)) { throw new Exception("Database connection failed."); }
     $sql = "SELECT * FROM Locations ORDER BY LOCATION_ID ASC";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $location_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 } catch (Exception $e) {
     $location_data = [];
     $status = 'error';
@@ -42,121 +35,306 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Location Management System</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <link rel="stylesheet" href="../css/location.css">
+    
     <style>
-        /* Add alert styles inline if not present in CSS file */
-        .alert-box { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; text-align: center; font-weight: 500; }
-        .alert-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }
-        .alert-error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
-        
-        /* Back Link Style */
-        .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(16,185,129,0.5); /* Emerald Accent */
+            --emerald:        #10b981;
+            --emerald-dim:    rgba(16,185,129,0.12);
+            --emerald-glow:   rgba(16,185,129,0.25);
+            --blue:           #38bdf8;
+            --blue-dim:       rgba(56,189,248,0.12);
+            --red:            #f87171;
+            --red-dim:        rgba(248,113,113,0.12);
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
         }
-        .back-link:hover { color: white; }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(16,185,129,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--emerald); background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        /* ─── HEADER ─── */
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--emerald), #059669);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-primary { background: var(--emerald); color: #000; }
+        .btn-primary:hover { background: #34d399; box-shadow: 0 0 16px var(--emerald-glow); transform: translateY(-1px); }
+        .btn-gps { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(56,189,248,0.2); font-size: 0.8rem; padding: 8px 12px; }
+        .btn-gps:hover { background: var(--blue); color: #000; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+
+        /* ─── SEARCH ─── */
+        .search-container { position: relative; margin-bottom: 1.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; height: 18px; }
+        .search-input {
+            width: 100%; padding: 14px 14px 14px 2.8rem; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            color: var(--text-primary); font-size: 1rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .search-input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); background: var(--bg-hover); }
+
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+        }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
+
+        .col-id { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; }
+        .col-name { font-weight: 600; color: #fff; }
+        .col-coord { font-family: var(--font-mono); color: var(--blue); font-size: 0.85rem; }
+
+        /* Actions */
+        .actions { display: flex; gap: 8px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.view:hover { color: var(--blue); border-color: var(--blue); }
+        .action-btn.edit:hover { color: var(--emerald); border-color: var(--emerald); }
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
+
+        /* ─── MODALS ─── */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 650px;
+            max-height: 95vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--emerald); }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); }
+
+        /* Form Layout */
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .form-control {
+            width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .form-control:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); }
+
+        /* Map UI */
+        #map, #viewMap { height: 300px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin: 10px 0; z-index: 1; }
+        .location-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .location-search { flex: 1; margin-bottom: 0; }
+        .search-results {
+            position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: 8px; z-index: 100; max-height: 200px;
+            overflow-y: auto; display: none; box-shadow: var(--shadow-md);
+        }
+        .search-result { padding: 10px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+        .search-result:hover { background: var(--bg-hover); color: var(--emerald); }
+        
+        .location-info { background: var(--bg-elevated); padding: 12px; border-radius: 8px; border-left: 3px solid var(--emerald); margin-top: 10px; }
+        .location-info-item { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
+        .location-info-label { color: var(--text-muted); font-weight: 600; }
+        .location-info-value { font-family: var(--font-mono); color: var(--text-primary); }
+
+        /* Alerts */
+        .alert-box { padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem; text-align: center; font-weight: 600; font-size: 0.9rem; }
+        .alert-success { background: var(--emerald-dim); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--emerald); }
+        .alert-error { background: var(--red-dim); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--red); }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-buttons, .btn-primary { width: 100%; }
+            .table-wrap { border: none; background: transparent; }
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            tbody tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
+            }
+            td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+            }
+            td:last-child { border-bottom: none; justify-content: center; padding-top: 1rem; }
+            td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+            }
+            .actions { justify-content: flex-end; width: 100%; }
+            .location-controls { flex-direction: column; }
+            .btn-gps { width: 100%; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     
-    <a href="admin_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Admin Dashboard
-    </a>
+    <div class="top-bar">
+        <a href="admin_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-map-pin"></i> Geography</span>
+    </div>
+
+    <div class="page-header">
+        <div class="header-info">
+            <h1>Location <span>Management</span></h1>
+            <p>Define and manage physical farm sites and geographic data.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddModal()">
+            <i class="fa-solid fa-plus"></i> Add New Location
+        </button>
+    </div>
 
     <?php if (!empty($msg)): ?>
         <div class="alert-box alert-<?php echo htmlspecialchars($status); ?>">
+            <i class="fa-solid <?php echo ($status == 'success') ? 'fa-circle-check' : 'fa-circle-exclamation'; ?> me-2"></i>
             <?php echo htmlspecialchars(urldecode($msg)); ?>
         </div>
     <?php endif; ?>
 
-    <div class="header">
-        <div class="header-info">
-            <h1><i class="fas fa-map-marker-alt"></i> Location Management</h1>
-            <p>Manage Locations and their geographic information</p>
-        </div>
-        <button class="add-btn" onclick="openAddModal()">
-            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add Location
-        </button>
-    </div>
-
     <div class="search-container">
-        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-        </svg>
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
         <input type="text" class="search-input" placeholder="Search locations by name or address..." onkeyup="filterTable()">
     </div>
 
-    <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Location ID</th>
-                    <th>Location Name</th>
-                    <th>Address</th>
-                    <th>Coordinates</th>
-                    <th style="text-align: center;">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="location-table">
-                <?php foreach($location_data as $data): ?>
-                <tr data-id="<?php echo $data['LOCATION_ID']; ?>" 
-                    data-lat="<?php echo $data['LATITUDE']; ?>" 
-                    data-lon="<?php echo $data['LONGITUDE']; ?>"
-                    data-address="<?php echo htmlspecialchars($data['COMPLETE_ADDRESS'] ?? ''); ?>"
-                    data-city="<?php echo htmlspecialchars($data['CITY'] ?? ''); ?>"
-                    data-province="<?php echo htmlspecialchars($data['PROVINCE'] ?? ''); ?>">
-                    
-                    <td><?php echo $data['LOCATION_ID']; ?></td>
-                    <td>
-                        <div class="location-name"><?php echo htmlspecialchars($data['LOCATION_NAME']); ?></div>
-                    </td>
-                    <td>
-                        <div class="location-address">
-                            <?php echo !empty($data['COMPLETE_ADDRESS']) ? htmlspecialchars($data['COMPLETE_ADDRESS']) : '-'; ?>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="location-address">
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">ID</th>
+                        <th>Location Name</th>
+                        <th>Address</th>
+                        <th>Coordinates</th>
+                        <th style="text-align: center; width: 150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="location-table">
+                    <?php foreach($location_data as $data): ?>
+                    <tr data-id="<?php echo $data['LOCATION_ID']; ?>" 
+                        data-lat="<?php echo $data['LATITUDE']; ?>" 
+                        data-lon="<?php echo $data['LONGITUDE']; ?>"
+                        data-address="<?php echo htmlspecialchars($data['COMPLETE_ADDRESS'] ?? ''); ?>"
+                        data-city="<?php echo htmlspecialchars($data['CITY'] ?? ''); ?>"
+                        data-province="<?php echo htmlspecialchars($data['PROVINCE'] ?? ''); ?>">
+                        
+                        <td data-label="ID" class="col-id">#<?php echo $data['LOCATION_ID']; ?></td>
+                        <td data-label="Location Name" class="col-name"><?php echo htmlspecialchars($data['LOCATION_NAME']); ?></td>
+                        <td data-label="Address">
+                            <span class="location-address" style="color: var(--text-secondary);">
+                                <?php echo !empty($data['COMPLETE_ADDRESS']) ? htmlspecialchars($data['COMPLETE_ADDRESS']) : '-'; ?>
+                            </span>
+                        </td>
+                        <td data-label="Coordinates" class="col-coord">
                             <?php 
                             if(!empty($data['LATITUDE']) && !empty($data['LONGITUDE'])) {
-                                echo number_format($data['LATITUDE'], 6) . ', ' . number_format($data['LONGITUDE'], 6);
-                            } else {
-                                echo '-';
-                            }
+                                echo number_format($data['LATITUDE'], 4) . ', ' . number_format($data['LONGITUDE'], 4);
+                            } else { echo '-'; }
                             ?>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="actions">
-                            <button class="action-btn view" onclick="viewLocation(this)" title="View on Map">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="action-btn edit" onclick="editLocation(this)" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="action-btn delete" onclick="deleteLocation(this)" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        <div id="empty-state" class="empty-state" style="<?php echo empty($location_data) ? 'display:block' : 'display:none'; ?>">
-            <h3>No locations found</h3>
-            <p>Try adjusting your search terms</p>
+                        </td>
+                        <td data-label="Actions">
+                            <div class="actions">
+                                <button class="action-btn view" onclick="viewLocation(this)" title="View on Map"><i class="fas fa-eye"></i></button>
+                                <button class="action-btn edit" onclick="editLocation(this)" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn delete" onclick="deleteLocation(this)" title="Delete"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <div id="empty-state" class="empty-state" style="<?php echo empty($location_data) ? 'display:block' : 'display:none'; ?>">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <h3>No locations found</h3>
+                <p>Add your first farm site to get started.</p>
+            </div>
         </div>
     </div>
 </div>
@@ -171,16 +349,16 @@ try {
                 <input type="hidden" id="location_id" name="location_id">
                 
                 <div class="form-group">
-                    <label for="location_name">Location Name</label>
-                    <input type="text" id="location_name" name="location_name" placeholder="Enter location name" required>
+                    <label class="form-label">Location Name *</label>
+                    <input type="text" class="form-control" id="location_name" name="location_name" placeholder="e.g. North Pasture" required>
                 </div>
 
                 <div class="location-controls">
-                    <button type="button" class="btn-gps" id="gpsBtn" onclick="getCurrentLocation()">
-                        <i class="fas fa-location-arrow"></i> Use My Location
+                    <button type="button" class="btn btn-gps" id="gpsBtn" onclick="getCurrentLocation()">
+                        <i class="fas fa-location-arrow"></i> Use My GPS
                     </button>
                     <div class="search-container location-search">
-                        <input type="text" class="search-input" id="locationSearch" placeholder="Search location...">
+                        <input type="text" class="form-control" id="locationSearch" placeholder="Search address...">
                         <div class="search-results" id="searchResults"></div>
                     </div>
                 </div>
@@ -190,31 +368,31 @@ try {
                 <div class="location-info">
                     <div class="location-info-item">
                         <span class="location-info-label">Coordinates:</span>
-                        <span class="location-info-value" id="loc-coordinates">Click on map to set location</span>
+                        <span class="location-info-value" id="loc-coordinates">Not set</span>
                     </div>
                 </div>
 
-                <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label style="font-weight: 500; color: #333;">Address Information (Optional)</label>
-                        <button type="button" class="btn-gps" onclick="fetchAddressFromCoordinates()" id="fetchAddressBtn" style="padding: 6px 12px; font-size: 13px;">
-                            <i class="fas fa-sync"></i> Auto-Fill Address
+                <div style="margin-top: 15px; padding: 1.25rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <label class="form-label" style="margin:0;">Geographic Details</label>
+                        <button type="button" class="btn btn-gps" onclick="fetchAddressFromCoordinates()" id="fetchAddressBtn" style="padding: 4px 10px; font-size: 11px;">
+                            <i class="fas fa-magic"></i> Auto-Fill
                         </button>
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="manual_address" style="font-size: 13px; color: #666;">Complete Address</label>
-                        <input type="text" id="manual_address" name="address" placeholder="Enter address manually or click Auto-Fill" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <div class="form-group">
+                        <label class="form-label">Full Address</label>
+                        <input type="text" class="form-control" id="manual_address" name="address" placeholder="Street, Barangay...">
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-row">
                         <div class="form-group">
-                            <label for="manual_city" style="font-size: 13px; color: #666;">City</label>
-                            <input type="text" id="manual_city" name="city" placeholder="City" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control" id="manual_city" name="city">
                         </div>
                         <div class="form-group">
-                            <label for="manual_province" style="font-size: 13px; color: #666;">Province</label>
-                            <input type="text" id="manual_province" name="province" placeholder="Province" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <label class="form-label">Province</label>
+                            <input type="text" class="form-control" id="manual_province" name="province">
                         </div>
                     </div>
                 </div>
@@ -224,8 +402,8 @@ try {
             </form>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-            <button type="button" class="btn-save" onclick="submitForm()" id="saveBtn">Save Location</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitForm()" id="saveBtn">Save Site</button>
         </div>
     </div>
 </div>
@@ -233,27 +411,27 @@ try {
 <div id="viewModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>View Location</h2>
+            <h2 id="view-title">Location Overview</h2>
         </div>
         <div class="modal-body">
             <div id="viewMap"></div>
             <div class="location-info">
                 <div class="location-info-item">
-                    <span class="location-info-label">Location Name:</span>
+                    <span class="location-info-label">Name:</span>
                     <span class="location-info-value" id="view-name">-</span>
                 </div>
                 <div class="location-info-item">
-                    <span class="location-info-label">Coordinates:</span>
+                    <span class="location-info-label">Coords:</span>
                     <span class="location-info-value" id="view-coordinates">-</span>
                 </div>
                 <div class="location-info-item">
                     <span class="location-info-label">Address:</span>
-                    <span class="location-info-value" id="view-address">-</span>
+                    <span class="location-info-value" id="view-address" style="font-family: inherit; font-size: 0.8rem; text-align: right; line-height: 1.4;">-</span>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn-cancel" onclick="closeViewModal()">Close</button>
+            <button type="button" class="btn btn-ghost" onclick="closeViewModal()">Close</button>
         </div>
     </div>
 </div>
@@ -264,41 +442,25 @@ try {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let map;
-    let viewMap;
-    let marker;
-    let searchTimeout;
+    let map, viewMap, marker, searchTimeout;
     let isEditMode = false;
 
     function openAddModal() {
         isEditMode = false;
         document.getElementById('modal-title').textContent = 'Add New Location';
-        
         document.getElementById('locationForm').reset();
         document.getElementById('locationForm').action = '../process/addLocation.php';
         document.getElementById('location_id').value = '';
         document.getElementById('saveBtn').textContent = 'Save Location';
-        
-        document.getElementById('loc-coordinates').textContent = 'Click on map to set location';
-        
-        document.getElementById('latitude').value = '';
-        document.getElementById('longitude').value = '';
-        document.getElementById('manual_address').value = '';
-        document.getElementById('manual_city').value = '';
-        document.getElementById('manual_province').value = '';
-        
+        document.getElementById('loc-coordinates').textContent = 'Not set';
         document.getElementById('locationModal').classList.add('show');
         
         setTimeout(() => {
-            if (!map) {
-                initMap();
-            } else {
+            if (!map) { initMap(); } 
+            else {
                 map.invalidateSize();
-                if (marker) {
-                    map.removeLayer(marker);
-                    marker = null;
-                }
-                map.setView([10.250608982512142, 123.94947052001955], 13);
+                if (marker) { map.removeLayer(marker); marker = null; }
+                map.setView([10.250608, 123.949470], 13);
             }
         }, 100);
     }
@@ -306,96 +468,50 @@ try {
     function editLocation(btn) {
         isEditMode = true;
         const row = btn.closest('tr');
-        
-        const locationId = row.getAttribute('data-id');
-        const locationName = row.querySelector('.location-name').textContent.trim();
-        const address = row.getAttribute('data-address');
-        const city = row.getAttribute('data-city');
-        const province = row.getAttribute('data-province');
         const latStr = row.getAttribute('data-lat');
         const lonStr = row.getAttribute('data-lon');
 
-        document.getElementById('modal-title').textContent = 'Edit Location';
+        document.getElementById('modal-title').textContent = 'Edit Site Details';
         document.getElementById('locationForm').action = '../process/updateLocation.php';
-        document.getElementById('saveBtn').textContent = 'Update Location';
-        
-        document.getElementById('location_id').value = locationId;
-        document.getElementById('location_name').value = locationName;
-
+        document.getElementById('saveBtn').textContent = 'Update Site';
+        document.getElementById('location_id').value = row.getAttribute('data-id');
+        document.getElementById('location_name').value = row.querySelector('.col-name').textContent.trim();
+        document.getElementById('manual_address').value = row.getAttribute('data-address');
+        document.getElementById('manual_city').value = row.getAttribute('data-city');
+        document.getElementById('manual_province').value = row.getAttribute('data-province');
         document.getElementById('latitude').value = latStr;
         document.getElementById('longitude').value = lonStr;
-        document.getElementById('manual_address').value = address;
-        document.getElementById('manual_city').value = city;
-        document.getElementById('manual_province').value = province;
 
         if (latStr && lonStr) {
-            const lat = parseFloat(latStr);
-            const lon = parseFloat(lonStr);
-            document.getElementById('loc-coordinates').textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-        } else {
-            document.getElementById('loc-coordinates').textContent = 'Not set';
+            document.getElementById('loc-coordinates').textContent = `${parseFloat(latStr).toFixed(6)}, ${parseFloat(lonStr).toFixed(6)}`;
         }
         
         document.getElementById('locationModal').classList.add('show');
         
         setTimeout(() => {
-            if (!map) {
-                initMap();
-            } else {
-                map.invalidateSize();
-                if (marker) {
-                    map.removeLayer(marker);
-                }
-            }
-            
+            if (!map) { initMap(); } else { map.invalidateSize(); }
             if (latStr && lonStr) {
-                const lat = parseFloat(latStr);
-                const lon = parseFloat(lonStr);
-                if (!isNaN(lat) && !isNaN(lon)) {
-                    map.setView([lat, lon], 16);
-                    placeMarker(lat, lon);
-                }
-            } else {
-                map.setView([10.250608982512142, 123.94947052001955], 13);
+                const lat = parseFloat(latStr), lon = parseFloat(lonStr);
+                map.setView([lat, lon], 16);
+                placeMarker(lat, lon);
             }
         }, 100);
     }
 
-    function closeModal() {
-        document.getElementById('locationModal').classList.remove('show');
-    }
-
     function initMap() {
-        const defaultLat = 10.250608982512142;
-        const defaultLon = 123.94947052001955;
-
-        map = L.map('map').setView([defaultLat, defaultLon], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
-
-        map.on('click', function(e) {
-            placeMarker(e.latlng.lat, e.latlng.lng);
-        });
+        map = L.map('map', { zoomControl: false }).setView([10.250608, 123.949470], 13);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
+        map.on('click', (e) => placeMarker(e.latlng.lat, e.latlng.lng));
     }
 
     function placeMarker(lat, lon) {
-        if (marker) {
-            map.removeLayer(marker);
-        }
-
-        marker = L.marker([lat, lon], { 
-            draggable: true,
-            riseOnHover: true 
-        }).addTo(map);
-
-        marker.on('dragend', function() {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+        marker.on('dragend', () => {
             const pos = marker.getLatLng();
             placeMarker(pos.lat, pos.lng);
         });
-
         document.getElementById('loc-coordinates').textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         document.getElementById('latitude').value = lat;
         document.getElementById('longitude').value = lon;
@@ -404,282 +520,79 @@ try {
     async function fetchAddressFromCoordinates() {
         const lat = document.getElementById('latitude').value;
         const lon = document.getElementById('longitude').value;
-
-        if (!lat || !lon) {
-            alert('Please select a location on the map first');
-            return;
-        }
-
-        const fetchBtn = document.getElementById('fetchAddressBtn');
-        const originalHTML = fetchBtn.innerHTML;
-        fetchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-        fetchBtn.disabled = true;
+        if (!lat) return alert('Select a point on the map first');
+        
+        const btn = document.getElementById('fetchAddressBtn');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
 
         try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`,
-                {
-                    headers: { 
-                        'User-Agent': 'LocationManagementSystem/1.0',
-                        'Accept': 'application/json'
-                    }
-                }
-            );
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+            const data = await res.json();
             if (data.address) {
-                const address = data.display_name || '';
-                const city = data.address.city || data.address.town || data.address.municipality || 
-                             data.address.village || data.address.county || '';
-                const province = data.address.state || data.address.province || 
-                               data.address.region || '';
-                
-                document.getElementById('manual_address').value = address;
-                document.getElementById('manual_city').value = city;
-                document.getElementById('manual_province').value = province;
-                
-                alert('Address filled successfully!');
-            } else {
-                throw new Error('No address data available');
+                document.getElementById('manual_address').value = data.display_name;
+                document.getElementById('manual_city').value = data.address.city || data.address.town || '';
+                document.getElementById('manual_province').value = data.address.state || '';
             }
-        } catch (error) {
-            console.error('Geocoding error:', error);
-            alert('Unable to fetch address. You can enter it manually or try again later.');
-        } finally {
-            fetchBtn.innerHTML = originalHTML;
-            fetchBtn.disabled = false;
-        }
+        } catch (e) { alert('Geocoding service busy. Please try again.'); }
+        btn.innerHTML = '<i class="fas fa-magic"></i> Auto-Fill';
+        btn.disabled = false;
     }
 
     function getCurrentLocation() {
-        if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser.');
-            return;
-        }
-
-        const gpsBtn = document.getElementById('gpsBtn');
-        const originalHTML = gpsBtn.innerHTML;
-        gpsBtn.innerHTML = '<span class="loading-spinner"></span> Getting Location...';
-        gpsBtn.disabled = true;
-
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                
-                map.setView([lat, lon], 16);
-                placeMarker(lat, lon);
-                
-                gpsBtn.innerHTML = originalHTML;
-                gpsBtn.disabled = false;
-            },
-            function(error) {
-                console.error('Geolocation error:', error);
-                alert('Unable to get your location. Please ensure location permissions are enabled.');
-                gpsBtn.innerHTML = originalHTML;
-                gpsBtn.disabled = false;
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
+        if (!navigator.geolocation) return alert('GPS not supported');
+        navigator.geolocation.getCurrentPosition((p) => {
+            map.setView([p.coords.latitude, p.coords.longitude], 16);
+            placeMarker(p.coords.latitude, p.coords.longitude);
+        });
     }
 
     function viewLocation(btn) {
         const row = btn.closest('tr');
-        const locationName = row.querySelector('.location-name').textContent;
-        const locationAddress = row.getAttribute('data-address') || '-';
-        const latitude = parseFloat(row.getAttribute('data-lat'));
-        const longitude = parseFloat(row.getAttribute('data-lon'));
-        
-        document.getElementById('view-name').textContent = locationName;
-        document.getElementById('view-address').textContent = locationAddress;
-        
-        if (latitude && longitude) {
-            document.getElementById('view-coordinates').textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-        } else {
-            document.getElementById('view-coordinates').textContent = 'No coordinates available';
-        }
-        
+        const lat = parseFloat(row.getAttribute('data-lat')), lon = parseFloat(row.getAttribute('data-lon'));
+        document.getElementById('view-name').textContent = row.querySelector('.col-name').textContent;
+        document.getElementById('view-address').textContent = row.getAttribute('data-address') || '-';
+        document.getElementById('view-coordinates').textContent = lat ? `${lat.toFixed(6)}, ${lon.toFixed(6)}` : 'Not set';
         document.getElementById('viewModal').classList.add('show');
-        
         setTimeout(() => {
             if (!viewMap) {
-                viewMap = L.map('viewMap');
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 19
-                }).addTo(viewMap);
-            } else {
-                viewMap.invalidateSize();
-                viewMap.eachLayer(layer => {
-                    if (layer instanceof L.Marker) {
-                        viewMap.removeLayer(layer);
-                    }
-                });
+                viewMap = L.map('viewMap', { zoomControl: false });
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(viewMap);
             }
-            
-            if (latitude && longitude) {
-                viewMap.setView([latitude, longitude], 16);
-                L.marker([latitude, longitude]).addTo(viewMap);
-            } else {
-                viewMap.setView([10.250608982512142, 123.94947052001955], 13);
+            viewMap.invalidateSize();
+            if (lat) {
+                viewMap.setView([lat, lon], 16);
+                L.marker([lat, lon]).addTo(viewMap);
             }
         }, 100);
     }
 
-    function closeViewModal() {
-        document.getElementById('viewModal').classList.remove('show');
-    }
-
     function deleteLocation(btn) {
-        const row = btn.closest('tr');
-        const locationId = row.getAttribute('data-id');
-        const locationName = row.querySelector('.location-name').textContent;
-        
-        if (confirm(`Are you sure you want to delete the location "${locationName}"? This action cannot be undone.`)) {
-            document.getElementById('delete_location_id').value = locationId;
+        const id = btn.closest('tr').getAttribute('data-id');
+        const name = btn.closest('tr').querySelector('.col-name').textContent;
+        if (confirm(`Permanently remove site: ${name}?`)) {
+            document.getElementById('delete_location_id').value = id;
             document.getElementById('deleteLocationForm').submit();
         }
     }
 
-    function submitForm() {
-        const locationName = document.getElementById('location_name').value.trim();
-        
-        if (!locationName) {
-            alert('Please enter a location name');
-            return;
-        }
-        
-        if (!isEditMode) {
-             const latitude = document.getElementById('latitude').value;
-             if (!latitude) {
-                 alert('Please set a location on the map');
-                 return;
-             }
-        }
-        
-        document.getElementById('locationForm').submit();
-    }
-
     function filterTable() {
-        const input = document.querySelector('.search-input');
-        const filter = input.value.toUpperCase();
-        const rows = document.getElementById('location-table').getElementsByTagName('tr');
-        let visible = 0;
-        
-        for (let i = 0; i < rows.length; i++) {
-            const nameCol = rows[i].getElementsByTagName('td')[1];
-            const addressCol = rows[i].getElementsByTagName('td')[2];
-            
-            if (nameCol && addressCol) {
-                const nameValue = nameCol.textContent || nameCol.innerText;
-                const addressValue = addressCol.textContent || addressCol.innerText;
-                
-                if (nameValue.toUpperCase().indexOf(filter) > -1 || addressValue.toUpperCase().indexOf(filter) > -1) {
-                    rows[i].style.display = '';
-                    visible++;
-                } else {
-                    rows[i].style.display = 'none';
-                }
-            }
-        }
-        
-        const emptyState = document.getElementById('empty-state');
-        if (visible === 0) {
-            emptyState.style.display = 'block';
-        } else {
-            emptyState.style.display = 'none';
-        }
+        const term = document.querySelector('.search-input').value.toLowerCase();
+        const rows = document.querySelectorAll('#location-table tr');
+        let count = 0;
+        rows.forEach(r => {
+            const match = r.textContent.toLowerCase().includes(term);
+            r.style.display = match ? '' : 'none';
+            if(match) count++;
+        });
+        document.getElementById('empty-state').style.display = count ? 'none' : 'block';
     }
 
-    document.getElementById('locationSearch').addEventListener('input', function() {
-        const query = this.value.trim();
-        const resultsContainer = document.getElementById('searchResults');
-        
-        clearTimeout(searchTimeout);
-        
-        if (query.length < 3) {
-            resultsContainer.style.display = 'none';
-            return;
-        }
-        
-        searchTimeout = setTimeout(async function() {
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`,
-                    { 
-                        headers: { 
-                            'User-Agent': 'LocationManagementSystem/1.0',
-                            'Accept': 'application/json'
-                        } 
-                    }
-                );
-                
-                if (!response.ok) throw new Error('Search failed');
-                const data = await response.json();
-                
-                resultsContainer.innerHTML = '';
-                
-                if (data.length === 0) {
-                    resultsContainer.innerHTML = '<div class="search-result">No results found</div>';
-                } else {
-                    data.forEach(item => {
-                        const resultItem = document.createElement('div');
-                        resultItem.className = 'search-result';
-                        resultItem.textContent = item.display_name;
-                        resultItem.addEventListener('click', function() {
-                            const lat = parseFloat(item.lat);
-                            const lon = parseFloat(item.lon);
-                            
-                            map.setView([lat, lon], 16);
-                            placeMarker(lat, lon);
-                            
-                            resultsContainer.style.display = 'none';
-                            document.getElementById('locationSearch').value = '';
-                        });
-                        resultsContainer.appendChild(resultItem);
-                    });
-                }
-                resultsContainer.style.display = 'block';
-            } catch (error) {
-                console.error('Search error:', error);
-                resultsContainer.innerHTML = '<div class="search-result">Search unavailable</div>';
-                resultsContainer.style.display = 'block';
-            }
-        }, 800);
-    });
+    function closeModal() { document.getElementById('locationModal').classList.remove('show'); }
+    function closeViewModal() { document.getElementById('viewModal').classList.remove('show'); }
+    function submitForm() { document.getElementById('locationForm').submit(); }
 
-    document.addEventListener('click', function(e) {
-        const searchInput = document.getElementById('locationSearch');
-        const searchResults = document.getElementById('searchResults');
-        
-        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-            searchResults.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const rows = document.getElementById('location-table').getElementsByTagName('tr');
-        if (rows.length === 0) {
-            document.getElementById('empty-state').style.display = 'block';
-        }
-        
-        // Auto-hide alerts
-        const alerts = document.querySelectorAll('.alert-box');
-        if(alerts.length > 0) {
-            setTimeout(() => {
-                alerts.forEach(el => el.style.display = 'none');
-            }, 5000);
-        }
-    });
+    window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) { closeModal(); closeViewModal(); }});
 </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 <?php
 // ../views/veterinary.php
-
+error_reporting(0);
+ini_set('display_errors', 0);
 $page="admin_dashboard";
 include '../config/Connection.php';
 
@@ -17,7 +18,7 @@ if($_SESSION['user']['USER_TYPE'] < 3)
     exit();
 }
 
-// UPDATED SQL: Retrieve directly from VETERINARIANS table
+// Retrieve directly from VETERINARIANS table
 $sql = "SELECT VET_ID, FULL_NAME, CONTACT_INFO FROM VETERINARIANS ORDER BY VET_ID DESC";
 $vet_data = retrieveData($conn, $sql);
 ?>
@@ -26,152 +27,274 @@ $vet_data = retrieveData($conn, $sql);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Veterinary Management System</title>
-    <style>
-        /* (Keep your existing CSS styles exactly as they were) */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        
-        /* Back Link Style */
-        .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
-        }
-        .back-link:hover { color: white; }
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .header-info h1 { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
-        .header-info p { color: #cbd5e1; }
-        .add-btn { display: flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .add-btn:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); transform: scale(1.05); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
-        .search-container { position: relative; margin-bottom: 2rem; }
-        .search-input { width: 100%; padding: 1rem 1rem 1rem 3rem; background: rgba(30, 41, 59, 0.5); border: 1px solid #475569; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); }
-        .search-input::placeholder { color: #94a3b8; }
-        .search-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
-        .table-container { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(10px); border-radius: 0.75rem; border: 1px solid #475569; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
-        .table { width: 100%; border-collapse: collapse; }
-        .table thead { background: linear-gradient(135deg, #475569, #334155); }
-        .table th { padding: 1rem 1.5rem; text-align: left; font-size: 0.875rem; font-weight: 600; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; }
-        .table tbody tr { border-bottom: 1px solid #475569; transition: background-color 0.2s; }
-        .table tbody tr:hover { background: rgba(55, 65, 81, 0.5); }
-        .table td { padding: 1rem 1.5rem; vertical-align: middle; }
+    <style>
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(139,92,246,0.5); /* Purple Accent */
+            --purple:         #8b5cf6;
+            --purple-dim:     rgba(139,92,246,0.12);
+            --purple-glow:    rgba(139,92,246,0.25);
+            --blue:           #38bdf8;
+            --red:            #f87171;
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 60px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139,92,246,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── TOP BAR & HEADER ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
+        }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
+
+        .page-badge {
+            display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
+            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--purple); background: var(--purple-dim); border: 1px solid rgba(139,92,246,0.2);
+            padding: 6px 12px; border-radius: 99px;
+        }
+
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 0.25rem 0;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--purple), #7c3aed);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-primary { background: var(--purple); color: #fff; }
+        .btn-primary:hover { background: #7c3aed; box-shadow: 0 0 16px var(--purple-glow); transform: translateY(-2px); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+
+        /* ─── SEARCH ─── */
+        .search-container { position: relative; margin-bottom: 1.5rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; height: 18px; }
+        .search-input {
+            width: 100%; padding: 14px 14px 14px 2.8rem; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            color: var(--text-primary); font-size: 1rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .search-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-glow); background: var(--bg-hover); }
+
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+        }
+        .table-wrap { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
+
         .vet-info { display: flex; align-items: center; gap: 1rem; }
-        .vet-avatar { width: 3rem; height: 3rem; background: linear-gradient(135deg, #3b82f6, #9333ea); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.125rem; }
-        .vet-details h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
-        .contact-info { color: #cbd5e1; font-size: 0.875rem; }
-        .actions { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .action-btn { padding: 0.5rem; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: transparent; }
-        .action-btn.edit { color: #60a5fa; }
-        .action-btn.edit:hover { color: #93c5fd; background: rgba(59, 130, 246, 0.2); }
-        .action-btn.delete { color: #f87171; }
-        .action-btn.delete:hover { color: #fca5a5; background: rgba(239, 68, 68, 0.2); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 1rem; }
-        .modal.show { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: #1e293b; border-radius: 0.75rem; width: 100%; max-width: 28rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid #475569; }
-        .modal-header h2 { font-size: 1.5rem; font-weight: bold; }
+        .vet-avatar {
+            width: 2.8rem; height: 2.8rem; background: linear-gradient(135deg, var(--purple), #6d28d9);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1rem; color: #fff; border: 2px solid rgba(255,255,255,0.1);
+        }
+        .vet-details h3 { font-size: 1.05rem; font-weight: 600; color: #fff; margin: 0; }
+        .contact-text { color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.85rem; }
+
+        /* Actions */
+        .actions { display: flex; justify-content: center; gap: 8px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.edit:hover { color: var(--blue); border-color: var(--blue); }
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
+
+        /* ─── MODALS ─── */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden;
+        }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--purple); }
         .modal-body { padding: 1.5rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
-        .form-group label { color: #cbd5e1; font-size: 0.875rem; font-weight: 500; }
-        .form-group input { padding: 0.75rem; background: #374151; border: 1px solid #4b5563; border-radius: 0.5rem; color: white; font-size: 1rem; }
-        .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .modal-footer { padding: 1.5rem; border-top: 1px solid #475569; display: flex; justify-content: flex-end; gap: 0.75rem; }
-        .btn-cancel { padding: 0.5rem 1.5rem; background: transparent; border: none; color: #cbd5e1; cursor: pointer; transition: color 0.2s; }
-        .btn-cancel:hover { color: white; }
-        .btn-save { padding: 0.5rem 1.5rem; background: linear-gradient(135deg, #2563eb, #9333ea); border: none; border-radius: 0.5rem; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-save:hover { background: linear-gradient(135deg, #1d4ed8, #7c3aed); }
-        .empty-state { text-align: center; padding: 3rem 1rem; display: none; }
-        .empty-state h3 { font-size: 1.125rem; color: #94a3b8; margin-bottom: 0.5rem; }
-        .empty-state p { color: #64748b; font-size: 0.875rem; }
-        .icon { width: 18px; height: 18px; }
+        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); }
+
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .form-control {
+            width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .form-control:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-glow); }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); display: none; }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.2; display: block; }
+
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            .header { flex-direction: column; gap: 1rem; text-align: center; }
-            .header-info h1 { font-size: 2rem; }
-            .table-container { overflow-x: auto; }
-            .table { min-width: 600px; }
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-info { width: 100%; text-align: center; }
+            .add-btn { width: 100%; justify-content: center; }
+
+            .table-wrap { border: none; background: transparent; }
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            tbody tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
+            }
+            td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+            }
+            td:last-child { border-bottom: none; justify-content: center; padding-top: 1rem; }
+            td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+            }
+            .vet-info { justify-content: flex-end; width: 100%; }
+            .actions { justify-content: flex-end; width: 100%; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         
-        <a href="admin_dashboard.php" class="back-link">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Admin Dashboard
-        </a>
+        <div class="top-bar">
+            <a href="admin_dashboard.php" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <span class="page-badge"><i class="fa-solid fa-stethoscope"></i> Clinical Staff</span>
+        </div>
 
-        <div class="header">
+        <div class="page-header">
             <div class="header-info">
-                <h1>Veterinary Management</h1>
-                <p>Manage your veterinary team and their information</p>
+                <h1>Veterinary <span>Management</span></h1>
+                <p>Manage your professional veterinary team and clinical contacts.</p>
             </div>
-            <button class="add-btn" onclick="openAddModal()">
-                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Add Veterinarian
+            <button class="btn btn-primary" onclick="openAddModal()">
+                <i class="fa-solid fa-user-md"></i> Add Veterinarian
             </button>
         </div>
 
         <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input type="text" class="search-input" placeholder="Search veterinarians by name or contact..." onkeyup="filterTable()">
         </div>
 
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Veterinarian</th>
-                        <th>Contact</th>
-                        <th style="text-align: center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="veterinarian-table">
-                    <?php foreach ($vet_data as $vet): ?>
-                    <tr data-id="<?php echo $vet['VET_ID']; ?>" 
-                        data-name="<?php echo htmlspecialchars($vet['FULL_NAME']); ?>" 
-                        data-contact="<?php echo htmlspecialchars($vet['CONTACT_INFO']); ?>">
-                        <td>
-                            <div class="vet-info">
-                                <div class="vet-avatar"><?php echo getInitials($vet['FULL_NAME']); ?></div>
-                                <div class="vet-details">
-                                    <h3><?php echo htmlspecialchars($vet['FULL_NAME']); ?></h3>
+        <div class="table-card">
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Practitioner Details</th>
+                            <th>Contact Information</th>
+                            <th style="text-align: center; width: 150px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="veterinarian-table">
+                        <?php foreach ($vet_data as $vet): ?>
+                        <tr data-id="<?php echo $vet['VET_ID']; ?>" 
+                            data-name="<?php echo htmlspecialchars($vet['FULL_NAME']); ?>" 
+                            data-contact="<?php echo htmlspecialchars($vet['CONTACT_INFO']); ?>">
+                            <td data-label="Veterinarian">
+                                <div class="vet-info">
+                                    <div class="vet-avatar"><?php echo getInitials($vet['FULL_NAME']); ?></div>
+                                    <div class="vet-details">
+                                        <h3><?php echo htmlspecialchars($vet['FULL_NAME']); ?></h3>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="contact-info">
-                                <?php echo !empty($vet['CONTACT_INFO']) ? htmlspecialchars($vet['CONTACT_INFO']) : "Not Set"; ?>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="actions">
-                                <button class="action-btn edit" onclick="editVet(this)" title="Edit">
-                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                </button>
-                                <button class="action-btn delete" onclick="deleteVet(this)" title="Delete">
-                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <div id="empty-state" class="empty-state">
-                <h3>No veterinarians found</h3>
-                <p>Try adjusting your search terms</p>
+                            </td>
+                            <td data-label="Contact">
+                                <div class="contact-text">
+                                    <i class="fa-solid fa-phone-alt me-2" style="font-size: 0.75rem; opacity: 0.5;"></i>
+                                    <?php echo !empty($vet['CONTACT_INFO']) ? htmlspecialchars($vet['CONTACT_INFO']) : "Not Set"; ?>
+                                </div>
+                            </td>
+                            <td data-label="Actions">
+                                <div class="actions">
+                                    <button class="action-btn edit" onclick="editVet(this)" title="Edit Profile">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button class="action-btn delete" onclick="deleteVet(this)" title="Remove Account">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <div id="empty-state" class="empty-state" style="<?php echo empty($vet_data) ? 'display:block' : 'display:none'; ?>">
+                    <i class="fa-solid fa-user-md"></i>
+                    <h3>No medical staff found</h3>
+                    <p>Register your first veterinarian to begin managing clinical records.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -186,18 +309,18 @@ $vet_data = retrieveData($conn, $sql);
                     <input type="hidden" id="vet_id" name="user_id">
                     
                     <div class="form-group">
-                        <label for="name">Full Name</label>
-                        <input type="text" id="name" name="fullName" placeholder="Dr. Louis Vincent" required>
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" class="form-control" id="name" name="fullName" placeholder="Dr. Louis Vincent" required>
                     </div>
                     <div class="form-group">
-                        <label for="contact">Contact Number</label>
-                        <input type="text" id="contact" name="contactInfo" placeholder="09657877713" required>
+                        <label class="form-label">Contact Number *</label>
+                        <input type="text" class="form-control" id="contact" name="contactInfo" placeholder="e.g. 09657877713" required>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitForm()">Save</button>
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button type="button" class="btn btn-primary btn-save" onclick="submitForm()">Save Specialist</button>
             </div>
         </div>
     </div>
@@ -207,123 +330,74 @@ $vet_data = retrieveData($conn, $sql);
     </form>
 
     <script>
-        // Open add modal
         function openAddModal() {
             document.getElementById('modal-title').textContent = 'Add New Veterinarian';
             document.querySelector('.btn-save').textContent = 'Add Veterinarian';
-            
-            // Set form to Add Mode
             const form = document.getElementById('vet-form');
             form.action = '../process/addVeterinarian.php'; 
             form.reset();
-            document.getElementById('vet_id').value = ''; // Clear ID
-            
+            document.getElementById('vet_id').value = '';
             document.getElementById('modal').classList.add('show');
         }
 
-        // Edit veterinarian
         function editVet(button) {
             const row = button.closest('tr');
-            
-            // Get data from data-attributes
             const id = row.getAttribute('data-id');
             const name = row.getAttribute('data-name');
             const contact = row.getAttribute('data-contact');
             
-            document.getElementById('modal-title').textContent = 'Edit Veterinarian';
-            document.querySelector('.btn-save').textContent = 'Update Veterinarian';
-            
-            // Set form to Edit Mode
+            document.getElementById('modal-title').textContent = 'Edit Professional Details';
+            document.querySelector('.btn-save').textContent = 'Update Profile';
             const form = document.getElementById('vet-form');
-            form.action = '../process/editVeterinarian.php'; // Points to the edit process
+            form.action = '../process/editVeterinarian.php'; 
             
             document.getElementById('vet_id').value = id;
             document.getElementById('name').value = name;
             document.getElementById('contact').value = contact;
-            
             document.getElementById('modal').classList.add('show');
         }
 
-        // Submit the form in the modal
         function submitForm() {
             const form = document.getElementById('vet-form');
             const name = document.getElementById('name').value.trim();
             const contact = document.getElementById('contact').value.trim();
 
-            if (!name || !contact) {
-                alert('Please fill in all fields');
-                return;
-            }
-
-            // Optional confirmation
-            const actionType = document.querySelector('.btn-save').textContent;
-            if (confirm(`Do you want to ${actionType.toLowerCase()}?`)) {
-                form.submit();
-            }
+            if (!name || !contact) { alert('Please fill in all required fields'); return; }
+            const actionText = document.querySelector('.btn-save').textContent;
+            if (confirm(`Are you sure you want to ${actionText.toLowerCase()}?`)) { form.submit(); }
         }
 
-        // Delete veterinarian
         function deleteVet(button) {
             const row = button.closest('tr');
             const id = row.getAttribute('data-id');
-
-            if (confirm('Are you sure you want to remove this veterinarian?')) {
+            if (confirm('Permanently remove this veterinarian from the system?')) {
                 document.getElementById('delete_vet_id').value = id;
                 document.getElementById('deleteVetForm').submit();
             }
         }
 
-        // Close modal
-        function closeModal() {
-            document.getElementById('modal').classList.remove('show');
-        }
+        function closeModal() { document.getElementById('modal').classList.remove('show'); }
 
-        // Filter table
         function filterTable() {
-            const searchTerm = document.querySelector('.search-input').value.toLowerCase();
+            const term = document.querySelector('.search-input').value.toLowerCase();
             const rows = document.querySelectorAll('#veterinarian-table tr');
-            let visibleCount = 0;
+            let count = 0;
 
             rows.forEach(row => {
-                const name = row.querySelector('.vet-details h3').textContent.toLowerCase();
-                const contact = row.querySelector('.contact-info').textContent.toLowerCase();
-                
-                if (name.includes(searchTerm) || contact.includes(searchTerm)) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
+                const text = row.innerText.toLowerCase();
+                const match = text.includes(term);
+                row.style.display = match ? '' : 'none';
+                if(match) count++;
             });
 
-            checkEmptyState(visibleCount);
+            document.getElementById('empty-state').style.display = (count === 0) ? 'block' : 'none';
         }
 
-        // Check empty state
-        function checkEmptyState(visibleCount) {
-            const tbody = document.getElementById('veterinarian-table');
-            const emptyState = document.getElementById('empty-state');
-            const totalRows = tbody.querySelectorAll('tr').length;
-            const actualVisibleCount = visibleCount !== undefined ? visibleCount : tbody.querySelectorAll('tr:not([style*="display: none"])').length;
-
-            if (totalRows === 0 || actualVisibleCount === 0) {
-                emptyState.style.display = 'block';
-            } else {
-                emptyState.style.display = 'none';
-            }
-        }
-
-        // Close modal when clicking outside
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) closeModal();
         });
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            checkEmptyState();
-        });
+        document.addEventListener('DOMContentLoaded', filterTable);
     </script>
 </body>
 </html>

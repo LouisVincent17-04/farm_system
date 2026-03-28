@@ -17,16 +17,11 @@ if($_SESSION['user']['USER_TYPE'] < 3)
     exit();
 }
 
-
-// --- 1. HANDLE POST REQUESTS (Add/Edit/Delete) ---
+// --- 1. HANDLE POST REQUESTS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
     try {
-        // DELETE HANDLER
         if (isset($_POST['delete_id'])) {
             $delId = $_POST['delete_id'];
-            
-            // Check transactions
             $checkStmt = $conn->prepare("SELECT COUNT(*) FROM animal_sales WHERE CUSTOMER_NAME = (SELECT FULL_NAME FROM buyers WHERE BUYER_ID = ?)");
             $checkStmt->execute([$delId]);
             
@@ -38,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['flash_success'] = "Buyer removed successfully.";
             }
         } 
-        // ADD/EDIT HANDLER
         else {
             $name = trim($_POST['full_name']);
             $contact = trim($_POST['contact_no']);
@@ -46,12 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['buyer_id'] ?? null;
 
             if ($id) {
-                // Edit
                 $stmt = $conn->prepare("UPDATE buyers SET FULL_NAME=?, CONTACT_NO=?, ADDRESS=? WHERE BUYER_ID=?");
                 $stmt->execute([$name, $contact, $addr, $id]);
                 $_SESSION['flash_success'] = "Buyer updated successfully.";
             } else {
-                // Add
                 $stmt = $conn->prepare("INSERT INTO buyers (FULL_NAME, CONTACT_NO, ADDRESS) VALUES (?, ?, ?)");
                 $stmt->execute([$name, $contact, $addr]);
                 $_SESSION['flash_success'] = "New buyer added successfully.";
@@ -60,153 +52,224 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         $_SESSION['flash_error'] = "Error: " . $e->getMessage();
     }
-
-    // --- REDIRECT TO PREVENT DUPLICATES ---
     header("Location: buyers.php");
     exit();
 }
 
-// --- 2. FETCH DATA & MESSAGES ---
+// --- 2. FETCH DATA ---
 $buyers = $conn->query("SELECT * FROM buyers WHERE IS_ACTIVE = 1 ORDER BY FULL_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-// Retrieve Flash Messages
-$success_msg = "";
-$error_msg = "";
-
-if (isset($_SESSION['flash_success'])) {
-    $success_msg = $_SESSION['flash_success'];
-    unset($_SESSION['flash_success']);
-}
-if (isset($_SESSION['flash_error'])) {
-    $error_msg = $_SESSION['flash_error'];
-    unset($_SESSION['flash_error']);
-}
+$success_msg = $_SESSION['flash_success'] ?? "";
+$error_msg = $_SESSION['flash_error'] ?? "";
+unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Buyer Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Customer Management</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
     <style>
-        /* Shared Styles */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; margin:0; padding-bottom: 40px; }
-        
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        
-        /* Back Link Style */
+        /* ─── CSS VARIABLES ─── */
+        :root {
+            --bg-base:        #080f1a;
+            --bg-surface:     #0d1829;
+            --bg-elevated:    #111f35;
+            --bg-hover:       #162540;
+            --border:         rgba(255,255,255,0.07);
+            --border-active:  rgba(56,189,248,0.5); /* Sky Blue Accent */
+            --sky:            #38bdf8;
+            --sky-dim:        rgba(56,189,248,0.12);
+            --sky-glow:       rgba(56,189,248,0.25);
+            --green:          #22c55e;
+            --red:            #f87171;
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted:     #475569;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --radius-xl:      20px;
+            --font:           'DM Sans', system-ui, sans-serif;
+            --font-mono:      'DM Mono', monospace;
+            --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        /* ─── RESET & BASE ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,0.06) 0%, transparent 60%);
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* ─── HEADER & TOP BAR ─── */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
         .back-link {
-            display: inline-flex; align-items: center; gap: 8px; 
-            text-decoration: none; color: #94a3b8; font-weight: 600; 
-            font-size: 0.95rem; margin-bottom: 20px; transition: color 0.2s;
+            display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
+            padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); transition: all var(--transition);
         }
-        .back-link:hover { color: white; }
+        .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
-        .header h1 { margin: 0; font-size: 1.8rem; color: #0ea5e9; }
-        
-        /* Filters & Sort */
-        .filters-wrapper { display: flex; gap: 15px; margin-bottom: 2rem; flex-wrap: wrap; }
-        .search-container { position: relative; flex: 1; min-width: 250px; }
-        .search-input { width: 100%; padding: 14px 14px 14px 45px; background: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 0.5rem; color: white; font-size: 1rem; backdrop-filter: blur(10px); box-sizing: border-box; }
-        .search-input::placeholder { color: #94a3b8; }
-        .search-input:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 20px; height: 20px; }
-        
+        .page-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+        }
+        .header-info h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
+        }
+        .header-info h1 span {
+            background: linear-gradient(135deg, var(--sky), #0ea5e9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
+            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
+            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
+        }
+        .btn-primary { background: var(--sky); color: #000; }
+        .btn-primary:hover { background: #7dd3fc; box-shadow: 0 0 16px var(--sky-glow); transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+
+        /* ─── FILTERS & SEARCH ─── */
+        .filters-wrapper {
+            display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+            background: var(--bg-surface); border: 1px solid var(--border);
+            padding: 1rem; border-radius: var(--radius-xl); align-items: center;
+        }
+        .search-container { position: relative; flex: 1; min-width: 250px; display: flex; align-items: center; }
+        .search-icon { position: absolute; left: 1rem; color: var(--text-muted); width: 18px; height: 18px; pointer-events: none; }
+        .search-input {
+            width: 100%; padding: 12px 12px 12px 2.8rem; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary);
+            font-size: 0.9rem; font-family: var(--font); outline: none; transition: all var(--transition);
+        }
+        .search-input:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); background: var(--bg-hover); }
+
         .sort-select {
-            width: auto; min-width: 220px; padding: 14px; border-radius: 0.5rem;
-            background: rgba(30, 41, 59, 0.5); border: 1px solid #334155;
-            color: white; font-size: 1rem; outline: none; transition: border-color 0.2s;
-            backdrop-filter: blur(10px); cursor: pointer;
+            width: auto; min-width: 200px; padding: 12px 36px 12px 12px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); font-size: 0.9rem; font-family: var(--font);
+            border-radius: var(--radius-md); outline: none; transition: all var(--transition);
+            appearance: none; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
         }
-        .sort-select:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
-        .sort-select option { background: #1e293b; color: white; }
 
-        .card { background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
-        
-        /* Table Default Styles */
-        .table { width: 100%; border-collapse: collapse; min-width: 600px;}
-        .table th { text-align: left; padding: 12px; background: rgba(15, 23, 42, 0.8); color: #0ea5e9; border-bottom: 1px solid #334155; text-transform: uppercase; font-size: 0.85rem;}
-        .table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
-        
-        .btn { padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        
-        .btn-primary { background: #0ea5e9; color: white; transition: background 0.2s;}
-        .btn-primary:hover { background: #0284c7; }
-        
-        .btn-edit { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 6px 12px; font-size: 0.85rem; }
-        .btn-edit:hover { background: rgba(59, 130, 246, 0.2); }
-        
-        .btn-delete { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px 12px; font-size: 0.85rem; margin-left: 5px; }
-        .btn-delete:hover { background: rgba(239, 68, 68, 0.2); }
-        
-        /* Alerts */
-        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: bold; text-align: center; }
-        .alert-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-        .alert-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        /* ─── TABLE ─── */
+        .table-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); overflow: hidden;
+        }
+        .table-wrap { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .table thead th {
+            background: var(--bg-elevated); color: var(--text-muted);
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+        .table tbody tr:last-child { border-bottom: none; }
+        .table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .table td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
 
-        /* Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
+        .col-name { font-weight: 600; color: #fff; font-size: 1rem; }
+        .col-contact { font-family: var(--font-mono); color: var(--sky); font-weight: 500; }
+        .col-address { color: var(--text-secondary); line-height: 1.5; font-size: 0.85rem; }
+
+        /* Actions */
+        .actions { display: flex; justify-content: center; gap: 8px; }
+        .action-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+        }
+        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .action-btn.edit:hover { color: var(--sky); border-color: var(--sky); }
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
+
+        /* ─── MODALS ─── */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
         .modal.show { display: flex; }
-        .modal-content { background: #1e293b; border-radius: 12px; width: 100%; max-width: 450px; padding: 2rem; border: 1px solid #475569; animation: zoomIn 0.2s; position: relative; }
-        @keyframes zoomIn { from {transform:scale(0.9); opacity:0;} to {transform:scale(1); opacity:1;} }
+        .modal-content {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); width: 100%; max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden;
+            animation: modalZoom 0.2s ease-out;
+        }
+        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         
-        .form-group { margin-bottom: 1rem; }
-        .form-label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; }
-        .form-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; font-size: 1rem; transition: 0.2s;}
-        .form-input:focus { border-color: #0ea5e9; outline: none; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--sky); }
+        .modal-body { padding: 1.5rem; }
+        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); }
 
-        /* --- MOBILE RESPONSIVENESS --- */
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.25rem; }
+        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .form-control {
+            width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border);
+            color: var(--text-primary); border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
+            outline: none; transition: all var(--transition);
+        }
+        .form-control:focus { border-color: var(--sky); box-shadow: 0 0 0 3px var(--sky-glow); }
+        textarea.form-control { resize: none; min-height: 80px; }
+
+        /* ─── ALERTS ─── */
+        .alert { padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem; text-align: center; font-weight: 600; font-size: 0.9rem; border: 1px solid transparent; }
+        .alert-success { background: var(--sky-dim); border-color: rgba(56,189,248,0.2); color: var(--sky); }
+        .alert-error { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.2); color: var(--red); }
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+
+        /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            .container { padding: 1rem; }
-            
-            /* Stack Header */
-            .header { flex-direction: column; align-items: stretch; text-align: center; }
-            .btn-primary { width: 100%; padding: 12px; font-size: 1rem; }
-            
+            .page-header { flex-direction: column; align-items: flex-start; }
+            .header-info { text-align: center; width: 100%; }
+            .header-buttons { width: 100%; }
+            .header-buttons .btn { width: 100%; }
             .filters-wrapper { flex-direction: column; }
             .sort-select { width: 100%; }
 
-            /* Table to Card View Transformation */
-            .table thead { display: none; } 
-            .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
-            
-            .table tr {
-                background: rgba(15, 23, 42, 0.6);
-                border: 1px solid #475569;
-                border-radius: 10px;
-                margin-bottom: 1rem;
-                padding: 1rem;
+            .table-wrap { border: none; background: transparent; }
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; }
+            .table thead { display: none; }
+            .table tbody tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
             }
-
-            .table td {
-                padding: 8px 0;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                text-align: right;
-                border-bottom: 1px solid rgba(255,255,255,0.05);
+            .table td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
             }
-
-            .table td:last-child { border-bottom: none; padding-top: 15px; justify-content: flex-end; gap: 10px; }
-
-            /* Add Labels via CSS */
-            .table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: #94a3b8;
-                font-size: 0.85rem;
-                text-transform: uppercase;
-                margin-right: 10px;
+            .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
+            .table td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; text-align: left;
             }
-
-            /* Adjust Buttons for Mobile */
-            .btn-edit, .btn-delete { padding: 8px 16px; font-size: 0.9rem; margin: 0; }
-            
-            /* Specific fix for Address text wrap */
-            .table td[data-label="Address"] { display: block; text-align: left; }
-            .table td[data-label="Address"]::before { display: block; margin-bottom: 5px; }
+            .actions { justify-content: flex-end; width: 100%; }
         }
     </style>
 </head>
@@ -214,32 +277,32 @@ if (isset($_SESSION['flash_error'])) {
 
 <div class="container">
     
-    <a href="admin_dashboard.php" class="back-link">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Admin Dashboard
-    </a>
-
-    <div class="header">
-        <h1>Buyer Management</h1>
-        <button class="btn btn-primary" onclick="openModal()">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            Add New Buyer
-        </button>
+    <div class="top-bar">
+        <a href="admin_dashboard.php" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <span class="page-badge"><i class="fa-solid fa-users"></i> CRM System</span>
     </div>
 
-    <?php if($error_msg): ?>
-        <div class="alert alert-error"><?= $error_msg ?></div>
-    <?php endif; ?>
-    <?php if($success_msg): ?>
-        <div class="alert alert-success"><?= $success_msg ?></div>
-    <?php endif; ?>
+    <div class="page-header">
+        <div class="header-info">
+            <h1>Buyer <span>Management</span></h1>
+            <p>Maintain customer profiles and track sales associations.</p>
+        </div>
+        <div class="header-buttons">
+            <button class="btn btn-primary" onclick="openModal()">
+                <i class="fa-solid fa-plus"></i> Add New Buyer
+            </button>
+        </div>
+    </div>
+
+    <?php if($error_msg): ?> <div class="alert alert-error"><i class="fa-solid fa-circle-exclamation me-2"></i><?= $error_msg ?></div> <?php endif; ?>
+    <?php if($success_msg): ?> <div class="alert alert-success"><i class="fa-solid fa-circle-check me-2"></i><?= $success_msg ?></div> <?php endif; ?>
 
     <div class="filters-wrapper">
         <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" class="search-input" placeholder="Search buyers by name, contact, or address..." onkeyup="filterTable()">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" class="search-input" placeholder="Search by name, contact, or address..." onkeyup="filterTable()">
         </div>
         
         <select class="sort-select" onchange="sortDropdown(this.value)">
@@ -250,160 +313,129 @@ if (isset($_SESSION['flash_error'])) {
         </select>
     </div>
 
-    <div class="card">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Contact</th>
-                    <th>Address</th>
-                    <th style="text-align: center;">Action</th>
-                </tr>
-            </thead>
-            <tbody id="buyer-table-body">
-                <?php if(empty($buyers)): ?>
-                    <tr id="empty-state-row"><td colspan="4" style="text-align:center; padding:2rem; color:#64748b;">No buyers found.</td></tr>
-                <?php else: ?>
-                    <?php foreach($buyers as $b): ?>
-                    <tr class="buyer-row" data-id="<?= $b['BUYER_ID'] ?>" data-name="<?= htmlspecialchars(strtolower($b['FULL_NAME'])) ?>">
-                        <td data-label="Name" style="font-weight:bold; color:white;"><?= htmlspecialchars($b['FULL_NAME']) ?></td>
-                        <td data-label="Contact"><?= htmlspecialchars($b['CONTACT_NO'] ?? 'N/A') ?></td>
-                        <td data-label="Address" style="color: #cbd5e1;"><?= htmlspecialchars($b['ADDRESS'] ?? 'N/A') ?></td>
-                        <td data-label="Action" style="text-align: center;">
-                            <div style="display: flex; justify-content: center; align-items: center;">
-                                <button class="btn btn-edit" onclick='openModal(<?= json_encode($b, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Edit</button>
-                                <form method="POST" style="display:inline; margin:0;" onsubmit="return confirm('Are you sure? This action cannot be undone if no history exists.');">
-                                    <input type="hidden" name="delete_id" value="<?= $b['BUYER_ID'] ?>">
-                                    <button type="submit" class="btn btn-delete">Remove</button>
-                                </form>
-                            </div>
-                        </td>
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Customer Name</th>
+                        <th>Contact Number</th>
+                        <th>Registered Address</th>
+                        <th style="text-align: center; width: 150px;">Actions</th>
                     </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="buyer-table-body">
+                    <?php if(empty($buyers)): ?>
+                        <tr id="empty-state-row"><td colspan="4" style="text-align:center; padding:4rem 2rem; color:var(--text-muted);">No active buyers found.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($buyers as $b): ?>
+                        <tr class="buyer-row" data-id="<?= $b['BUYER_ID'] ?>" data-name="<?= htmlspecialchars(strtolower($b['FULL_NAME'])) ?>">
+                            <td data-label="Name" class="col-name"><?= htmlspecialchars($b['FULL_NAME']) ?></td>
+                            <td data-label="Contact" class="col-contact"><?= htmlspecialchars($b['CONTACT_NO'] ?? 'N/A') ?></td>
+                            <td data-label="Address" class="col-address"><?= htmlspecialchars($b['ADDRESS'] ?? 'N/A') ?></td>
+                            <td data-label="Actions">
+                                <div class="actions">
+                                    <button class="action-btn edit" onclick='openModal(<?= json_encode($b, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)' title="Edit Profile">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <form method="POST" style="margin:0;" onsubmit="return confirm('Are you sure? This action cannot be undone if no history exists.');">
+                                        <input type="hidden" name="delete_id" value="<?= $b['BUYER_ID'] ?>">
+                                        <button type="submit" class="action-btn delete" title="Remove Buyer">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <div id="buyerModal" class="modal">
     <div class="modal-content">
-        <h2 id="modalTitle" style="margin-top:0; color:#0ea5e9; font-size: 1.5rem; margin-bottom: 1.5rem;">Add Buyer</h2>
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Buyer</h2>
+        </div>
         <form method="POST">
-            <input type="hidden" name="buyer_id" id="buyer_id">
-            <div class="form-group">
-                <label class="form-label">Full Name *</label>
-                <input type="text" name="full_name" id="full_name" class="form-input" required placeholder="e.g. Juan Dela Cruz">
+            <div class="modal-body">
+                <input type="hidden" name="buyer_id" id="buyer_id">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="full_name" id="full_name" class="form-control" required placeholder="e.g. Juan Dela Cruz">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Number</label>
+                    <input type="text" name="contact_no" id="contact_no" class="form-control" placeholder="e.g. 09123456789">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Complete Address</label>
+                    <textarea name="address" id="address" class="form-control" rows="3" placeholder="Barangay, City, Province"></textarea>
+                </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Contact Number</label>
-                <input type="text" name="contact_no" id="contact_no" class="form-input" placeholder="09123456789">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Address</label>
-                <textarea name="address" id="address" class="form-input" rows="3" placeholder="Barangay, City, Province"></textarea>
-            </div>
-            <div style="text-align: right; margin-top: 1.5rem; display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" class="btn" style="background:transparent; color:#94a3b8; border:1px solid #475569;" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Buyer</button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Profile</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    // --- MODAL LOGIC ---
     function openModal(data = null) {
-        document.getElementById('buyerModal').classList.add('show');
+        const modal = document.getElementById('buyerModal');
+        modal.classList.add('show');
         if(data) {
-            document.getElementById('modalTitle').innerText = 'Edit Buyer';
+            document.getElementById('modalTitle').innerText = 'Edit Customer Profile';
             document.getElementById('buyer_id').value = data.BUYER_ID;
             document.getElementById('full_name').value = data.FULL_NAME;
             document.getElementById('contact_no').value = data.CONTACT_NO;
             document.getElementById('address').value = data.ADDRESS;
         } else {
-            document.getElementById('modalTitle').innerText = 'Add Buyer';
+            document.getElementById('modalTitle').innerText = 'Register New Buyer';
             document.getElementById('buyer_id').value = '';
             document.querySelector('#buyerModal form').reset();
         }
     }
     
-    function closeModal() { 
-        document.getElementById('buyerModal').classList.remove('show'); 
-    }
+    function closeModal() { document.getElementById('buyerModal').classList.remove('show'); }
     
-    window.onclick = function(e) {
-        if (e.target == document.getElementById('buyerModal')) {
-            closeModal();
-        }
-    }
+    window.onclick = function(e) { if (e.target.classList.contains('modal')) closeModal(); }
 
-    // --- SORTING LOGIC ---
     function sortDropdown(val) {
         const tbody = document.getElementById('buyer-table-body');
         const rows = Array.from(tbody.querySelectorAll('.buyer-row'));
-        
         rows.sort((a, b) => {
-            const nameA = a.dataset.name || '';
-            const nameB = b.dataset.name || '';
+            if (val === 'name_asc') return a.dataset.name.localeCompare(b.dataset.name);
+            if (val === 'name_desc') return b.dataset.name.localeCompare(a.dataset.name);
             const idA = parseInt(a.dataset.id) || 0;
             const idB = parseInt(b.dataset.id) || 0;
-
-            if (val === 'name_asc') return nameA.localeCompare(nameB);
-            if (val === 'name_desc') return nameB.localeCompare(nameA);
-            if (val === 'newest') return idB - idA; // Highest ID first
-            if (val === 'oldest') return idA - idB; // Lowest ID first
+            return val === 'newest' ? idB - idA : idA - idB;
         });
-        
         rows.forEach(row => tbody.appendChild(row));
     }
 
-    // --- FILTER LOGIC ---
     function filterTable() {
         const term = document.querySelector('.search-input').value.toLowerCase();
         const rows = document.querySelectorAll('.buyer-row');
-        let visibleCount = 0;
-
+        let count = 0;
         rows.forEach(row => {
-            // Search across entire row text content
-            const textContent = row.textContent.toLowerCase();
-            
-            if (textContent.includes(term)) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
+            const match = row.textContent.toLowerCase().includes(term);
+            row.style.display = match ? '' : 'none';
+            if(match) count++;
         });
-
-        checkEmptyState(visibleCount);
+        const empty = document.getElementById('empty-state-row');
+        if(empty) empty.style.display = count === 0 ? '' : 'none';
     }
 
-    function checkEmptyState(visibleCount) {
-        const tbody = document.getElementById('buyer-table-body');
-        let emptyRow = document.getElementById('empty-state-row');
-        
-        if (visibleCount === 0) {
-            if (!emptyRow) {
-                emptyRow = document.createElement('tr');
-                emptyRow.id = 'empty-state-row';
-                emptyRow.innerHTML = '<td colspan="4" style="text-align:center; padding: 2rem; color: #94a3b8;">No buyers found matching your search.</td>';
-                tbody.appendChild(emptyRow);
-            }
-            emptyRow.style.display = '';
-        } else {
-            if (emptyRow) emptyRow.style.display = 'none';
-        }
-    }
-
-    // Auto-hide flash messages
     document.addEventListener('DOMContentLoaded', () => {
-        const alerts = document.querySelectorAll('.alert');
-        if (alerts.length > 0) {
-            setTimeout(() => {
-                alerts.forEach(el => el.style.display = 'none');
-            }, 4000);
-        }
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(el => el.style.opacity = '0');
+            setTimeout(() => { document.querySelectorAll('.alert').forEach(el => el.style.display = 'none'); }, 500);
+        }, 4000);
     });
 </script>
 
