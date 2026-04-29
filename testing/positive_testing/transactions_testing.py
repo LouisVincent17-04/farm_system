@@ -52,7 +52,7 @@ wait.until(EC.presence_of_element_located((By.ID, "signinEmail"))).send_keys(VAL
 driver.find_element(By.ID, "signinPassword").send_keys(VALID_PASS)
 driver.find_element(By.ID, "signinBtn").click()
 wait.until(EC.url_contains("admin_dashboard"))
-print("✅ Login successful")
+print("  Login successful")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -61,13 +61,13 @@ time.sleep(1)
 print("\n🧭 Going to Transactions...")
 driver.get(TRANSACTIONS)
 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "management-grid")))
-print("✅ Transactions page loaded")
+print("  Transactions page loaded")
 time.sleep(1)
 
 print("\n🐖 Going to Animal Purchases...")
 driver.get(PURCH_ANIMALS)
 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-btn")))
-print("✅ Animal Purchases page loaded")
+print("  Animal Purchases page loaded")
 time.sleep(1)
 
 print("\n➕ Adding animal purchase...")
@@ -89,12 +89,12 @@ driver.find_element(By.ID, "btn-save").click()
 
 try:
     wait.until(EC.alert_is_present())
-    print(f"✅ Animal Add — Alert: {driver.switch_to.alert.text}")
+    print(f"  Animal Add — Alert: {driver.switch_to.alert.text}")
     driver.switch_to.alert.accept()
 except:
     try:
         msg = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".alert.success")))
-        print(f"✅ Animal Add — {msg.text}")
+        print(f"  Animal Add — {msg.text}")
     except:
         print("⚠️  No alert after animal add")
 
@@ -106,7 +106,7 @@ time.sleep(2)
 print("\n🔙 Going back to Transactions...")
 driver.get(TRANSACTIONS)
 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "management-grid")))
-print("✅ Transactions page loaded")
+print("  Transactions page loaded")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -115,7 +115,7 @@ time.sleep(1)
 print("\n💊 Going to Medicine Purchases...")
 driver.get(PURCH_MEDICINE)
 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-btn")))
-print("✅ Medicine Purchases page loaded")
+print("  Medicine Purchases page loaded")
 time.sleep(1)
 
 print("\n➕ Adding medicine purchase...")
@@ -157,12 +157,12 @@ driver.find_element(By.ID, "btn-save").click()
 
 try:
     wait.until(EC.alert_is_present())
-    print(f"✅ Medicine Add — Alert: {driver.switch_to.alert.text}")
+    print(f"  Medicine Add — Alert: {driver.switch_to.alert.text}")
     driver.switch_to.alert.accept()
 except:
     try:
         msg = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".alert.success")))
-        print(f"✅ Medicine Add — {msg.text}")
+        print(f"  Medicine Add — {msg.text}")
     except:
         print("⚠️  No alert after medicine add")
 
@@ -174,7 +174,7 @@ time.sleep(2)
 print("\n🔙 Going back to Transactions...")
 driver.get(TRANSACTIONS)
 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "management-grid")))
-print("✅ Transactions page loaded")
+print("  Transactions page loaded")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -183,7 +183,7 @@ time.sleep(1)
 print("\n🧴 Going to Vitamins & Supplements Purchase...")
 driver.get(PURCH_VITAMINS)
 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-btn")))
-print("✅ Vitamins & Supplements page loaded")
+print("  Vitamins & Supplements page loaded")
 time.sleep(1)
 
 print("\n➕ Adding vitamin purchase...")
@@ -225,12 +225,12 @@ driver.find_element(By.ID, "btn-save").click()
 
 try:
     wait.until(EC.alert_is_present())
-    print(f"✅ Vitamins Add — Alert: {driver.switch_to.alert.text}")
+    print(f"  Vitamins Add — Alert: {driver.switch_to.alert.text}")
     driver.switch_to.alert.accept()
 except:
     try:
         msg = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".alert.success")))
-        print(f"✅ Vitamins Add — {msg.text}")
+        print(f"  Vitamins Add — {msg.text}")
     except:
         print("⚠️  No alert after vitamins add")
 
@@ -242,7 +242,7 @@ time.sleep(2)
 print("\n🔙 Going back to Transactions...")
 driver.get(TRANSACTIONS)
 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "management-grid")))
-print("✅ Transactions page loaded")
+print("  Transactions page loaded")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -251,7 +251,7 @@ time.sleep(1)
 print("\n💉 Going to Vaccine Purchase...")
 driver.get(PURCH_VACCINES)
 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-btn")))
-print("✅ Vaccine Purchase page loaded")
+print("  Vaccine Purchase page loaded")
 time.sleep(1)
 
 print("\n➕ Adding vaccine purchase...")
@@ -293,12 +293,12 @@ driver.find_element(By.ID, "btn-save").click()
 
 try:
     wait.until(EC.alert_is_present())
-    print(f"✅ Vaccine Add — Alert: {driver.switch_to.alert.text}")
+    print(f"  Vaccine Add — Alert: {driver.switch_to.alert.text}")
     driver.switch_to.alert.accept()
 except:
     try:
         msg = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".alert.success")))
-        print(f"✅ Vaccine Add — {msg.text}")
+        print(f"  Vaccine Add — {msg.text}")
     except:
         print("⚠️  No alert after vaccine add")
 
@@ -310,7 +310,7 @@ time.sleep(2)
 print("\n🔙 Going back to Transactions...")
 driver.get(TRANSACTIONS)
 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "management-grid")))
-print("✅ Transactions page loaded")
+print("  Transactions page loaded")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -319,7 +319,7 @@ time.sleep(1)
 print("\n🌾 Going to Feed Purchase...")
 driver.get(PURCH_FEEDS)
 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.add-btn")))
-print("✅ Feed Purchase page loaded")
+print("  Feed Purchase page loaded")
 time.sleep(1)
 
 print("\n➕ Adding feed purchase...")
@@ -361,12 +361,12 @@ driver.find_element(By.ID, "btn-save").click()
 
 try:
     wait.until(EC.alert_is_present())
-    print(f"✅ Feed Add — Alert: {driver.switch_to.alert.text}")
+    print(f"  Feed Add — Alert: {driver.switch_to.alert.text}")
     driver.switch_to.alert.accept()
 except:
     try:
         msg = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".alert.success")))
-        print(f"✅ Feed Add — {msg.text}")
+        print(f"  Feed Add — {msg.text}")
     except:
         print("⚠️  No alert after feed add")
 

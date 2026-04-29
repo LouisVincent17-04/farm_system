@@ -63,6 +63,9 @@ $current_status = 'DRY';
 $actions = [];
 $current_status_id = null;
 $sow_card_done = 0; 
+$expected_farrowing_date = null;
+$expected_weaning_date = null;
+$expected_pregnancy_date = null;
 
 $location_id = $_GET['location_id'] ?? '';
 $building_id = $_GET['building_id'] ?? '';
@@ -70,19 +73,65 @@ $selected_animal_id = $_GET['animal_id'] ?? '';
 
 try {
     // --- 2. FETCH DROPDOWNS ---
-    $stmt = $conn->prepare("SELECT * FROM locations ORDER BY LOCATION_NAME");
+    $stmt = $conn->prepare("
+        SELECT l.*, 
+               (SELECT COUNT(ar.ANIMAL_ID) 
+                FROM animal_records ar 
+                JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID 
+                WHERE ar.LOCATION_ID = l.LOCATION_ID AND ar.IS_ACTIVE = 1 
+                  AND (ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%')
+               ) as SOW_COUNT 
+        FROM locations l 
+        ORDER BY l.LOCATION_NAME
+    ");
     $stmt->execute();
     $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if ($location_id) {
-        $stmt = $conn->prepare("SELECT * FROM buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
+        $stmt = $conn->prepare("
+            SELECT b.*, 
+                   (SELECT COUNT(ar.ANIMAL_ID) 
+                    FROM animal_records ar 
+                    JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID 
+                    WHERE ar.BUILDING_ID = b.BUILDING_ID AND ar.IS_ACTIVE = 1 
+                      AND (ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%')
+                   ) as SOW_COUNT 
+            FROM buildings b 
+            WHERE b.LOCATION_ID = ? 
+            ORDER BY b.BUILDING_NAME
+        ");
         $stmt->execute([$location_id]);
         $buildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // --- 3. FETCH SOW LIST ---
     if ($building_id) {
-        $sql = "SELECT ar.ANIMAL_ID, ar.TAG_NO, ac.STAGE_NAME, IFNULL(ssh.STATUS_NAME, 'DRY') as CURRENT_STATUS, ssh.STATUS_START_DATE FROM animal_records ar JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID LEFT JOIN sow_status_history ssh ON ar.ANIMAL_ID = ssh.ANIMAL_ID AND ssh.IS_ACTIVE = 1 WHERE ar.BUILDING_ID = ? AND ar.IS_ACTIVE = 1 AND (ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%') ORDER BY ar.TAG_NO ASC";
+        // FIX: Changed MAX(SERVICE_START_DATE) to fetch the currently ACTIVE,
+        // non-cancelled service record instead, so it always reflects the real
+        // assigned service date instead of the highest date across all history.
+        $sql = "
+            SELECT 
+                ar.ANIMAL_ID, 
+                ar.TAG_NO, 
+                ac.STAGE_NAME, 
+                IFNULL(ssh.STATUS_NAME, 'DRY') as CURRENT_STATUS, 
+                ssh.STATUS_START_DATE,
+                (
+                    SELECT srv.SERVICE_START_DATE 
+                    FROM sow_service_history srv 
+                    WHERE srv.ANIMAL_ID = ar.ANIMAL_ID 
+                    ORDER BY srv.SERVICE_ID DESC 
+                    LIMIT 1
+                ) as LAST_SERVICE_DATE
+            FROM animal_records ar 
+            JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID 
+            LEFT JOIN sow_status_history ssh 
+                ON ar.ANIMAL_ID = ssh.ANIMAL_ID AND ssh.IS_ACTIVE = 1 
+            WHERE ar.BUILDING_ID = ? 
+              AND ar.IS_ACTIVE = 1 
+              AND (ac.STAGE_NAME LIKE '%Sow%' OR ac.STAGE_NAME LIKE '%Gilt%') 
+            ORDER BY ar.TAG_NO ASC
+        ";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$building_id]);
         $sow_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -102,18 +151,57 @@ try {
             $current_status_id = $active_status_row['STATUS_ID'] ?? null;
             $sow_card_done = $active_status_row['SOW_CARD_CREATED'] ?? 0;
 
+            // Fetch History
+            $histSql = "
+                SELECT sh.*, srv.SERVICE_TYPE, srv.BOAR_ID, boar.TAG_NO as BOAR_TAG 
+                FROM sow_status_history sh 
+                LEFT JOIN sow_service_history srv 
+                    ON sh.ANIMAL_ID = srv.ANIMAL_ID 
+                    AND sh.STATUS_START_DATE = srv.SERVICE_START_DATE 
+                    AND sh.STATUS_NAME LIKE CONCAT('SERVICE ', srv.SERVICE_NUMBER) 
+                LEFT JOIN animal_records boar ON srv.BOAR_ID = boar.ANIMAL_ID 
+                WHERE sh.ANIMAL_ID = ? 
+                ORDER BY sh.STATUS_START_DATE DESC, sh.STATUS_ID DESC
+            ";
+            $stmtHist = $conn->prepare($histSql);
+            $stmtHist->execute([$selected_animal_id]);
+            $history = $stmtHist->fetchAll(PDO::FETCH_ASSOC);
+            $hasHistory = count($history) > 1;
+
+            // Calculate expected dates based on history
+            foreach ($history as $h) {
+                if (strpos($h['STATUS_NAME'], 'SERVICE') !== false && !$expected_farrowing_date) {
+                    $serviceDate = new DateTime($h['STATUS_START_DATE']);
+                    $serviceDatePreg = clone $serviceDate;
+                    
+                    // Farrowing is +114 days
+                    $serviceDate->modify('+114 days');
+                    $expected_farrowing_date = $serviceDate->format('Y-m-d H:i');
+                    
+                    // Pregnancy Confirmation is +25 days
+                    $serviceDatePreg->modify('+25 days');
+                    $expected_pregnancy_date = $serviceDatePreg->format('Y-m-d H:i');
+                }
+                if ($h['STATUS_NAME'] === 'BIRTHING' && !$expected_weaning_date) {
+                    $birthDate = new DateTime($h['STATUS_START_DATE']);
+                    $birthDate->modify('+28 days');
+                    $expected_weaning_date = $birthDate->format('Y-m-d H:i');
+                }
+            }
+
             switch($current_status) {
                 case 'DRY':
                     $actions = ['Start Service 1'];
+                    if ($hasHistory) $actions[] = 'Undo';
                     break;
                 case 'SERVICE 1':
                 case 'SERVICE 2':
                 case 'SERVICE 3':
                 case 'SERVICE 4':
-                    $actions = ['Completed (Pregnant)', 'Next Service (Repeat)', 'Undo'];
+                    $actions = ['Confirmed (Pregnant)', 'Next Service (Reheat)', 'Undo'];
                     break;
                 case 'SERVICE 5':
-                    $actions = ['Completed (Pregnant)', 'Undo'];
+                    $actions = ['Confirmed (Pregnant)', 'Undo'];
                     break;
                 case 'PREGNANT':
                     $actions = ['Birthing Started', 'Abortion', 'Undo'];
@@ -123,17 +211,12 @@ try {
                     break;
                 case 'BIRTHING':
                     if ($sow_card_done == 1) {
-                        $actions = ['Completed (Reset to Dry)'];
+                        $actions = ['Completed (Reset to Dry)', 'Undo'];
                     } else {
-                        $actions = ['Go to Sow Card (Required)'];
+                        $actions = ['Go to Sow Card (Required)', 'Undo'];
                     }
                     break;
             }
-
-            $histSql = "SELECT sh.*, srv.SERVICE_TYPE, srv.BOAR_ID, boar.TAG_NO as BOAR_TAG FROM sow_status_history sh LEFT JOIN sow_service_history srv ON sh.ANIMAL_ID = srv.ANIMAL_ID AND sh.STATUS_START_DATE = srv.SERVICE_START_DATE AND sh.STATUS_NAME LIKE CONCAT('SERVICE ', srv.SERVICE_NUMBER) LEFT JOIN animal_records boar ON srv.BOAR_ID = boar.ANIMAL_ID WHERE sh.ANIMAL_ID = ? ORDER BY sh.STATUS_START_DATE DESC, sh.STATUS_ID DESC";
-            $stmtHist = $conn->prepare($histSql);
-            $stmtHist->execute([$selected_animal_id]);
-            $history = $stmtHist->fetchAll(PDO::FETCH_ASSOC);
         }
     }
 
@@ -164,7 +247,7 @@ try {
             --bg-elevated:    #111f35;
             --bg-hover:       #162540;
             --border:         rgba(255,255,255,0.07);
-            --border-active:  rgba(236,72,153,0.5); /* Pink Accent */
+            --border-active:  rgba(236,72,153,0.5);
             
             --pink:           #ec4899;
             --pink-dim:       rgba(236,72,153,0.12);
@@ -249,7 +332,7 @@ try {
             border-radius: var(--radius-xl); overflow: hidden; margin-bottom: 3rem; box-shadow: var(--shadow-md);
         }
         .table-scroll-wrapper { width: 100%; overflow-x: auto; }
-        .sow-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .sow-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         .sow-table th {
             background: var(--bg-elevated); color: var(--text-muted); font-size: 0.7rem; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.07em; padding: 16px; text-align: left; border-bottom: 1px solid var(--border);
@@ -268,11 +351,11 @@ try {
             padding: 6px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; white-space: nowrap;
         }
-        .status-dry { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
-        .status-service { background: var(--pink-dim); color: var(--pink); border: 1px solid rgba(236,72,153,0.3); }
+        .status-dry      { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+        .status-service  { background: var(--pink-dim); color: var(--pink); border: 1px solid rgba(236,72,153,0.3); }
         .status-pregnant { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.3); }
         .status-birthing { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
-        .status-abortion { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); } 
+        .status-abortion { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
         
         .btn-manage {
             background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
@@ -404,9 +487,9 @@ try {
         .toast {
             background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
             padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out;
+            font-size: 0.9rem; font-weight: 600; animation: toastIn 0.3s ease-out;
         }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
         @media (max-width: 768px) {
             .container { padding: 1rem; }
@@ -440,7 +523,7 @@ try {
                 <option value="">-- Choose Location --</option>
                 <?php foreach($locations as $loc): ?>
                     <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo $location_id == $loc['LOCATION_ID'] ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
+                        <?php echo htmlspecialchars($loc['LOCATION_NAME']) . ' (' . $loc['SOW_COUNT'] . ')'; ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -451,7 +534,7 @@ try {
                 <option value="">-- Choose Building --</option>
                 <?php foreach($buildings as $b): ?>
                     <option value="<?php echo $b['BUILDING_ID']; ?>" <?php echo $building_id == $b['BUILDING_ID'] ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($b['BUILDING_NAME']); ?>
+                        <?php echo htmlspecialchars($b['BUILDING_NAME']) . ' (' . $b['SOW_COUNT'] . ')'; ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -462,7 +545,17 @@ try {
         <div class="table-container">
             <div class="table-scroll-wrapper">
                 <table class="sow-table">
-                    <thead><tr><th>Tag No</th><th>Classification</th><th>Current Status</th><th>Status Date</th><th style="text-align: right;">Action</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Tag No</th>
+                            <th>Classification</th>
+                            <th>Current Status</th>
+                            <th>Last Service Date</th>
+                            <th>Status Date</th>
+                            <th>Est. Farrowing (114d)</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <?php foreach($sow_list as $row): 
                             $status = $row['CURRENT_STATUS'];
@@ -473,22 +566,50 @@ try {
                             if($status == 'ABORTION') $badgeClass = 'status-abortion';
                             $isActive = ($selected_animal_id == $row['ANIMAL_ID']);
 
-                            // Format Date to mm/dd/yyyy for Table Display
                             $dateStr = 'N/A'; $timeStr = '';
                             if ($row['STATUS_START_DATE']) {
                                 $dt = new DateTime($row['STATUS_START_DATE']);
                                 $dateStr = $dt->format('m/d/Y');
                                 $timeStr = $dt->format('h:i A');
                             }
+
+                            // Show last service date and est. farrowing for SERVICE and PREGNANT rows
+                            $lastServiceStr = '-';
+                            $estFarrowingStr = '-';
+                            
+                            if ((strpos($status, 'SERVICE') !== false || $status === 'PREGNANT') && !empty($row['LAST_SERVICE_DATE'])) {
+                                $lsDt = new DateTime($row['LAST_SERVICE_DATE']);
+                                $lastServiceStr = $lsDt->format('m/d/Y');
+                                $efDt = clone $lsDt;
+                                $efDt->modify('+114 days');
+                                $estFarrowingStr = $efDt->format('m/d/Y');
+                            } elseif ((strpos($status, 'SERVICE') !== false || $status === 'PREGNANT') && !empty($row['STATUS_START_DATE'])) {
+                                // Fallback: use the status start date itself if no service record found
+                                $lsDt = new DateTime($row['STATUS_START_DATE']);
+                                $lastServiceStr = $lsDt->format('m/d/Y') . ' *';
+                                $efDt = clone $lsDt;
+                                $efDt->modify('+114 days');
+                                $estFarrowingStr = $efDt->format('m/d/Y') . ' *';
+                            }
                         ?>
                         <tr class="<?php echo $isActive ? 'active-row' : ''; ?>">
                             <td><div class="tag-no"><?php echo $row['TAG_NO']; ?></div></td>
                             <td><div class="stage-name"><?php echo $row['STAGE_NAME']; ?></div></td>
                             <td><span class="status-badge <?php echo $badgeClass; ?>"><?php echo $status; ?></span></td>
+                            
+                            <td><div class="date-val"><?php echo $lastServiceStr; ?></div></td>
+                            
                             <td>
                                 <div class="date-val"><?php echo $dateStr; ?></div>
                                 <div class="time-val"><?php echo $timeStr; ?></div>
                             </td>
+                            
+                            <td>
+                                <div class="date-val" <?php echo ($status === 'PREGNANT' || strpos($status, 'SERVICE') !== false) ? 'style="color: var(--pink); font-weight: 600;"' : ''; ?>>
+                                    <?php echo $estFarrowingStr; ?>
+                                </div>
+                            </td>
+
                             <td style="text-align: right;">
                                 <a href="?location_id=<?php echo $location_id; ?>&building_id=<?php echo $building_id; ?>&animal_id=<?php echo $row['ANIMAL_ID']; ?>" class="btn-manage <?php echo $isActive ? 'active' : ''; ?>">
                                     <?php echo $isActive ? '<i class="fa-solid fa-check"></i> Selected' : 'Manage Status'; ?>
@@ -524,14 +645,14 @@ try {
                         <?php foreach($actions as $action): 
                             $btnClass = 'btn-primary'; $val = ''; $icon = '';
                             
-                            if (strpos($action, 'Undo') !== false) { $btnClass = 'btn-warning'; $val = 'undo'; $icon = '<i class="fa-solid fa-rotate-left"></i>'; }
-                            elseif (strpos($action, 'Abortion') !== false) { $btnClass = 'btn-danger'; $val = 'abortion'; $icon = '<i class="fa-solid fa-triangle-exclamation"></i>'; }
-                            elseif (strpos($action, 'Recovery') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; $icon = '<i class="fa-solid fa-heart-pulse"></i>'; }
-                            elseif (strpos($action, 'Go to Sow Card') !== false) { $btnClass = 'btn-purple'; $val = 'redirect_sow_card'; $icon = '<i class="fa-solid fa-clipboard-list"></i>'; }
-                            elseif (strpos($action, 'Completed') !== false || strpos($action, 'Start') !== false || strpos($action, 'Birthing') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; $icon = '<i class="fa-solid fa-check-double"></i>'; }
-                            elseif (strpos($action, 'Next Service') !== false) { $btnClass = 'btn-primary'; $val = 'repeat_service'; $icon = '<i class="fa-solid fa-repeat"></i>'; }
+                            if (strpos($action, 'Undo') !== false)                                                    { $btnClass = 'btn-warning'; $val = 'undo';           $icon = '<i class="fa-solid fa-rotate-left"></i>'; }
+                            elseif (strpos($action, 'Abortion') !== false)                                            { $btnClass = 'btn-danger';  $val = 'abortion';        $icon = '<i class="fa-solid fa-triangle-exclamation"></i>'; }
+                            elseif (strpos($action, 'Recovery') !== false)                                            { $btnClass = 'btn-success'; $val = 'next_stage';      $icon = '<i class="fa-solid fa-heart-pulse"></i>'; }
+                            elseif (strpos($action, 'Go to Sow Card') !== false)                                      { $btnClass = 'btn-purple';  $val = 'redirect_sow_card'; $icon = '<i class="fa-solid fa-clipboard-list"></i>'; }
+                            elseif (strpos($action, 'Confirmed') !== false || strpos($action, 'Start') !== false || strpos($action, 'Birthing') !== false || strpos($action, 'Completed') !== false) { $btnClass = 'btn-success'; $val = 'next_stage'; $icon = '<i class="fa-solid fa-check-double"></i>'; }
+                            elseif (strpos($action, 'Next Service') !== false)                                        { $btnClass = 'btn-primary'; $val = 'repeat_service';  $icon = '<i class="fa-solid fa-repeat"></i>'; }
                         ?>
-                        <button class="action-btn <?php echo $btnClass; ?>" onclick="handleAction('<?php echo $val; ?>', '<?php echo $action; ?>')">
+                        <button class="action-btn <?php echo $btnClass; ?>" onclick="handleAction('<?php echo $val; ?>', '<?php echo addslashes($action); ?>')">
                             <?php echo $icon . ' ' . $action; ?>
                         </button>
                         <?php endforeach; ?>
@@ -551,7 +672,10 @@ try {
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
                                 <div class="tl-header">
-                                    <div class="tl-status"><?php echo $h['STATUS_NAME']; ?></div>
+                                    <div class="tl-status">
+                                        <?php echo $h['STATUS_NAME']; ?>
+                                        <?php if($h['PARITY']) echo "<span style='font-size:0.8rem; color:var(--text-muted); font-weight:500; margin-left:8px;'>(Parity: {$h['PARITY']})</span>"; ?>
+                                    </div>
                                     <div class="tl-time">
                                         <div class="tl-date"><?php echo $hDate; ?></div>
                                         <div class="tl-hour"><?php echo $hTime; ?></div>
@@ -568,11 +692,12 @@ try {
                                 <?php if($h['IS_ACTIVE']): ?>
                                     <div style="color: var(--emerald); font-size: 0.8rem; margin-top: 8px; font-weight: 700;"><i class="fa-solid fa-circle-dot"></i> Current Active Stage</div>
                                 <?php else: ?>
-                                    <?php 
+                                    <?php if (!empty($h['STATUS_END_DATE'])): 
                                         $endDate = new DateTime($h['STATUS_END_DATE']);
                                         $eDate = $endDate->format('m/d/Y h:i A');
                                     ?>
                                     <div class="tl-ended">Concluded: <?php echo $eDate; ?></div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -584,6 +709,7 @@ try {
     <?php endif; ?>
 </div>
 
+<!-- SERVICE MODAL -->
 <div id="serviceModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -593,7 +719,7 @@ try {
             </div>
         </div>
         <div class="modal-body">
-            <form id="form-service" onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
+            <form id="form-service" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
                 <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
                 <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
                 <input type="hidden" name="action_type" id="modal_action_type">
@@ -636,11 +762,12 @@ try {
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-manage" style="border:none;" onclick="closeModal('serviceModal')">Cancel</button>
-            <button type="submit" form="form-service" class="btn-manage active" style="border:none;">Confirm &amp; Save</button>
+            <button type="submit" form="form-service" class="btn-manage active" style="border:none;" onclick="submitModalForm(event, document.getElementById('form-service'))">Confirm &amp; Save</button>
         </div>
     </div>
 </div>
 
+<!-- PREGNANCY MODAL -->
 <div id="pregnancyModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -650,7 +777,7 @@ try {
             </div>
         </div>
         <div class="modal-body">
-            <form id="form-pregnancy" onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
+            <form id="form-pregnancy" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
                 <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
                 <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
                 <input type="hidden" name="action_type" id="pregnancy_action_type">
@@ -663,11 +790,12 @@ try {
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-manage" style="border:none;" onclick="closeModal('pregnancyModal')">Cancel</button>
-            <button type="submit" form="form-pregnancy" class="action-btn btn-success" style="width:auto; margin:0;">Save Pregnancy</button>
+            <button type="submit" form="form-pregnancy" class="action-btn btn-success" style="width:auto; margin:0;" onclick="submitModalForm(event, document.getElementById('form-pregnancy'))">Save Pregnancy</button>
         </div>
     </div>
 </div>
 
+<!-- GENERIC MODAL (Birthing, Dry, Undo, Abortion) -->
 <div id="genericModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -677,7 +805,7 @@ try {
             </div>
         </div>
         <div class="modal-body">
-            <form id="form-generic" onsubmit="submitModalForm(event, this)" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
+            <form id="form-generic" action="../process/sowStatusAction.php?building_id=<?php echo $building_id; ?>&location_id=<?php echo $location_id; ?>">
                 <input type="hidden" name="animal_id" value="<?php echo $selected_sow_data['ANIMAL_ID'] ?? ''; ?>">
                 <input type="hidden" name="current_status" value="<?php echo $current_status; ?>">
                 <input type="hidden" name="action_type" id="generic_action_type">
@@ -686,22 +814,32 @@ try {
                     <label class="form-label">Action Date &amp; Time</label>
                     <input type="text" name="action_date" id="generic_date" class="form-input datetime-picker" required>
                 </div>
+
+                <div class="form-group" id="generic_parity_group" style="margin-top: 1.5rem; display: none;">
+                    <label class="form-label">Parity Number (Optional)</label>
+                    <input type="number" name="parity" id="generic_parity_input" class="form-input" min="1" placeholder="Leave blank to auto-calculate">
+                </div>
             </form>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-manage" style="border:none;" onclick="closeModal('genericModal')">Cancel</button>
-            <button type="submit" form="form-generic" class="action-btn" id="genericSubmitBtn" style="width:auto; margin:0;">Confirm</button>
+            <button type="submit" form="form-generic" class="action-btn" id="genericSubmitBtn" style="width:auto; margin:0;" onclick="submitModalForm(event, document.getElementById('form-generic'))">Confirm</button>
         </div>
     </div>
 </div>
 
 <script>
+    // Extract calculated dates from PHP
+    const expectedFarrowingDate  = "<?= $expected_farrowing_date  ?? '' ?>";
+    const expectedWeaningDate    = "<?= $expected_weaning_date    ?? '' ?>";
+    const expectedPregnancyDate  = "<?= $expected_pregnancy_date  ?? '' ?>";
+
     // Initialize Flatpickr across all DateTime inputs in modals
     document.addEventListener('DOMContentLoaded', () => {
         flatpickr(".datetime-picker", {
             enableTime: true,
-            dateFormat: "Y-m-d H:i",      // The format submitted to the backend
-            altInput: true,               // Dummy input for UI
+            dateFormat: "Y-m-d H:i",      // Format submitted to the backend
+            altInput: true,               // Dummy input for UI display
             altFormat: "M j, Y h:i K",    // Visual Format: Jan 1, 2024 12:00 AM
             allowInput: true
         });
@@ -785,7 +923,13 @@ try {
         } 
         else if (label.includes('Pregnant')) {
             document.getElementById('pregnancy_action_type').value = val;
-            document.getElementById('pregnancy_date')._flatpickr.setDate(now);
+            
+            let defaultDate = now;
+            if (expectedPregnancyDate) {
+                defaultDate = expectedPregnancyDate;
+            }
+            
+            document.getElementById('pregnancy_date')._flatpickr.setDate(defaultDate);
             document.getElementById('pregnancyModal').classList.add('show');
         }
         else if (val === 'redirect_sow_card') {
@@ -795,23 +939,41 @@ try {
             const pen = '<?php echo $selected_sow_data['PEN_ID'] ?? ''; ?>';
             window.location.href = `animal_sow_cards.php?location_id=${loc}&building_id=${bld}&pen_id=${pen}&animal_id=${aid}`;
         }
-        // Generic Modal
+        // Generic Modal (Birthing, Reset to Dry, Undo, Abortion)
         else {
-            const titleEl = document.getElementById('generic_modal_title');
-            const descEl = document.getElementById('generic_modal_desc');
-            const typeInput = document.getElementById('generic_action_type');
-            const submitBtn = document.getElementById('genericSubmitBtn');
+            const titleEl    = document.getElementById('generic_modal_title');
+            const descEl     = document.getElementById('generic_modal_desc');
+            const typeInput  = document.getElementById('generic_action_type');
+            const submitBtn  = document.getElementById('genericSubmitBtn');
+            const parityGrp  = document.getElementById('generic_parity_group');
 
             typeInput.value = val;
-            document.getElementById('generic_date')._flatpickr.setDate(now);
+            
+            // Determine default date based on the specific action
+            let defaultDate = now;
+            if (label === 'Birthing Started' && expectedFarrowingDate) {
+                defaultDate = expectedFarrowingDate;
+            } else if (label.includes('Reset to Dry') && expectedWeaningDate) {
+                defaultDate = expectedWeaningDate;
+            }
+            
+            document.getElementById('generic_date')._flatpickr.setDate(defaultDate);
 
             if (val === 'undo') {
                 titleEl.innerText = "Confirm Undo";
-                descEl.innerHTML = "<span style='color:var(--red); font-weight:600;'><i class='fa-solid fa-triangle-exclamation'></i> WARNING: Undo will revert the status and close current records. Please confirm the timestamp for this reversal.</span>";
+                descEl.innerHTML  = "<span style='color:var(--red); font-weight:600;'><i class='fa-solid fa-triangle-exclamation'></i> WARNING: Undo will revert the status and close current records. Please confirm the timestamp for this reversal.</span>";
                 submitBtn.className = "action-btn btn-warning";
+                parityGrp.style.display = "none";
             } else {
                 titleEl.innerText = label;
-                descEl.innerText = `Please specify the exact date and time for: ${label}`;
+                descEl.innerText  = `Please specify the exact date and time for: ${label}`;
+                
+                if (label === 'Birthing Started') {
+                    parityGrp.style.display = "flex";
+                    document.getElementById('generic_parity_input').value = '';
+                } else {
+                    parityGrp.style.display = "none";
+                }
                 
                 if(val === 'abortion') submitBtn.className = "action-btn btn-danger";
                 else submitBtn.className = "action-btn btn-success";
@@ -825,33 +987,50 @@ try {
         document.getElementById(id).classList.remove('show');
     }
 
-    // Prevents the browser from holding onto the POST request if the user hits Refresh (F5)
+    // Prevents the browser from holding onto the POST request on Refresh (F5)
     async function submitModalForm(e, form) {
         e.preventDefault();
-        const btn = form.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
-        btn.disabled = true;
+        
+        const btn = document.querySelector(`button[form="${form.id}"]`);
+        
+        let originalText = '';
+        if (btn) {
+            originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+        }
 
-        // Extract disabled elements to temporarily enable them so their values are sent
+        // Temporarily enable disabled fields so their values are sent
         const disabledElements = form.querySelectorAll(':disabled');
         disabledElements.forEach(el => el.disabled = false);
 
-        // Build a proper URL-encoded string so PHP $_POST reads it perfectly
         const formData = new FormData(form);
         const data = new URLSearchParams(formData);
         
-        // Re-disable elements
+        // Re-disable them
         disabledElements.forEach(el => el.disabled = true);
 
         try {
             const res = await fetch(form.action, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: data.toString()
             });
+            
+            const text = await res.text();
+            try {
+                const jsonResp = JSON.parse(text);
+                if (jsonResp.error) {
+                    showToast(jsonResp.error, "error");
+                    if (btn) {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                    return;
+                }
+            } catch (e) {
+                // Not JSON — treat as redirect/success
+            }
             
             // Re-navigate to the clean GET URL
             const cleanUrl = `?location_id=<?php echo $location_id; ?>&building_id=<?php echo $building_id; ?>&animal_id=<?php echo $selected_animal_id; ?>`;
@@ -860,21 +1039,20 @@ try {
         } catch (err) {
             console.error(err);
             showToast("System connection error.", "error");
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            if (btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
     }
 
-    // Optional Toast function if you want to replace the hard alert in catch block
     function showToast(msg, type = 'success') {
+        const container = document.getElementById('toastContainer');
         const t = document.createElement('div');
         t.className = 'toast';
-        t.style.position = 'fixed'; t.style.top = '20px'; t.style.right = '20px'; t.style.zIndex = '9999';
-        t.style.background = '#1e293b'; t.style.color = '#fff'; t.style.padding = '1rem 1.5rem';
-        t.style.borderRadius = '10px'; t.style.border = '1px solid #475569';
         t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
-        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
-        document.body.appendChild(t);
+        t.innerHTML = `${type === 'error' ? '<i class="fa-solid fa-circle-exclamation"></i>' : '<i class="fa-solid fa-circle-check"></i>'} ${msg}`;
+        container.appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }
 </script>

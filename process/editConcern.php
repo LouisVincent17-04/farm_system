@@ -1,0 +1,34 @@
+<?php
+session_start();
+header('Content-Type: application/json');
+require_once '../config/Connection.php';
+
+try {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception("Invalid request.");
+
+    $id = $_POST['id'] ?? 0;
+    $category = $_POST['category'] ?? '';
+    $priority = $_POST['priority'] ?? '';
+    $status = $_POST['status'] ?? 'Pending';
+    $subject = trim($_POST['subject'] ?? '');
+
+    if (!$id || empty($subject)) throw new Exception("Invalid data provided.");
+
+    // SECURITY CHECK: Verify the current status in the database before proceeding
+    $stmt_check = $conn->prepare("SELECT STATUS FROM concerns WHERE CONCERN_ID = ?");
+    $stmt_check->execute([$id]);
+    $current_status = $stmt_check->fetchColumn();
+
+    if ($current_status !== 'Pending') {
+        throw new Exception("Security Error: This concern has already been reviewed (marked as Read/Archived) and can no longer be edited.");
+    }
+
+    // Proceed with Update
+    $stmt = $conn->prepare("UPDATE concerns SET CATEGORY = ?, PRIORITY = ?, STATUS = ?, SUBJECT = ? WHERE CONCERN_ID = ?");
+    $stmt->execute([$category, $priority, $status, $subject, $id]);
+
+    echo json_encode(['success' => true]);
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+}
+?>

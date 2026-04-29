@@ -40,6 +40,8 @@ if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
         .skip-link{display:block;text-align:center;margin-top:1rem;font-size:.8rem;color:var(--muted);text-decoration:none;transition:color .2s;}
         .skip-link:hover{color:var(--text);}
     </style>
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
+
 </head>
 <body>
 <div class="wrap">
@@ -97,7 +99,7 @@ if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
             { w:'25%', bg:'#ef4444', t:'Weak' },
             { w:'50%', bg:'#f59e0b', t:'Fair' },
             { w:'75%', bg:'#60a5fa', t:'Good' },
-            { w:'100%', bg:'#34d399', t:'Strong ✅' },
+            { w:'100%', bg:'#34d399', t:'Strong  ' },
         ];
         const l = levels[score] || levels[0];
         bar.style.width = l.w; bar.style.background = l.bg; hint.textContent = l.t;
@@ -113,9 +115,9 @@ if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
         const newPw   = document.getElementById('new_pw').value;
         const confirm = document.getElementById('confirm_pw').value;
 
-        if (!current || !newPw || !confirm) { showAlert('error', '❌ All fields are required.'); return; }
-        if (newPw.length < 8)  { showAlert('error', '❌ New password must be at least 8 characters.'); return; }
-        if (newPw !== confirm) { showAlert('error', '❌ Passwords do not match.'); return; }
+        if (!current || !newPw || !confirm) { showAlert('error', '  All fields are required.'); return; }
+        if (newPw.length < 8)  { showAlert('error', '  New password must be at least 8 characters.'); return; }
+        if (newPw !== confirm) { showAlert('error', '  Passwords do not match.'); return; }
 
         const btn = document.getElementById('btnChange');
         btn.disabled = true; btn.textContent = 'Updating…';
@@ -127,10 +129,10 @@ if (!isset($_SESSION['admin'])) { header('Location: login.php'); exit; }
         const data = await res.json();
 
         if (data.success) {
-            showAlert('success', '✅ Password updated! Redirecting…');
+            showAlert('success', '  Password updated! Redirecting…');
             setTimeout(() => window.location.href = 'farm_page.php', 1200);
         } else {
-            showAlert('error', '❌ ' + data.message);
+            showAlert('error', '  ' + data.message);
             btn.disabled = false; btn.textContent = 'Update Password';
         }
     }

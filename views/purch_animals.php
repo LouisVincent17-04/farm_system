@@ -1131,7 +1131,7 @@ function filterAll() {
 }
 
 // Close modal on background click
-window.onclick = e => { if (e.target.classList.contains('modal')) e.target.classList.remove('show'); };
+// window.onclick = e => { if (e.target.classList.contains('modal')) e.target.classList.remove('show'); };
 </script>
 </body>
 </html>

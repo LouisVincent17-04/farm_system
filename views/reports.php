@@ -9,7 +9,58 @@ include '../security/checkAccess.php';
 checkAccess('reports');
 include '../common/navbar.php';
 include '../common/chat_support.php';
+include '../functions/getUsersLocation.php';
 
+// --- FETCH DYNAMIC STATS ---
+$stats = [
+    'report_types' => 13, // Number of modules available on this page
+    'today_records' => 0,
+    'month_records' => 0
+];
+
+try {
+    if ($USER_LOCATION_ != 1000) {
+        $loc_id = (int)$USER_LOCATION_;
+        
+        // Count today's data entries for this location
+        $today_sql = "SELECT 
+            (SELECT COUNT(*) FROM animal_records WHERE DATE(CREATED_AT) = CURDATE() AND LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM ITEMS WHERE DATE(CREATED_AT) = CURDATE() AND LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM feed_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.TRANSACTION_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM treatment_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.TRANSACTION_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM animal_misc_fees t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.CREATED_AT) = CURDATE() AND a.LOCATION_ID = $loc_id)";
+        $stats['today_records'] = $conn->query($today_sql)->fetchColumn();
+
+        // Count this month's data entries for this location
+        $month_sql = "SELECT 
+            (SELECT COUNT(*) FROM animal_records WHERE MONTH(CREATED_AT) = MONTH(CURDATE()) AND YEAR(CREATED_AT) = YEAR(CURDATE()) AND LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM ITEMS WHERE MONTH(CREATED_AT) = MONTH(CURDATE()) AND YEAR(CREATED_AT) = YEAR(CURDATE()) AND LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM feed_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE MONTH(t.TRANSACTION_DATE) = MONTH(CURDATE()) AND YEAR(t.TRANSACTION_DATE) = YEAR(CURDATE()) AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM treatment_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE MONTH(t.TRANSACTION_DATE) = MONTH(CURDATE()) AND YEAR(t.TRANSACTION_DATE) = YEAR(CURDATE()) AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM animal_misc_fees t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE MONTH(t.CREATED_AT) = MONTH(CURDATE()) AND YEAR(t.CREATED_AT) = YEAR(CURDATE()) AND a.LOCATION_ID = $loc_id)";
+        $stats['month_records'] = $conn->query($month_sql)->fetchColumn();
+        
+    } else {
+        // Super Admin (All Locations)
+        $today_sql = "SELECT 
+            (SELECT COUNT(*) FROM animal_records WHERE DATE(CREATED_AT) = CURDATE()) +
+            (SELECT COUNT(*) FROM ITEMS WHERE DATE(CREATED_AT) = CURDATE()) +
+            (SELECT COUNT(*) FROM feed_transactions WHERE DATE(TRANSACTION_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM treatment_transactions WHERE DATE(TRANSACTION_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM animal_misc_fees WHERE DATE(CREATED_AT) = CURDATE())";
+        $stats['today_records'] = $conn->query($today_sql)->fetchColumn();
+
+        $month_sql = "SELECT 
+            (SELECT COUNT(*) FROM animal_records WHERE MONTH(CREATED_AT) = MONTH(CURDATE()) AND YEAR(CREATED_AT) = YEAR(CURDATE())) +
+            (SELECT COUNT(*) FROM ITEMS WHERE MONTH(CREATED_AT) = MONTH(CURDATE()) AND YEAR(CREATED_AT) = YEAR(CURDATE())) +
+            (SELECT COUNT(*) FROM feed_transactions WHERE MONTH(TRANSACTION_DATE) = MONTH(CURDATE()) AND YEAR(TRANSACTION_DATE) = YEAR(CURDATE())) +
+            (SELECT COUNT(*) FROM treatment_transactions WHERE MONTH(TRANSACTION_DATE) = MONTH(CURDATE()) AND YEAR(TRANSACTION_DATE) = YEAR(CURDATE())) +
+            (SELECT COUNT(*) FROM animal_misc_fees WHERE MONTH(CREATED_AT) = MONTH(CURDATE()) AND YEAR(CREATED_AT) = YEAR(CURDATE()))";
+        $stats['month_records'] = $conn->query($month_sql)->fetchColumn();
+    }
+} catch (Exception $e) {
+    error_log("Report stats error: " . $e->getMessage());
+}
 ?>
 
 <!DOCTYPE html>
@@ -239,16 +290,16 @@ include '../common/chat_support.php';
         <h2 class="stats-title">Reporting Overview</h2>
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value">20</div>
-                <div class="stat-desc">Report Types</div>
+                <div class="stat-value"><?= $stats['report_types'] ?></div>
+                <div class="stat-desc">Report Modules</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">342</div>
-                <div class="stat-desc">Generated Today</div>
+                <div class="stat-value"><?= number_format($stats['today_records']) ?></div>
+                <div class="stat-desc">Records Today</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">1,847</div>
-                <div class="stat-desc">This Month</div>
+                <div class="stat-value"><?= number_format($stats['month_records']) ?></div>
+                <div class="stat-desc">Records This Month</div>
             </div>
         </div>
     </div>
@@ -269,8 +320,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Animal Report</h3>
             <p class="card-description">Comprehensive livestock reports including population statistics, health records, and individual tracking data.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">1,247</span><span class="lbl">Records</span></div>
-                <div class="stat-group"><span class="num">15</span><span class="lbl">Species</span></div>
                 <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -280,8 +329,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Active Users Report</h3>
             <p class="card-description">Monitor user activity, access logs, and system usage patterns across all farm management personnel.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">42</span><span class="lbl">Active</span></div>
-                <div class="stat-group"><span class="num">8</span><span class="lbl">Roles</span></div>
                 <div class="card-action">View <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -291,8 +338,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Medicine Inventory Report</h3>
             <p class="card-description">Track medicine inventory levels, usage rates, expiration dates, and procurement history.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">340</span><span class="lbl">Items</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--red);">15</span><span class="lbl">Low Stock</span></div>
                 <div class="card-action">Analyze <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -302,8 +347,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Feeds Inventory Report</h3>
             <p class="card-description">Monitor feed inventory, stock thresholds, supplier information, and general nutritional data.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">2,450</span><span class="lbl">Kg Stock</span></div>
-                <div class="stat-group"><span class="num">28</span><span class="lbl">Types</span></div>
                 <div class="card-action">Review <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -313,8 +356,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Housing &amp; Facilities</h3>
             <p class="card-description">Overview of buildings, pens, enclosures, capacity utilization, and infrastructure maintenance status.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">89</span><span class="lbl">Buildings</span></div>
-                <div class="stat-group"><span class="num">156</span><span class="lbl">Pens</span></div>
                 <div class="card-action">Inspect <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -324,8 +365,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Farm Equipment Report</h3>
             <p class="card-description">Track equipment inventory, usage logs, maintenance schedules, and operational efficiency metrics.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">234</span><span class="lbl">Equipment</span></div>
-                <div class="stat-group"><span class="num">12</span><span class="lbl">Maintenance</span></div>
                 <div class="card-action">Check <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -335,8 +374,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Sanitation &amp; Waste</h3>
             <p class="card-description">Monitor cleaning schedules, waste disposal records, biosecurity measures, and hygiene compliance data.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">145</span><span class="lbl">Tasks</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--emerald);">98%</span><span class="lbl">Completed</span></div>
                 <div class="card-action">Monitor <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -346,8 +383,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Breeding &amp; Reproduction</h3>
             <p class="card-description">Track breeding programs, reproductive cycles, genetic lineages, and offspring performance metrics.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">67</span><span class="lbl">Breeding</span></div>
-                <div class="stat-group"><span class="num">23</span><span class="lbl">Expected</span></div>
                 <div class="card-action">Track <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -357,8 +392,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Administration Report</h3>
             <p class="card-description">Comprehensive administrative documentation, regulatory compliance records, and official certifications.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">567</span><span class="lbl">Documents</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--emerald);">100%</span><span class="lbl">Compliant</span></div>
                 <div class="card-action">Access <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -368,8 +401,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Maintenance Report</h3>
             <p class="card-description">Monitor maintenance activities, spare parts inventory, repair histories, and preventive care schedules.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">89</span><span class="lbl">Tasks</span></div>
-                <div class="stat-group"><span class="num">456</span><span class="lbl">Parts</span></div>
                 <div class="card-action">Review <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -379,8 +410,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Utilities &amp; Consumables</h3>
             <p class="card-description">Track utility usage, consumable supplies, energy consumption, and resource efficiency metrics.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">12.5k</span><span class="lbl">kWh</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--text-secondary);">₱45k</span><span class="lbl">Cost</span></div>
                 <div class="card-action">Analyze <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -390,8 +419,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Vitamins Inventory</h3>
             <p class="card-description">Monitor vitamin inventory levels, supplement stock thresholds, and expiration data.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">178</span><span class="lbl">Items</span></div>
-                <div class="stat-group"><span class="num">8</span><span class="lbl">Categories</span></div>
                 <div class="card-action">Report <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -401,8 +428,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Vaccine Inventory</h3>
             <p class="card-description">Track vaccine inventory, procurement records, expiration dates, and safe storage requirements.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">234</span><span class="lbl">Vials</span></div>
-                <div class="stat-group"><span class="num">12</span><span class="lbl">Types</span></div>
                 <div class="card-action">View <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -412,8 +437,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Others Report</h3>
             <p class="card-description">Miscellaneous reports including custom queries, special requests, and ad-hoc analytical reports.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">45</span><span class="lbl">Custom</span></div>
-                <div class="stat-group"><span class="num">12</span><span class="lbl">Pending</span></div>
                 <div class="card-action">Create <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -423,8 +446,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Audit Log Report</h3>
             <p class="card-description">Comprehensive system audit trails, user activity logs, and security compliance monitoring reports.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">2,345</span><span class="lbl">Entries</span></div>
-                <div class="stat-group"><span class="num">Today</span><span class="lbl">Updated</span></div>
                 <div class="card-action">Audit <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -434,8 +455,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Animal Sales Reports</h3>
             <p class="card-description">Track animal sales, revenue streams, buyer demographics, and sales performance metrics.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num" style="color:var(--text-secondary);">₱2.4M</span><span class="lbl">Revenue</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--emerald);">15%</span><span class="lbl">Growth</span></div>
                 <div class="card-action">Financial <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -445,8 +464,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Feeds Usage Report</h3>
             <p class="card-description">Analyze feed consumption rates, conversion efficiency, and overall feed usage across different pens and buildings.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">2.1k</span><span class="lbl">Logs</span></div>
-                <div class="stat-group"><span class="num">Avg</span><span class="lbl">Consumption</span></div>
                 <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -456,8 +473,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Vaccines Usage Report</h3>
             <p class="card-description">Track vaccine administration, monitor batch usage, and analyze vaccination costs over time.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">850</span><span class="lbl">Doses</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--emerald);">95%</span><span class="lbl">Efficacy</span></div>
                 <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -467,8 +482,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Vitamins Usage Report</h3>
             <p class="card-description">Review vitamin and supplement administration trends, tracking distribution volumes and overall expenses.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">1.2k</span><span class="lbl">Doses</span></div>
-                <div class="stat-group"><span class="num">Daily</span><span class="lbl">Frequency</span></div>
                 <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -478,8 +491,6 @@ include '../common/chat_support.php';
             <h3 class="card-title">Medicine Usage Report</h3>
             <p class="card-description">Monitor therapeutic drug usage, track treatment regimens, and evaluate overall medication expenditures.</p>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">420</span><span class="lbl">Treatments</span></div>
-                <div class="stat-group"><span class="num">15</span><span class="lbl">Diseases</span></div>
                 <div class="card-action">Generate <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>

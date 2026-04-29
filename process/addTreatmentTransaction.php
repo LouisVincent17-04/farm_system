@@ -161,13 +161,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $conn->commit();
         
         $response['success'] = true;
-        $response['message'] = "✅ Treatment saved! Cost: ₱" . number_format($transaction_cost, 2);
+        $response['message'] = "  Treatment saved! Cost: ₱" . number_format($transaction_cost, 2);
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        $response['message'] = '❌ Error: ' . $e->getMessage();
+        $response['message'] = '  Error: ' . $e->getMessage();
     }
 
 } else {

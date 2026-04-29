@@ -40,28 +40,28 @@ try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
 
     // --- 2. FETCH DROPDOWN DATA ---
-    $animal_types = $conn->query("SELECT * FROM Animal_Type ORDER BY ANIMAL_TYPE_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $animal_types = $conn->query("SELECT * FROM animal_type ORDER BY ANIMAL_TYPE_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
     
     if ($USER_LOCATION_ != 1000) {
-        $loc_stmt = $conn->prepare("SELECT * FROM Locations WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME ASC");
+        $loc_stmt = $conn->prepare("SELECT * FROM locations WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME ASC");
         $loc_stmt->execute([$USER_LOCATION_]);
         $locations = $loc_stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        $locations = $conn->query("SELECT * FROM Locations ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     if ($filter_loc) {
-        $stmt = $conn->prepare("SELECT * FROM Buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
+        $stmt = $conn->prepare("SELECT * FROM buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
         $stmt->execute([$filter_loc]);
         $filter_buildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     if ($filter_bld) {
-        $stmt = $conn->prepare("SELECT * FROM Pens WHERE BUILDING_ID = ? ORDER BY PEN_NAME");
+        $stmt = $conn->prepare("SELECT * FROM pens WHERE BUILDING_ID = ? ORDER BY PEN_NAME");
         $stmt->execute([$filter_bld]);
         $filter_pens = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     if ($filter_type) {
-        $stmt = $conn->prepare("SELECT * FROM Breeds WHERE ANIMAL_TYPE_ID = ? ORDER BY BREED_NAME");
+        $stmt = $conn->prepare("SELECT * FROM breeds WHERE ANIMAL_TYPE_ID = ? ORDER BY BREED_NAME");
         $stmt->execute([$filter_type]);
         $filter_breeds = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -85,7 +85,7 @@ try {
         if ($filter_acq !== '') { $where_sql .= " AND a.IS_PURCHASED = :acq"; $params[':acq'] = $filter_acq; }
 
         // Get Total Count for Pagination
-        $count_sql = "SELECT COUNT(*) FROM Animal_Records a " . $where_sql;
+        $count_sql = "SELECT COUNT(*) FROM animal_records a " . $where_sql;
         $count_stmt = $conn->prepare($count_sql);
         foreach($params as $key => $val) { $count_stmt->bindValue($key, $val); }
         $count_stmt->execute();
@@ -104,15 +104,15 @@ try {
                     m.TAG_NO as MOTHER_TAG,
                     f.TAG_NO as FATHER_TAG,
                     DATEDIFF(NOW(), a.BIRTH_DATE) AS DAYS_OLD 
-                FROM Animal_Records a
-                LEFT JOIN Animal_Type at ON a.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
-                LEFT JOIN Breeds b ON a.BREED_ID = b.BREED_ID
-                LEFT JOIN Locations l ON a.LOCATION_ID = l.LOCATION_ID
-                LEFT JOIN Buildings bld ON a.BUILDING_ID = bld.BUILDING_ID
-                LEFT JOIN Pens p ON a.PEN_ID = p.PEN_ID
+                FROM animal_records a
+                LEFT JOIN animal_type at ON a.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID
+                LEFT JOIN breeds b ON a.BREED_ID = b.BREED_ID
+                LEFT JOIN locations l ON a.LOCATION_ID = l.LOCATION_ID
+                LEFT JOIN buildings bld ON a.BUILDING_ID = bld.BUILDING_ID
+                LEFT JOIN pens p ON a.PEN_ID = p.PEN_ID
                 LEFT JOIN animal_classifications ac ON a.CLASS_ID = ac.CLASS_ID 
-                LEFT JOIN Animal_Records m ON a.MOTHER_ID = m.ANIMAL_ID 
-                LEFT JOIN Animal_Records f ON a.FATHER_ID = f.ANIMAL_ID 
+                LEFT JOIN animal_records m ON a.MOTHER_ID = m.ANIMAL_ID 
+                LEFT JOIN animal_records f ON a.FATHER_ID = f.ANIMAL_ID 
                 " . $where_sql . " ORDER BY a.ANIMAL_ID DESC LIMIT :limit OFFSET :offset";
         
         $stmt = $conn->prepare($sql);
@@ -255,8 +255,11 @@ if ($filter_acq !== '') $active_filters++;
         .btn-purchase:hover { background: #60a5fa; box-shadow: 0 0 16px var(--primary-glow); transform: translateY(-1px); }
         .btn-existing { background: var(--amber); color: #000; }
         .btn-existing:hover { background: #fbbf24; box-shadow: 0 0 16px var(--amber-glow); transform: translateY(-1px); }
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-danger:hover { background: #dc2626; box-shadow: 0 0 16px var(--red-dim); }
         .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
         .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 
         /* ─── FILTER PANEL ─── */
         .filter-panel {
@@ -410,7 +413,8 @@ if ($filter_acq !== '') $active_filters++;
             max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
             margin: auto; animation: modalZoom 0.2s ease-out;
         }
-        .modal-content.large { max-width: 900px; }
+        .modal-content.large { max-width: 1000px; }
+        .modal-content.narrow { max-width: 440px; }
         @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .modal-header {
@@ -425,18 +429,18 @@ if ($filter_acq !== '') $active_filters++;
             display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated);
         }
 
+        .confirm-content { text-align: center; padding: 1rem 1rem 0; }
+        .confirm-icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; }
+        #customAlertDetails::-webkit-scrollbar { width: 6px; }
+        #customAlertDetails::-webkit-scrollbar-track { background: transparent; }
+        #customAlertDetails::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .full-width { grid-column: 1 / -1; }
         
         .input-group { display: flex; gap: 8px; }
         .input-group .form-control { flex: 1; }
-        .btn-search {
-            background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
-            padding: 0 16px; border-radius: var(--radius-md); cursor: pointer; font-weight: 600;
-            transition: all var(--transition); display: flex; align-items: center; justify-content: center;
-        }
-        .btn-search:hover { background: var(--bg-hover); border-color: var(--primary); color: var(--primary); }
-
+        
         .section-card {
             background: rgba(255,255,255,0.02); padding: 1.25rem;
             border-radius: var(--radius-lg); border: 1px solid var(--border); margin-bottom: 1.25rem;
@@ -445,17 +449,19 @@ if ($filter_acq !== '') $active_filters++;
             margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; color: var(--text-primary);
         }
 
-        .alert {
-            padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem;
-            display: none; font-size: 0.9rem; text-align: center; font-weight: 600; border: 1px solid transparent;
-        }
-        .alert.success { background: var(--green-dim); border-color: rgba(34,197,94,0.3); color: var(--green); }
-        .alert.error { background: var(--red-dim); border-color: rgba(248,113,113,0.3); color: var(--red); }
-
         /* Bulk Table Override */
-        #bulk-add-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: var(--bg-elevated); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border);}
-        #bulk-add-table th { background: rgba(0,0,0,0.2); font-size: 0.7rem; padding: 12px; color: var(--text-muted); text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border);}
-        #bulk-add-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        table[id$="-add-table"] { width: 100%; border-collapse: collapse; margin-top: 10px; background: var(--bg-elevated); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border);}
+        table[id$="-add-table"] th { background: rgba(0,0,0,0.2); font-size: 0.7rem; padding: 12px; color: var(--text-muted); text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap;}
+        table[id$="-add-table"] td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+        /* Toast UI */
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
         /* ─── RESPONSIVE ─── */
         @media (max-width: 900px) {
@@ -495,10 +501,15 @@ if ($filter_acq !== '') $active_filters++;
             .lineage-col span { text-align: right; }
             .pagination { flex-direction: column; }
             .pagination .total-info { margin: 10px auto 0; }
+            
+            table[id$="-add-table"] td::before { display:none; }
         }
     </style>
 </head>
 <body>
+    
+    <div id="toastContainer"></div>
+
     <div class="container">
         
         <div class="top-bar">
@@ -519,6 +530,14 @@ if ($filter_acq !== '') $active_filters++;
                 <p>Manage, monitor, and configure individual livestock profiles.</p>
             </div>
             <div class="header-buttons">
+                <button class="btn btn-ghost" onclick="downloadSampleCSV()">
+                    <i class="fa-solid fa-download"></i> Sample CSV
+                </button>
+                <button class="btn btn-ghost" onclick="document.getElementById('csvUpload').click()">
+                    <i class="fa-solid fa-file-import"></i> Import CSV
+                </button>
+                <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="uploadCSV(event)">
+
                 <button class="btn btn-purchase" onclick="openAddModal('purchase', 1)">
                     <i class="fa-solid fa-cart-arrow-down"></i> Add Purchased Animal
                 </button>
@@ -782,13 +801,42 @@ if ($filter_acq !== '') $active_filters++;
         </div>
     </div>
 
+    <div id="customAlertModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content narrow">
+            <div class="modal-body confirm-content" style="padding-bottom: 1.5rem;">
+                <span class="confirm-icon" id="customAlertIcon"><i class="fa-solid fa-circle-xmark"></i></span>
+                <h2 style="color:#fff; margin-bottom:10px;" id="customAlertTitle">Error</h2>
+                <p style="color:var(--text-secondary); margin-bottom: 15px; white-space: pre-line;" id="customAlertMessage">Something went wrong.</p>
+                
+                <div id="customAlertDetails" style="display:none; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border); max-height: 250px; overflow-y: auto; color: var(--red); font-size: 0.85rem; font-family: var(--font-mono); line-height: 1.6;">
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content:center; border-top:none; background:transparent; padding-top:0; padding-bottom:1.75rem;">
+                <button type="button" class="btn btn-ghost" style="width: 100%; max-width: 200px; background: var(--bg-elevated);" onclick="closeCustomAlert()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="customConfirmModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content narrow">
+            <div class="modal-body confirm-content" style="padding-bottom: 1.5rem;">
+                <span class="confirm-icon" style="color:var(--amber);"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                <h2 style="color:#fff; margin-bottom:10px;" id="customConfirmTitle">Confirm Action</h2>
+                <p style="color:var(--text-secondary); margin-bottom: 15px;" id="customConfirmMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer" style="justify-content:center; border-top:none; background:transparent; padding-top:0; padding-bottom:1.75rem; display: flex; gap: 10px;">
+                <button type="button" class="btn btn-ghost" onclick="closeCustomConfirm()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="customConfirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <div id="addModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content large">
             <div class="modal-header">
                 <h2 id="modal-title">Add Record</h2>
             </div>
             <div class="modal-body">
-                <div id="add-alert" class="alert"></div>
                 <form id="addAnimalForm">
                     <input type="hidden" id="entry_type" name="entry_type" value="existing">
                     <input type="hidden" id="acquisition_type" name="acquisition_type" value="0">
@@ -800,6 +848,53 @@ if ($filter_acq !== '') $active_filters++;
                         </div>
                         <div id="bulk_selection_summary" style="font-size: 0.85rem; color: var(--text-primary); margin-top: 8px; font-weight: 500;">0 items selected</div>
                     </div>
+                    
+                    <div id="bulk-entry-group" class="form-group full-width" style="display: none; margin-bottom: 1.25rem;">
+                        <label class="form-label">Assign Tags & Placements to Purchases:</label>
+                        <div style="overflow-x: auto; width: 100%;">
+                            <table id="bulk-add-table">
+                                <thead>
+                                    <tr>
+                                        <th>Purchase Base</th>
+                                        <th>Tag No *</th>
+                                        <th>Sex *</th>
+                                        <th>Birth Date *</th>
+                                        <th>Location *</th>
+                                        <th>Building *</th>
+                                        <th>Pen *</th>
+                                        <th width="40"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bulk-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="existing-bulk-group" class="form-group full-width" style="display: none; margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label class="form-label" style="margin:0;">Animal Details & Placements <span style="color:var(--red);">*</span></label>
+                            <button type="button" class="btn btn-ghost btn-sm" style="border: 1px solid var(--border);" onclick="addExistingRow()"><i class="fa-solid fa-plus"></i> Add Row</button>
+                        </div>
+                        <div style="overflow-x: auto; width: 100%;">
+                            <table id="existing-add-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tag No *</th>
+                                        <th>Sex *</th>
+                                        <th>Birth Date *</th>
+                                        <th>Acq. Cost</th>
+                                        <th>Location *</th>
+                                        <th>Building *</th>
+                                        <th>Pen *</th>
+                                        <th width="40"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="existing-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
                     <div id="lineage-group" class="section-card" style="display:none;">
                         <label class="form-label">Lineage History (Optional)</label>
@@ -809,49 +904,19 @@ if ($filter_acq !== '') $active_filters++;
                                 <div class="input-group">
                                     <input type="hidden" id="add_mother_id" name="mother_id">
                                     <input type="text" id="display_mother_tag" class="form-control" placeholder="Select Sow..." readonly style="border-color: rgba(244,114,182,0.4);">
-                                    <button type="button" class="btn-search" onclick="openSelectParentModal('sow')"><i class="fa-solid fa-magnifying-glass"></i></button>
+                                    <button type="button" class="btn-search action-btn" onclick="openSelectParentModal('sow')"><i class="fa-solid fa-magnifying-glass"></i></button>
                                 </div>
                             </div>
-                            <div class="form-group no-margin">
+                            <div class="form-group no-margin" style="margin-top:10px;">
                                 <label style="color: var(--primary); font-size: 0.72rem; font-weight: 600;">Father (Boar)</label>
                                 <div class="input-group">
                                     <input type="hidden" id="add_father_id" name="father_id">
                                     <input type="text" id="display_father_tag" class="form-control" placeholder="Select Boar..." readonly style="border-color: rgba(59,130,246,0.4);">
-                                    <button type="button" class="btn-search" onclick="openSelectParentModal('boar')"><i class="fa-solid fa-magnifying-glass"></i></button>
+                                    <button type="button" class="btn-search action-btn" onclick="openSelectParentModal('boar')"><i class="fa-solid fa-magnifying-glass"></i></button>
                                 </div>
-                                <small style="color: var(--text-muted); display: block; margin-top: 6px; font-size:0.7rem; line-height: 1.3;">Will auto-apply to siblings with the same Sow &amp; Birth Date.</small>
+                                <small style="color: var(--text-muted); display: block; margin-top: 6px; font-size:0.7rem; line-height: 1.3;">Will auto-apply to all siblings in this batch.</small>
                             </div>
                         </div>
-                    </div>
-
-                    <div id="single-entry-group" class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Tag Number *</label>
-                            <input type="text" id="add_tag_no" name="tag_no" class="form-control" placeholder="e.g. T-1001">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Sex *</label>
-                            <select id="add_sex" name="sex" class="form-control">
-                                <option value="M">Male (Boar)</option>
-                                <option value="F">Female (Sow)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="bulk-entry-group" class="form-group full-width" style="display: none; margin-bottom: 1.25rem;">
-                        <label class="form-label">Assign Tags to Purchases:</label>
-                        <table id="bulk-add-table">
-                            <thead>
-                                <tr>
-                                    <th>Purchase Base</th>
-                                    <th>Tag No *</th>
-                                    <th>Sex *</th>
-                                    <th width="40"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="bulk-table-body">
-                            </tbody>
-                        </table>
                     </div>
 
                     <div class="form-row" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 1.25rem;">
@@ -872,17 +937,6 @@ if ($filter_acq !== '') $active_filters++;
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group" id="acquisition-cost-group">
-                            <label class="form-label" style="color:var(--amber);">Acquisition Cost (PHP)</label>
-                            <input type="number" id="add_acquisition_cost" name="acquisition_cost" class="form-control" step="0.01" placeholder="0.00" style="border-color:var(--amber-dim);">
-                        </div>
-                        <div id="birth-date-group" class="form-group">
-                            <label class="form-label">Birth Date *</label>
-                            <input type="date" id="add_birth_date" name="birth_date" class="form-control date-picker" required>
-                        </div>
-                    </div>
-
                     <div class="form-group">
                         <label class="form-label">Current Status *</label>
                         <select id="add_status" name="current_status" class="form-control" required>
@@ -891,38 +945,6 @@ if ($filter_acq !== '') $active_filters++;
                             <option value="Deceased">Deceased</option>
                         </select>
                     </div>
-
-                    <div class="section-card" style="margin-top: 1.25rem;">
-                        <label class="form-label">Physical Placement</label>
-                        <div class="form-group">
-                            <select id="add_location" name="location_id" class="form-control" required onchange="loadBuildings(this.value, 'add')" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
-                                <?php if($USER_LOCATION_ == 1000): ?>
-                                    <option value="">Select Location *</option>
-                                <?php endif; ?>
-                                <?php foreach ($locations as $loc): ?>
-                                    <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if ($USER_LOCATION_ != 1000): ?>
-                                <input type="hidden" name="location_id" value="<?= $USER_LOCATION_ ?>">
-                            <?php endif; ?>
-                        </div>
-                        <div class="form-row" style="margin-top: 1rem;">
-                            <div class="form-group no-margin">
-                                <select id="add_building" name="building_id" class="form-control" required disabled onchange="loadPens(this.value, 'add')">
-                                    <option value="">Select Building *</option>
-                                </select>
-                            </div>
-                            <div class="form-group no-margin">
-                                <select id="add_pen" name="pen_id" class="form-control" required disabled>
-                                    <option value="">Select Pen *</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
                 </form>
             </div>
             <div class="modal-footer">
@@ -985,7 +1007,6 @@ if ($filter_acq !== '') $active_filters++;
                 <button class="action-btn" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
-                <div id="edit-alert" class="alert"></div>
                 <form id="editAnimalForm">
                     <input type="hidden" id="edit_animal_id" name="animal_id">
                     <input type="hidden" id="edit_has_purchase" name="has_purchase" value="0">
@@ -998,15 +1019,15 @@ if ($filter_acq !== '') $active_filters++;
                                 <div class="input-group">
                                     <input type="hidden" id="edit_mother_id" name="mother_id">
                                     <input type="text" id="edit_display_mother" class="form-control" placeholder="Select Sow..." readonly style="border-color: rgba(244,114,182,0.4);">
-                                    <button type="button" class="btn-search" onclick="openSelectParentModal('sow', 'edit')"><i class="fa-solid fa-magnifying-glass"></i></button>
+                                    <button type="button" class="btn-search action-btn" onclick="openSelectParentModal('sow', 'edit')"><i class="fa-solid fa-magnifying-glass"></i></button>
                                 </div>
                             </div>
-                            <div class="form-group no-margin">
+                            <div class="form-group no-margin" style="margin-top:10px;">
                                 <label style="color: var(--primary); font-size: 0.72rem; font-weight: 600;">Father (Boar)</label>
                                 <div class="input-group">
                                     <input type="hidden" id="edit_father_id" name="father_id">
                                     <input type="text" id="edit_display_father" class="form-control" placeholder="Select Boar..." readonly style="border-color: rgba(59,130,246,0.4);">
-                                    <button type="button" class="btn-search" onclick="openSelectParentModal('boar', 'edit')"><i class="fa-solid fa-magnifying-glass"></i></button>
+                                    <button type="button" class="btn-search action-btn" onclick="openSelectParentModal('boar', 'edit')"><i class="fa-solid fa-magnifying-glass"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -1016,7 +1037,7 @@ if ($filter_acq !== '') $active_filters++;
                         <label class="form-label" style="color:var(--primary);">Linked Purchase Origin *</label>
                         <div class="input-group">
                             <input type="text" id="edit_animal_item_id" class="form-control val-mono" name="animal_item_id" placeholder="Select a purchase record..." readonly>
-                            <button type="button" class="btn-search" onclick="openEditSelectPurchaseModal()">Change Source</button>
+                            <button type="button" class="btn-search btn btn-ghost btn-sm" style="border-color:var(--border);" onclick="openEditSelectPurchaseModal()">Change Source</button>
                         </div>
                     </div>
 
@@ -1028,8 +1049,8 @@ if ($filter_acq !== '') $active_filters++;
                         <div class="form-group">
                             <label class="form-label">Sex *</label>
                             <select id="edit_sex" name="sex" class="form-control" required>
-                                <option value="M">Male (Boar)</option>
-                                <option value="F">Female (Sow)</option>
+                                <option value="M">Male (Sire)</option>
+                                <option value="F">Female (Dam)</option>
                             </select>
                         </div>
                     </div>
@@ -1045,8 +1066,8 @@ if ($filter_acq !== '') $active_filters++;
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Breed *</label>
-                            <select id="edit_breed" name="breed_id" class="form-control" required>
+                            <label class="form-label">Breed Standard *</label>
+                            <select id="edit_breed" name="breed_id" class="form-control" required disabled>
                                 <option value="">Select Type First</option>
                             </select>
                         </div>
@@ -1059,7 +1080,7 @@ if ($filter_acq !== '') $active_filters++;
                         </div>
                         <div id="edit-birth-date-group" class="form-group">
                             <label class="form-label">Birth Date *</label>
-                            <input type="date" id="edit_birth_date" name="birth_date" class="form-control date-picker" required>
+                            <input type="text" id="edit_birth_date" name="birth_date" class="form-control date-picker" required>
                         </div>
                     </div>
 
@@ -1149,6 +1170,8 @@ if ($filter_acq !== '') $active_filters++;
 
     <script>
         const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+        // Inject locations to JS for dynamic row creation
+        const allLocations = <?php echo json_encode($locations); ?>;
 
         // Filter Toggle
         let filterOpen = true;
@@ -1162,18 +1185,17 @@ if ($filter_acq !== '') $active_filters++;
             label.textContent = filterOpen ? 'Collapse' : 'Expand';
         }
 
-        // Flatpickr Initialization (Dark Mode applied globally via CSS inclusion)
-        const fpAddBirth = flatpickr("#add_birth_date", {
-            dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y", allowInput: true
-        });
-
+        // Flatpickr Initialization
         const fpEditBirth = flatpickr("#edit_birth_date", {
             dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y", allowInput: true
         });
 
         document.addEventListener('DOMContentLoaded', () => {
             const rows = document.querySelectorAll('#animal-table tr');
-            if(rows.length === 0) document.getElementById('empty-state-db').style.display = 'block';
+            if(rows.length === 0) {
+                const emptyEl = document.getElementById('empty-state-db');
+                if(emptyEl) emptyEl.style.display = 'block';
+            }
 
             // Auto-save Type/Breed selections
             const typeSelect = document.getElementById('add_animal_type');
@@ -1192,11 +1214,200 @@ if ($filter_acq !== '') $active_filters++;
             }
         });
 
-        // ─── ALERTS ───
-        function showAlert(mode, msg, type) {
-            const el = document.getElementById(mode+'-alert');
-            el.textContent = msg; el.className = 'alert ' + type; el.style.display='block';
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // ─── ALERTS, TOASTS & CUSTOM MODALS ───
+        function showToast(msg, type = 'success', duration = 3500) {
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : (type === 'loading' ? 'var(--primary)' : 'var(--green)')}`;
+            let icon = '<i class="fa-solid fa-check"></i>';
+            if(type === 'error') icon = '<i class="fa-solid fa-xmark"></i>';
+            if(type === 'loading') icon = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            
+            const toastId = 'toast_' + Math.random().toString(36).substr(2, 9);
+            t.id = toastId;
+            
+            t.innerHTML = `${icon} <span style="white-space: pre-line;">${msg}</span>`;
+            document.getElementById('toastContainer').appendChild(t);
+            
+            if (duration > 0) {
+                setTimeout(() => t.remove(), duration);
+            }
+            return toastId;
+        }
+
+        function removeToast(toastId) {
+            const t = document.getElementById(toastId);
+            if (t) t.remove();
+        }
+
+        // Custom Error/Success Alert Modal
+        function showCustomAlert(title, message, type = 'error', details = []) {
+            const modal = document.getElementById('customAlertModal');
+            const iconEl = document.getElementById('customAlertIcon');
+            const titleEl = document.getElementById('customAlertTitle');
+            const msgEl = document.getElementById('customAlertMessage');
+            const detailsEl = document.getElementById('customAlertDetails');
+            
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            
+            if (type === 'error') {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+                iconEl.style.color = 'var(--red)';
+            } else if (type === 'success') {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                iconEl.style.color = 'var(--green)';
+            } else {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+                iconEl.style.color = 'var(--blue)';
+            }
+            
+            if (details && details.length > 0) {
+                detailsEl.style.display = 'block';
+                detailsEl.innerHTML = details.map(err => `<div>• ${err}</div>`).join('');
+            } else {
+                detailsEl.style.display = 'none';
+                detailsEl.innerHTML = '';
+            }
+            
+            modal.classList.add('show');
+        }
+
+        function closeCustomAlert() {
+            document.getElementById('customAlertModal').classList.remove('show');
+        }
+
+        // Custom Confirm Modal
+        let confirmCallback = null;
+        function showCustomConfirm(title, message, confirmBtnText, confirmBtnClass, callback) {
+            document.getElementById('customConfirmTitle').textContent = title;
+            document.getElementById('customConfirmMessage').textContent = message;
+            
+            const btn = document.getElementById('customConfirmBtn');
+            btn.textContent = confirmBtnText;
+            btn.className = `btn ${confirmBtnClass}`;
+            
+            confirmCallback = callback;
+            document.getElementById('customConfirmModal').classList.add('show');
+        }
+
+        function closeCustomConfirm() {
+            document.getElementById('customConfirmModal').classList.remove('show');
+            confirmCallback = null;
+        }
+
+        document.getElementById('customConfirmBtn').addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            closeCustomConfirm();
+        });
+
+
+        // ─── CSV UPLOAD & DOWNLOAD LOGIC ───
+        
+        function downloadSampleCSV() {
+            const csvContent = "Tag_Number,Animal_Type,Breed,Birth_Date,Sex,Weight_At_Birth_kg,Weaning_Weight_kg,Estimated_Weight_kg,Actual_Weight_kg,Acquisition_Cost,Current_Status,Location,Building,Pen,Classification,Is_Purchased,Total_Misc_Amount,Date_Added\nBTD001,Swine,Duroc,04/01/2025,F,2.50,8.00,35.00,40.00,30000.00,Active,Danao Farms,Building 1,Fattening Pen 1,Sow,No,0.00,04/01/2026";
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "animal_records_sample.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function uploadCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showCustomConfirm(
+                "Confirm Import", 
+                `Are you sure you want to import records from ${file.name}?`, 
+                "Yes, Import", 
+                "btn-purchase", 
+                () => {
+                    const fd = new FormData();
+                    fd.append('csv_file', file);
+
+                    const toastId = showToast("Uploading and validating CSV format...", "loading", 0);
+
+                    fetch('../process/addImportedAnimalRecord.php', {
+                        method: 'POST',
+                        body: fd
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        removeToast(toastId);
+                        if (data.success) {
+                            showCustomAlert("Import Successful", data.message, "success");
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            showCustomAlert("Import Failed", data.message, "error", data.errors || []);
+                        }
+                    })
+                    .catch(err => {
+                        removeToast(toastId);
+                        showCustomAlert("System Error", "A critical error occurred during file processing. Please check your network connection.", "error");
+                    })
+                    .finally(() => {
+                        event.target.value = ''; 
+                    });
+                }
+            );
+        }
+
+        // ─── ROW LEVEL DROPDOWN LOADERS ───
+        function loadRowBuildings(locSelect) {
+            const row = locSelect.closest('tr');
+            const bldSelect = row.querySelector('.row-building');
+            const penSelect = row.querySelector('.row-pen');
+            const locId = locSelect.value;
+            
+            bldSelect.innerHTML = '<option value="">Loading...</option>';
+            bldSelect.disabled = true;
+            penSelect.innerHTML = '<option value="">Select Pen</option>';
+            penSelect.disabled = true;
+            
+            if (!locId) {
+                bldSelect.innerHTML = '<option value="">Select Building</option>';
+                return;
+            }
+            
+            fetch('../process/getBuildingsByLocation.php?location_id=' + locId)
+            .then(r => r.json())
+            .then(d => {
+                bldSelect.innerHTML = '<option value="">Select Building</option>';
+                if(d.buildings) {
+                    d.buildings.forEach(b => bldSelect.innerHTML += `<option value="${b.BUILDING_ID}">${b.BUILDING_NAME}</option>`);
+                }
+                bldSelect.disabled = false;
+            });
+        }
+        
+        function loadRowPens(bldSelect) {
+            const row = bldSelect.closest('tr');
+            const penSelect = row.querySelector('.row-pen');
+            const bldId = bldSelect.value;
+            
+            penSelect.innerHTML = '<option value="">Loading...</option>';
+            penSelect.disabled = true;
+            
+            if (!bldId) {
+                penSelect.innerHTML = '<option value="">Select Pen</option>';
+                return;
+            }
+            
+            fetch('../process/getPensByBuilding.php?building_id=' + bldId)
+            .then(r => r.json())
+            .then(d => {
+                penSelect.innerHTML = '<option value="">Select Pen</option>';
+                if(d.pens) {
+                    d.pens.forEach(p => penSelect.innerHTML += `<option value="${p.PEN_ID}">${p.PEN_NAME}</option>`);
+                }
+                penSelect.disabled = false;
+            });
         }
 
         // ─── MODAL CONTROLLERS ───
@@ -1207,7 +1418,6 @@ if ($filter_acq !== '') $active_filters++;
         function openAddModal(type, acquisition = 0) {
             const form = document.getElementById('addAnimalForm');
             form.reset();
-            fpAddBirth.clear(); 
             
             // Restore last Type/Breed
             const lastType = localStorage.getItem('farmpro_last_animal_type');
@@ -1226,65 +1436,156 @@ if ($filter_acq !== '') $active_filters++;
             const modalTitle = document.getElementById('modal-title');
             const purchaseGroup = document.getElementById('purchase-group');
             const lineageGroup = document.getElementById('lineage-group');
-            const birthGroup = document.getElementById('birth-date-group');
-            const costGroup = document.getElementById('acquisition-cost-group'); 
             const entryType = document.getElementById('entry_type');
-            const singleEntryGroup = document.getElementById('single-entry-group');
             const bulkEntryGroup = document.getElementById('bulk-entry-group');
-            const addTagNo = document.getElementById('add_tag_no');
-            const addSex = document.getElementById('add_sex');
+            const existingBulkGroup = document.getElementById('existing-bulk-group');
 
             acquisition_type = acquisition;
             if(document.getElementById('acquisition_type')) document.getElementById('acquisition_type').value = acquisition;
-            document.getElementById('add_acquisition_cost').value = '';
-
-            const today = new Date().toISOString().split('T')[0];
 
             if (type === 'purchase') {
                 modalTitle.innerHTML = '<i class="fa-solid fa-cart-arrow-down me-2" style="color:var(--primary);"></i> Batch Add Purchases';
                 entryType.value = 'purchase';
                 purchaseGroup.style.display = 'block';
                 bulkEntryGroup.style.display = 'block';
-                singleEntryGroup.style.display = 'none';
+                existingBulkGroup.style.display = 'none';
                 lineageGroup.style.display = 'none';
-                costGroup.style.display = 'none'; 
-                birthGroup.style.display = 'flex'; 
                 
                 document.getElementById('bulk-table-body').innerHTML = '';
                 document.getElementById('bulk_selection_summary').textContent = '0 items selected';
-                addTagNo.required = false; addSex.required = false;
-                fpAddBirth.setDate(today); 
                 
             } else if (type === 'existing') {
                 modalTitle.innerHTML = '<i class="fa-solid fa-plus me-2" style="color:var(--amber);"></i> Add Existing / Born';
                 entryType.value = 'existing';
                 purchaseGroup.style.display = 'none';
                 bulkEntryGroup.style.display = 'none';
-                singleEntryGroup.style.display = 'flex';
-                birthGroup.style.display = 'flex';
-                costGroup.style.display = 'block'; 
+                existingBulkGroup.style.display = 'block';
                 lineageGroup.style.display = 'block';
                 
-                addTagNo.required = true; addSex.required = true;
-                fpAddBirth.setDate(today); 
-            }
-
-            const locSelect = document.getElementById('add_location');
-            if (USER_LOCATION != 1000) {
-                locSelect.value = USER_LOCATION;
-                loadBuildings(USER_LOCATION, 'add');
-            } else {
-                locSelect.value = "";
-                document.getElementById('add_building').innerHTML = '<option value="">Select Location First</option>';
-                document.getElementById('add_building').disabled = true;
-                document.getElementById('add_pen').innerHTML = '<option value="">Select Building First</option>';
-                document.getElementById('add_pen').disabled = true;
+                document.getElementById('existing-table-body').innerHTML = '';
+                addExistingRow(); // Start with 1 empty row
             }
 
             document.getElementById('addModal').classList.add('show');
         }
 
         function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+        // --- EXISTING/BORN BATCH LOGIC ---
+        function addExistingRow() {
+            const tbody = document.getElementById('existing-table-body');
+            const prevRow = tbody.lastElementChild;
+            
+            // Generate Location options based on user access
+            let locOptions = '<option value="">Select Location</option>';
+            if (USER_LOCATION == 1000) {
+                allLocations.forEach(l => {
+                    locOptions += `<option value="${l.LOCATION_ID}">${l.LOCATION_NAME}</option>`;
+                });
+            } else {
+                const myLoc = allLocations.find(l => l.LOCATION_ID == USER_LOCATION);
+                if(myLoc) locOptions += `<option value="${myLoc.LOCATION_ID}">${myLoc.LOCATION_NAME}</option>`;
+            }
+
+            let bldgOptions = '<option value="">Select Building</option>';
+            let penOptions = '<option value="">Select Pen</option>';
+            
+            // Smart Copy Defaults
+            let prevLoc = USER_LOCATION != 1000 ? USER_LOCATION : '';
+            let prevBld = '';
+            let prevPen = '';
+            let prevBirthDate = '';
+            let prevCost = '';
+
+            if (prevRow) {
+                const prevLocSel = prevRow.querySelector('.row-location');
+                const prevBldSel = prevRow.querySelector('.row-building');
+                const prevPenSel = prevRow.querySelector('.row-pen');
+                
+                locOptions = prevLocSel.innerHTML;
+                bldgOptions = prevBldSel.innerHTML;
+                penOptions = prevPenSel.innerHTML;
+                
+                prevLoc = prevLocSel.value;
+                prevBld = prevBldSel.value;
+                prevPen = prevPenSel.value;
+                
+                // Fetch flatpickr instance value if initialized, or raw value
+                const fpInput = prevRow.querySelector('.row-birthdate');
+                if (fpInput && fpInput._flatpickr) {
+                    prevBirthDate = fpInput._flatpickr.input.value;
+                } else {
+                    prevBirthDate = fpInput ? fpInput.value : '';
+                }
+                prevCost = prevRow.querySelector('.row-cost').value || '';
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);"><input type="text" class="form-control existing-tag" required placeholder="Tag No" style="height: 38px; min-width: 120px;"></td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <select class="form-control existing-sex" required style="height: 38px; min-width: 100px;">
+                        <option value="M">Male (Boar)</option>
+                        <option value="F">Female (Sow)</option>
+                    </select>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <input type="text" class="form-control row-birthdate date-picker" required value="${prevBirthDate}" style="height: 38px; width: 140px;">
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <input type="number" class="form-control row-cost" step="0.01" placeholder="0.00" value="${prevCost}" style="height: 38px; width: 100px;">
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <select class="form-control row-location" required style="height: 38px; min-width: 140px;" onchange="loadRowBuildings(this)" ${USER_LOCATION != 1000 ? 'disabled' : ''}>
+                        ${locOptions}
+                    </select>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <select class="form-control row-building" required style="height: 38px; min-width: 140px;" onchange="loadRowPens(this)" ${!prevBld && !prevRow ? 'disabled' : ''}>
+                        ${bldgOptions}
+                    </select>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <select class="form-control row-pen" required style="height: 38px; min-width: 140px;" ${!prevPen && !prevRow ? 'disabled' : ''}>
+                        ${penOptions}
+                    </select>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border); text-align: center;">
+                    <button type="button" class="action-btn delete" style="width:34px; height:34px; border:none; background:transparent;" onclick="removeExistingRow(this)"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            
+            // Initialize flatpickr immediately on the newly created input
+            const newDateInput = tr.querySelector('.row-birthdate');
+            flatpickr(newDateInput, {
+                dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y", allowInput: true,
+                defaultDate: prevBirthDate || new Date()
+            });
+
+            const newLocSel = tr.querySelector('.row-location');
+            const newBldSel = tr.querySelector('.row-building');
+            const newPenSel = tr.querySelector('.row-pen');
+            
+            if (prevLoc) newLocSel.value = prevLoc;
+            if (prevBld) newBldSel.value = prevBld;
+            if (prevPen) newPenSel.value = prevPen;
+
+            // Auto load buildings for restricted location on very first row
+            if (!prevRow && USER_LOCATION != 1000 && newLocSel.value) {
+                loadRowBuildings(newLocSel);
+            }
+        }
+
+        function removeExistingRow(btn) {
+            const tbody = document.getElementById('existing-table-body');
+            if (tbody.children.length > 1) {
+                btn.closest('tr').remove();
+            } else {
+                showToast('You must assign at least one animal tag to save.', 'error');
+            }
+        }
+
 
         // ─── PARENT SELECTION ───
         function openSelectParentModal(type, mode = 'add') {
@@ -1352,14 +1653,14 @@ if ($filter_acq !== '') $active_filters++;
                                 <td style="text-align:center;"><input type="checkbox" class="purchase-cb" data-item="${itemData}" style="width:16px;height:16px; cursor:pointer; accent-color:var(--primary);"></td>
                                 <td data-label="ID" class="val-mono">#${i.ITEM_ID}</td>
                                 <td data-label="Name" style="font-weight:600; color:var(--text-primary);">${i.ITEM_NAME}</td>
-                                <td data-label="Cost" class="val-mono" style="color:var(--secondary);">₱${i.UNIT_COST}</td>
+                                <td data-label="Cost" class="val-mono" style="color:var(--text-secondary);">₱${i.UNIT_COST}</td>
                                 <td data-label="Location" style="font-size:0.8rem; color:var(--text-secondary);">${i.LOCATION_NAME || '-'}</td>
                             </tr>`;
                         } else {
                             return `<tr>
                                 <td data-label="ID" class="val-mono">#${i.ITEM_ID}</td>
                                 <td data-label="Name" style="font-weight:600; color:var(--text-primary);">${i.ITEM_NAME}</td>
-                                <td data-label="Cost" class="val-mono" style="color:var(--secondary);">₱${i.UNIT_COST}</td>
+                                <td data-label="Cost" class="val-mono" style="color:var(--text-secondary);">₱${i.UNIT_COST}</td>
                                 <td data-label="Location" style="font-size:0.8rem; color:var(--text-secondary);">${i.LOCATION_NAME || '-'}</td>
                                 <td data-label="Action" style="text-align:center;">
                                     <button type="button" class="btn btn-ghost btn-sm" style="border:1px solid var(--border);" onclick="selectEditPurchaseItem('${i.ITEM_ID}', '${i.LOCATION_ID}', '${i.BUILDING_ID}', '${i.PEN_ID}', '${i.ITEM_NAME}', '${i.UNIT_COST}')">Select</button>
@@ -1387,66 +1688,82 @@ if ($filter_acq !== '') $active_filters++;
         function confirmPurchaseSelection() {
             const checked = document.querySelectorAll('.purchase-cb:checked');
             if(checked.length === 0) {
-                alert('Please select at least one item from the purchase inventory.');
+                showToast('Please select at least one item from the purchase inventory.', 'error');
                 return;
             }
 
             const tbody = document.getElementById('bulk-table-body');
-            
-            let unifiedLoc = null;
-            let unifiedBld = null;
-            let unifiedPen = null;
-            let uniform = true;
+            const today = new Date().toISOString().split('T')[0];
 
-            checked.forEach((cb, index) => {
+            checked.forEach((cb) => {
                 const item = JSON.parse(decodeURIComponent(cb.getAttribute('data-item')));
-                
-                if (index === 0) {
-                    unifiedLoc = item.LOCATION_ID;
-                    unifiedBld = item.BUILDING_ID;
-                    unifiedPen = item.PEN_ID;
-                } else {
-                    if (item.LOCATION_ID !== unifiedLoc) uniform = false;
-                    if (item.BUILDING_ID !== unifiedBld) uniform = false;
-                    if (item.PEN_ID !== unifiedPen) uniform = false;
-                }
-
                 const safeName = item.ITEM_NAME ? item.ITEM_NAME.replace(/"/g, '&quot;') : '';
+
+                // Build the location options for this specific item's location
+                let locOptions = '<option value="">Select Location</option>';
+                if (USER_LOCATION == 1000) {
+                    allLocations.forEach(l => {
+                        locOptions += `<option value="${l.LOCATION_ID}" ${l.LOCATION_ID == item.LOCATION_ID ? 'selected' : ''}>${l.LOCATION_NAME}</option>`;
+                    });
+                } else {
+                    const myLoc = allLocations.find(l => l.LOCATION_ID == USER_LOCATION);
+                    if (myLoc) {
+                        locOptions += `<option value="${myLoc.LOCATION_ID}" ${myLoc.LOCATION_ID == item.LOCATION_ID ? 'selected' : ''}>${myLoc.LOCATION_NAME}</option>`;
+                    }
+                }
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td data-label="Item">
+                    <td data-label="Purchase Base" style="padding:10px; border-bottom:1px solid var(--border);">
                         <strong style="color:var(--text-primary); font-size:0.9rem;">${item.ITEM_NAME}</strong><br>
-                        <small style="color:var(--secondary); font-family:var(--font-mono);">₱${item.UNIT_COST}</small>
+                        <small style="color:var(--text-secondary); font-family:var(--font-mono);">₱${item.UNIT_COST}</small>
                         <input type="hidden" class="bulk-item-id" value="${item.ITEM_ID}">
-                        <input type="hidden" class="bulk-cost" value="${item.UNIT_COST}">
                     </td>
-                    <td data-label="Tag No"><input type="text" class="form-control bulk-tag" required placeholder="Tag No" value="${safeName}"></td>
-                    <td data-label="Sex">
-                        <select class="form-control bulk-sex" required>
-                            <option value="M">Male (Boar)</option>
-                            <option value="F">Female (Sow)</option>
+                    <td data-label="Tag No" style="padding:10px; border-bottom:1px solid var(--border);"><input type="text" class="form-control existing-tag" required placeholder="Tag No" value="${safeName}" style="height:38px; min-width: 120px;"></td>
+                    <td data-label="Sex" style="padding:10px; border-bottom:1px solid var(--border);">
+                        <select class="form-control existing-sex" required style="height:38px; min-width: 100px;">
+                            <option value="M">Male (Sire)</option>
+                            <option value="F">Female (Dam)</option>
                         </select>
                     </td>
-                    <td style="text-align: center;"><button type="button" class="action-btn delete" onclick="this.closest('tr').remove(); updateBulkSummary();"><i class="fa-solid fa-trash-can"></i></button></td>
+                    <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                        <input type="text" class="form-control row-birthdate date-picker" required value="${today}" style="height: 38px; width: 140px;">
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                        <input type="number" class="form-control row-cost" step="0.01" value="${item.UNIT_COST}" style="height: 38px; width: 100px;" readonly>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                        <select class="form-control row-location" required style="height: 38px; min-width: 140px;" onchange="loadRowBuildings(this)" ${USER_LOCATION != 1000 ? 'disabled' : ''}>
+                            ${locOptions}
+                        </select>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                        <select class="form-control row-building" required style="height: 38px; min-width: 140px;" onchange="loadRowPens(this)" disabled>
+                            <option value="">Select Building</option>
+                        </select>
+                    </td>
+                    <td style="padding: 10px; border-bottom: 1px solid var(--border);">
+                        <select class="form-control row-pen" required style="height: 38px; min-width: 140px;" disabled>
+                            <option value="">Select Pen</option>
+                        </select>
+                    </td>
+                    <td style="text-align: center; padding:10px; border-bottom:1px solid var(--border);"><button type="button" class="action-btn delete" style="width:34px; height:34px; border:none; background:transparent;" onclick="this.closest('tr').remove(); updateBulkSummary();"><i class="fa-solid fa-trash-can"></i></button></td>
                 `;
                 tbody.appendChild(tr);
-            });
 
-            // Auto-select location hierarchy if uniform
-            if (uniform && unifiedLoc) {
-                document.getElementById('add_location').value = unifiedLoc;
-                loadBuildings(unifiedLoc, 'add').then(() => {
-                    if (unifiedBld) {
-                        document.getElementById('add_building').value = unifiedBld;
-                        loadPens(unifiedBld, 'add').then(() => {
-                            if (unifiedPen) {
-                                document.getElementById('add_pen').value = unifiedPen;
-                            }
-                        });
-                    }
+                // Initialize flatpickr immediately
+                const newDateInput = tr.querySelector('.row-birthdate');
+                flatpickr(newDateInput, {
+                    dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y", allowInput: true,
+                    defaultDate: today
                 });
-            }
+
+                // Auto-load building if location exists
+                const locSelect = tr.querySelector('.row-location');
+                if (locSelect.value) {
+                    loadRowBuildings(locSelect);
+                }
+            });
 
             updateBulkSummary();
             closeSelectPurchaseModal();
@@ -1499,7 +1816,7 @@ if ($filter_acq !== '') $active_filters++;
             if (entryType === 'purchase') {
                 const rows = document.querySelectorAll('#bulk-table-body tr');
                 if (rows.length === 0) {
-                    showAlert('add', 'Please select at least one purchase allocation.', 'error');
+                    showCustomAlert('Error', 'Please select at least one purchase allocation.', 'error');
                     btn.disabled = false; btn.innerHTML = 'Commit Record';
                     return;
                 }
@@ -1510,11 +1827,7 @@ if ($filter_acq !== '') $active_filters++;
                     acquisition_type: 1,
                     animal_type_id: document.getElementById('add_animal_type').value,
                     breed_id: document.getElementById('add_breed').value,
-                    birth_date: document.getElementById('add_birth_date').value,
-                    current_status: document.getElementById('add_status').value,
-                    location_id: document.getElementById('add_location').value,
-                    building_id: document.getElementById('add_building').value,
-                    pen_id: document.getElementById('add_pen').value
+                    current_status: document.getElementById('add_status').value
                 };
 
                 const promises = [];
@@ -1522,10 +1835,21 @@ if ($filter_acq !== '') $active_filters++;
                 for (let r of rows) {
                     const fd = new FormData();
                     for (let key in commonData) fd.append(key, commonData[key]);
+                    
                     fd.append('animal_item_id', r.querySelector('.bulk-item-id').value);
-                    fd.append('acquisition_cost', r.querySelector('.bulk-cost').value);
-                    fd.append('tag_no', r.querySelector('.bulk-tag').value);
-                    fd.append('sex', r.querySelector('.bulk-sex').value);
+                    fd.append('tag_no', r.querySelector('.existing-tag').value);
+                    fd.append('sex', r.querySelector('.existing-sex').value);
+                    
+                    // Capture Row-Level inputs. Use flatpickr actual hidden value if it exists.
+                    const fpInput = r.querySelector('.row-birthdate');
+                    const birthDateVal = fpInput._flatpickr ? fpInput._flatpickr.input.value : fpInput.value;
+                    
+                    fd.append('birth_date', birthDateVal);
+                    fd.append('acquisition_cost', r.querySelector('.row-cost').value || 0);
+                    fd.append('location_id', r.querySelector('.row-location').value || USER_LOCATION); 
+                    fd.append('building_id', r.querySelector('.row-building').value);
+                    fd.append('pen_id', r.querySelector('.row-pen').value);
+
                     promises.push(fetch('../process/addAnimalRecord.php', { method: 'POST', body: fd }).then(res => res.json()));
                 }
 
@@ -1535,33 +1859,74 @@ if ($filter_acq !== '') $active_filters++;
                     
                     if (hasError) {
                         const firstError = results.find(r => !r.success);
-                        showAlert('add', 'Batch Error: ' + firstError.message, 'error');
+                        showCustomAlert('Batch Error', firstError.message, 'error');
                         btn.disabled = false; btn.innerHTML = 'Commit Record';
                     } else {
-                        showAlert('add', 'Successfully provisioned ' + results.length + ' animal records.', 'success');
+                        showToast('Successfully provisioned ' + results.length + ' animal records.', 'success');
                         setTimeout(() => location.reload(), 1000);
                     }
                 } catch (e) {
-                    showAlert('add', 'Critical network error during batch processing.', 'error');
+                    showCustomAlert('Network Error', 'Critical network error during batch processing.', 'error');
                     btn.disabled = false; btn.innerHTML = 'Commit Record';
                 }
 
-            } else {
-                // SINGLE ENTRY
-                const formData = new FormData(form);
-                fetch('../process/addAnimalRecord.php', { method: 'POST', body: formData })
-                .then(res => res.json()).then(data => {
-                    if (data.success) {
-                        showAlert('add', data.message, 'success');
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showAlert('add', data.message, 'error');
-                        btn.disabled = false; btn.innerHTML = 'Commit Record';
-                    }
-                }).catch(e => {
-                    showAlert('add', 'System communication error.', 'error');
+            } else if (entryType === 'existing') {
+                const rows = document.querySelectorAll('#existing-table-body tr');
+                if (rows.length === 0) {
+                    showCustomAlert('Error', 'Please add at least one animal to save.', 'error');
                     btn.disabled = false; btn.innerHTML = 'Commit Record';
-                });
+                    return;
+                }
+
+                // Gather Global Values
+                const commonData = {
+                    entry_type: 'existing',
+                    acquisition_type: 0,
+                    animal_type_id: document.getElementById('add_animal_type').value,
+                    breed_id: document.getElementById('add_breed').value,
+                    current_status: document.getElementById('add_status').value,
+                    mother_id: document.getElementById('add_mother_id').value,
+                    father_id: document.getElementById('add_father_id').value
+                };
+
+                const promises = [];
+
+                for (let r of rows) {
+                    const fd = new FormData();
+                    for (let key in commonData) fd.append(key, commonData[key]);
+                    
+                    fd.append('tag_no', r.querySelector('.existing-tag').value);
+                    fd.append('sex', r.querySelector('.existing-sex').value);
+                    
+                    // Capture Row-Level inputs. Use flatpickr actual hidden value if it exists.
+                    const fpInput = r.querySelector('.row-birthdate');
+                    const birthDateVal = fpInput._flatpickr ? fpInput._flatpickr.input.value : fpInput.value;
+                    
+                    fd.append('birth_date', birthDateVal);
+                    fd.append('acquisition_cost', r.querySelector('.row-cost').value || 0);
+                    fd.append('location_id', r.querySelector('.row-location').value || USER_LOCATION); 
+                    fd.append('building_id', r.querySelector('.row-building').value);
+                    fd.append('pen_id', r.querySelector('.row-pen').value);
+
+                    promises.push(fetch('../process/addAnimalRecord.php', { method: 'POST', body: fd }).then(res => res.json()));
+                }
+
+                try {
+                    const results = await Promise.all(promises);
+                    const hasError = results.some(r => !r.success);
+                    
+                    if (hasError) {
+                        const firstError = results.find(r => !r.success);
+                        showCustomAlert('Batch Error', firstError.message, 'error');
+                        btn.disabled = false; btn.innerHTML = 'Commit Record';
+                    } else {
+                        showToast('Successfully provisioned ' + results.length + ' animal records.', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                } catch (e) {
+                    showCustomAlert('Network Error', 'Critical network error during batch processing.', 'error');
+                    btn.disabled = false; btn.innerHTML = 'Commit Record';
+                }
             }
         }
 
@@ -1601,12 +1966,10 @@ if ($filter_acq !== '') $active_filters++;
                         document.getElementById('edit-purchase-group').style.display = 'block';
                         document.getElementById('edit_animal_item_id').value = animal.ANIMAL_ITEM_ID; 
                         document.getElementById('edit_has_purchase').value = "1";
-                        document.getElementById('edit-birth-date-group').style.display = 'flex'; 
                         fpEditBirth.setDate(animal.BIRTH_DATE || '');
                     } else {
                         document.getElementById('edit-purchase-group').style.display = 'none';
                         document.getElementById('edit_has_purchase').value = "0";
-                        document.getElementById('edit-birth-date-group').style.display = 'flex';
                         fpEditBirth.setDate(animal.BIRTH_DATE || '');
                     }
 
@@ -1624,7 +1987,7 @@ if ($filter_acq !== '') $active_filters++;
                 }
             } catch (e) {
                 console.error(e);
-                alert("Failed to retrieve entity data.");
+                showCustomAlert("Error", "Failed to retrieve entity data.", "error");
             }
         }
 
@@ -1639,14 +2002,14 @@ if ($filter_acq !== '') $active_filters++;
             fetch('../process/editAnimalRecord.php', { method: 'POST', body: formData })
             .then(res => res.json()).then(data => {
                 if (data.success) {
-                    showAlert('edit', data.message, 'success');
+                    showToast(data.message, 'success');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showAlert('edit', data.message, 'error');
+                    showCustomAlert('Update Failed', data.message, 'error');
                     btn.disabled = false; btn.innerHTML = 'Update Record';
                 }
             }).catch(e => {
-                showAlert('edit', 'Critical connection failure.', 'error');
+                showCustomAlert('Network Error', 'Critical connection failure.', 'error');
                 btn.disabled = false; btn.innerHTML = 'Update Record';
             });
         }
@@ -1655,21 +2018,29 @@ if ($filter_acq !== '') $active_filters++;
 
         // ─── DELETE ───
         function deleteAnimal(button) {
-            if(!confirm("Warning: Purging this animal record is irreversible. Proceed?")) return;
             const row = button.closest('tr');
             const id = row.getAttribute('data-id');
-            const fd = new FormData(); fd.append('animal_id', id);
-            
-            fetch('../process/deleteAnimalRecord.php', { method:'POST', body:fd })
-            .then(r=>r.json()).then(data => {
-                if(data.success) {
-                    alert(data.message);
-                    row.remove();
-                    checkEmptyState();
-                } else {
-                    alert("System Denial: " + data.message);
+            const tagName = row.querySelector('.col-name').textContent.trim();
+
+            showCustomConfirm(
+                "Delete Animal Record", 
+                `Warning: Purging the record for ${tagName} is irreversible. Proceed?`, 
+                "Yes, Delete", 
+                "btn-danger", 
+                () => {
+                    const fd = new FormData(); fd.append('animal_id', id);
+                    fetch('../process/deleteAnimalRecord.php', { method:'POST', body:fd })
+                    .then(r=>r.json()).then(data => {
+                        if(data.success) {
+                            showToast(data.message, "success");
+                            row.remove();
+                            checkEmptyState();
+                        } else {
+                            showCustomAlert("System Denial", data.message, "error");
+                        }
+                    });
                 }
-            });
+            );
         }
 
         // ─── CASCADING DROPDOWNS ───
@@ -1736,7 +2107,8 @@ if ($filter_acq !== '') $active_filters++;
         }
 
         // Close modals on overlay click
-        document.getElementById('addModal').addEventListener('click', function(e) { if(e.target===this) closeAddModal(); });
+        document.getElementById('customAlertModal').addEventListener('click', function(e) { if(e.target===this) closeCustomAlert(); });
+        document.getElementById('customConfirmModal').addEventListener('click', function(e) { if(e.target===this) closeCustomConfirm(); });
         document.getElementById('editModal').addEventListener('click', function(e) { if(e.target===this) closeEditModal(); });
         document.getElementById('selectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeSelectPurchaseModal(); });
         document.getElementById('editSelectPurchaseModal').addEventListener('click', function(e) { if(e.target===this) closeEditSelectPurchaseModal(); });

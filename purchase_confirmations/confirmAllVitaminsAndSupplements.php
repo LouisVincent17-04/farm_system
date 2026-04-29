@@ -137,14 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         echo json_encode([
             'success' => true, 
-            'message' => "✅ Successfully confirmed $count items and updated inventory costs."
+            'message' => "  Successfully confirmed $count items and updated inventory costs."
         ]);
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);

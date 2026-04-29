@@ -109,7 +109,7 @@ class TestSignIn(unittest.TestCase):
         )
         self.assertIn("is-active", panel.get_attribute("class"),
                       "Sign In panel should be active on load")
-        print("✅ TC-01 PASS — Page loaded, Sign In tab active")
+        print("  TC-01 PASS — Page loaded, Sign In tab active")
 
     # ── TC-02: Empty form submission ──────────────────────────────────────────
     def test_02_empty_form_shows_errors(self):
@@ -120,7 +120,7 @@ class TestSignIn(unittest.TestCase):
                         "Email field should be marked invalid")
         self.assertTrue(self._field_invalid("signinPassword"),
                         "Password field should be marked invalid")
-        print("✅ TC-02 PASS — Empty form shows validation errors")
+        print("  TC-02 PASS — Empty form shows validation errors")
 
     # ── TC-03: Invalid email format ───────────────────────────────────────────
     def test_03_invalid_email_format(self):
@@ -131,7 +131,7 @@ class TestSignIn(unittest.TestCase):
         time.sleep(0.4)
         self.assertTrue(self._field_invalid("signinEmail"),
                         "Email field should be invalid for bad format")
-        print("✅ TC-03 PASS — Invalid email format caught")
+        print("  TC-03 PASS — Invalid email format caught")
 
     # ── TC-04: Password toggle ────────────────────────────────────────────────
     def test_04_password_toggle(self):
@@ -151,7 +151,7 @@ class TestSignIn(unittest.TestCase):
         time.sleep(0.2)
         self.assertEqual(pw.get_attribute("type"), "password",
                          "Field should revert to password after second toggle")
-        print("✅ TC-04 PASS — Password toggle works correctly")
+        print("  TC-04 PASS — Password toggle works correctly")
 
     # ── TC-05: Tab switch to Sign Up ──────────────────────────────────────────
     def test_05_switch_to_signup_tab(self):
@@ -166,7 +166,7 @@ class TestSignIn(unittest.TestCase):
         signup_panel = self.driver.find_element(By.ID, "signupForm")
         self.assertIn("is-active", signup_panel.get_attribute("class"),
                       "Sign Up panel should become active")
-        print("✅ TC-05 PASS — Tab switches to Sign Up")
+        print("  TC-05 PASS — Tab switches to Sign Up")
 
     # ── TC-06: Invalid credentials ────────────────────────────────────────────
     def test_06_invalid_credentials_show_toast(self):
@@ -177,7 +177,7 @@ class TestSignIn(unittest.TestCase):
         toast = self._toast_visible()
         self.assertIn("lp-toast--error", toast.get_attribute("class"),
                       "Error toast should appear for bad credentials")
-        print("✅ TC-06 PASS — Error toast shown for invalid credentials")
+        print("  TC-06 PASS — Error toast shown for invalid credentials")
 
     # ── TC-07: Valid credentials ──────────────────────────────────────────────
     def test_07_valid_credentials_redirect(self):
@@ -196,7 +196,7 @@ class TestSignIn(unittest.TestCase):
             # Might have redirected directly without toast
             self.wait.until(EC.url_contains("admin_dashboard"),
                             "Should redirect to dashboard after login")
-        print("✅ TC-07 PASS — Valid credentials redirect to dashboard")
+        print("  TC-07 PASS — Valid credentials redirect to dashboard")
 
     # ── TC-08: Field error clears on input ────────────────────────────────────
     def test_08_error_clears_on_retype(self):
@@ -209,7 +209,7 @@ class TestSignIn(unittest.TestCase):
         time.sleep(0.2)
         self.assertFalse(self._field_invalid("signinEmail"),
                          "Invalid class should clear after user types")
-        print("✅ TC-08 PASS — Inline error clears on retype")
+        print("  TC-08 PASS — Inline error clears on retype")
 
     # ── TC-09: Remember me checkbox ───────────────────────────────────────────
     def test_09_remember_me_checkbox(self):
@@ -220,7 +220,7 @@ class TestSignIn(unittest.TestCase):
         self.assertTrue(cb.is_selected(), "Checkbox should be checked after click")
         cb.click()
         self.assertFalse(cb.is_selected(), "Checkbox should uncheck on second click")
-        print("✅ TC-09 PASS — Remember Me checkbox works")
+        print("  TC-09 PASS — Remember Me checkbox works")
 
     # ── TC-10: Forgot password link ───────────────────────────────────────────
     def test_10_forgot_password_link(self):
@@ -231,7 +231,7 @@ class TestSignIn(unittest.TestCase):
         href = link.get_attribute("href")
         self.assertIn("forgot_password", href,
                       "Link should point to forgot_password page")
-        print("✅ TC-10 PASS — Forgot password link is correct")
+        print("  TC-10 PASS — Forgot password link is correct")
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
@@ -246,6 +246,6 @@ if __name__ == "__main__":
     print(f"Failures    : {len(result.failures)}")
     print(f"Errors      : {len(result.errors)}")
     print(f"Skipped     : {len(result.skipped)}")
-    status = "✅ ALL PASSED" if result.wasSuccessful() else "❌ SOME TESTS FAILED"
+    status = "  ALL PASSED" if result.wasSuccessful() else "  SOME TESTS FAILED"
     print(f"Result      : {status}")
     print("=" * 60)

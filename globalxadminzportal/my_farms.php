@@ -55,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'db_name'   => $farm['db_name'],
     ];
 
+    // ---> ADDED: Explicitly set farm_name in session for the dashboard badge <---
+    $_SESSION['farm_name'] = $farm['farm_name'];
+
     echo json_encode([
         'success'   => true,
         'farm_name' => $farm['farm_name'],
@@ -349,6 +352,7 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Farms | FarmPro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -762,7 +766,7 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
             if (data.success) {
                 activeFarmId = parseInt(currentFarm.farm_id);
                 status.style.color = 'var(--accent)';
-                status.textContent = `✅ ${data.farm_name} is now active. Redirecting…`;
+                status.textContent = `  ${data.farm_name} is now active. Redirecting…`;
 
                 // Update card UI
                 document.querySelectorAll('.farm-card').forEach(c => c.classList.remove('is-active'));
@@ -781,13 +785,13 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
                 btn.disabled = false;
                 btn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> Launch Farm Dashboard';
                 status.style.color = 'var(--red)';
-                status.textContent = '❌ ' + data.message;
+                status.textContent = '  ' + data.message;
             }
         } catch(e) {
             btn.disabled = false;
             btn.innerHTML = 'Launch Farm Dashboard';
             status.style.color = 'var(--red)';
-            status.textContent = '❌ System error. Please try again.';
+            status.textContent = '  System error. Please try again.';
         }
     }
 
@@ -797,14 +801,14 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
         if (!code || code === '—') return;
         navigator.clipboard.writeText(code).then(() => {
             const btn = document.getElementById('btnCopyCode');
-            btn.textContent = '✅ Copied!';
+            btn.textContent = '  Copied!';
             btn.classList.add('copied');
             setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
         }).catch(() => {
             const el = document.createElement('textarea');
             el.value = code; document.body.appendChild(el); el.select();
             document.execCommand('copy'); document.body.removeChild(el);
-            document.getElementById('btnCopyCode').textContent = '✅ Copied!';
+            document.getElementById('btnCopyCode').textContent = '  Copied!';
         });
     }
 
@@ -927,8 +931,8 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
                     <div class="pending-name">${u.full_name}</div>
                     <div class="pending-email">${u.email}</div>
                     <div class="pending-actions">
-                        <button class="btn-approve" onclick="decideEmployee(${u.user_id}, ${farmId}, 'approve', this)">✅ Approve</button>
-                        <button class="btn-reject"  onclick="decideEmployee(${u.user_id}, ${farmId}, 'reject',  this)">❌ Reject</button>
+                        <button class="btn-approve" onclick="decideEmployee(${u.user_id}, ${farmId}, 'approve', this)">  Approve</button>
+                        <button class="btn-reject"  onclick="decideEmployee(${u.user_id}, ${farmId}, 'reject',  this)">  Reject</button>
                     </div>
                 </div>`).join('');
 
@@ -974,12 +978,12 @@ $active_farm_id = $_SESSION['active_farm']['farm_id'] ?? null;
             } else {
                 alert('Error: ' + data.message);
                 btn.disabled    = false;
-                btn.textContent = decision === 'approve' ? '✅ Approve' : '❌ Reject';
+                btn.textContent = decision === 'approve' ? '  Approve' : '  Reject';
             }
         } catch(e) {
             alert('System error. Please try again.');
             btn.disabled    = false;
-            btn.textContent = decision === 'approve' ? '✅ Approve' : '❌ Reject';
+            btn.textContent = decision === 'approve' ? '  Approve' : '  Reject';
         }
     }
 

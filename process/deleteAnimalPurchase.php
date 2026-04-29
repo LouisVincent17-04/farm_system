@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
 
             echo json_encode([
                 'success' => false,
-                'message' => '❌ Item not found or already deleted.'
+                'message' => '  Item not found or already deleted.'
             ]);
             exit;
         }
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         // If this is an AJAX request, the JSON below is sufficient.
         echo json_encode([
             'success' => true,
-            'message' => '✅ Item deleted successfully.'
+            'message' => '  Item deleted successfully.'
         ]);
 
         header('Location: ../views/purch_animals.php'); 
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         echo json_encode([
             'success' => false,
-            'message' => '❌ Error: ' . $error_msg
+            'message' => '  Error: ' . $error_msg
         ]);
 
         
@@ -124,13 +124,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
 
         echo json_encode([
             'success' => false,
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {
     echo json_encode([
         'success' => false,
-        'message' => '❌ Invalid request.'
+        'message' => '  Invalid request.'
     ]);
 }
 ?>

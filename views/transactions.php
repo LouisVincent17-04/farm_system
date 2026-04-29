@@ -1,7 +1,7 @@
 <?php
 // views/transactions.php
 $page = "transactions"; 
-include '../config/Connection.php';
+include '../functions/getUsersLocation.php';
 
 include '../security/checkAccess.php';
 checkAccess('transactions');
@@ -10,6 +10,57 @@ include '../common/chat_support.php';
 
 // Check if user is Super Admin
 $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USER_TYPE'] == 4);
+
+// --- FETCH DYNAMIC STATS ---
+$stats = [
+    'todays_trans' => 0,
+    'active_animals' => 0,
+    'farms' => 0,
+    'buildings' => 0,
+    'pens' => 0
+];
+
+try {
+    if ($USER_LOCATION_ != 1000) {
+        // Location Restricted Stats
+        $loc_id = (int)$USER_LOCATION_;
+        $stats['farms'] = 1;
+        $stats['buildings'] = $conn->query("SELECT COUNT(*) FROM BUILDINGS WHERE LOCATION_ID = $loc_id")->fetchColumn();
+        $stats['pens'] = $conn->query("SELECT COUNT(*) FROM PENS p JOIN BUILDINGS b ON p.BUILDING_ID = b.BUILDING_ID WHERE b.LOCATION_ID = $loc_id")->fetchColumn();
+        $stats['active_animals'] = $conn->query("SELECT COUNT(*) FROM animal_records WHERE IS_ACTIVE = 1 AND CURRENT_STATUS = 'Active' AND LOCATION_ID = $loc_id")->fetchColumn();
+        
+        // Comprehensive Transactions Today (Purchases, Feeds, Meds, Vacs, Vits, Checkups, Misc Fees)
+        $t_query = "SELECT 
+            (SELECT COUNT(*) FROM ITEMS WHERE DATE(CREATED_AT) = CURDATE() AND LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM feed_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.TRANSACTION_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM treatment_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.TRANSACTION_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM vaccination_records t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.VACCINATION_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM vitamins_supplements_transactions t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.TRANSACTION_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM check_ups t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.CHECKUP_DATE) = CURDATE() AND a.LOCATION_ID = $loc_id) +
+            (SELECT COUNT(*) FROM animal_misc_fees t JOIN animal_records a ON t.ANIMAL_ID = a.ANIMAL_ID WHERE DATE(t.CREATED_AT) = CURDATE() AND a.LOCATION_ID = $loc_id)";
+        $stats['todays_trans'] = $conn->query($t_query)->fetchColumn();
+        
+    } else {
+        // Super Admin Stats (All Locations)
+        $stats['farms'] = $conn->query("SELECT COUNT(*) FROM LOCATIONS")->fetchColumn();
+        $stats['buildings'] = $conn->query("SELECT COUNT(*) FROM BUILDINGS")->fetchColumn();
+        $stats['pens'] = $conn->query("SELECT COUNT(*) FROM PENS")->fetchColumn();
+        $stats['active_animals'] = $conn->query("SELECT COUNT(*) FROM animal_records WHERE IS_ACTIVE = 1 AND CURRENT_STATUS = 'Active'")->fetchColumn();
+        
+        // Comprehensive Transactions Today (All Locations)
+        $t_query = "SELECT 
+            (SELECT COUNT(*) FROM ITEMS WHERE DATE(CREATED_AT) = CURDATE()) +
+            (SELECT COUNT(*) FROM feed_transactions WHERE DATE(TRANSACTION_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM treatment_transactions WHERE DATE(TRANSACTION_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM vaccination_records WHERE DATE(VACCINATION_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM vitamins_supplements_transactions WHERE DATE(TRANSACTION_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM check_ups WHERE DATE(CHECKUP_DATE) = CURDATE()) +
+            (SELECT COUNT(*) FROM animal_misc_fees WHERE DATE(CREATED_AT) = CURDATE())";
+        $stats['todays_trans'] = $conn->query($t_query)->fetchColumn();
+    }
+} catch (Exception $e) {
+    error_log("Dashboard stats error: " . $e->getMessage());
+}
 ?>
 
 <!DOCTYPE html>
@@ -166,9 +217,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
             display: flex; justify-content: space-between; align-items: flex-end;
             padding-top: 1.25rem; border-top: 1px solid var(--border); margin-top: auto;
         }
-        .stat-group { display: flex; flex-direction: column; gap: 2px; }
-        .stat-group .num { font-size: 1.1rem; font-weight: 700; color: #fff; font-family: var(--font-mono); line-height: 1; }
-        .stat-group .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
         
         .card-action {
             font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);
@@ -224,28 +272,24 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
         <h2 class="stats-title">System Overview</h2>
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value">342</div>
+                <div class="stat-value"><?= number_format($stats['todays_trans']) ?></div>
                 <div class="stat-desc">Today's Trans.</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">1,247</div>
+                <div class="stat-value"><?= number_format($stats['active_animals']) ?></div>
                 <div class="stat-desc">Active Animals</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">24</div>
+                <div class="stat-value"><?= number_format($stats['farms']) ?></div>
                 <div class="stat-desc">Farms</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">89</div>
+                <div class="stat-value"><?= number_format($stats['buildings']) ?></div>
                 <div class="stat-desc">Buildings</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">156</div>
+                <div class="stat-value"><?= number_format($stats['pens']) ?></div>
                 <div class="stat-desc">Pens</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">₱284k</div>
-                <div class="stat-desc">Mo. Expenses</div>
             </div>
         </div>
     </div>
@@ -265,8 +309,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">₱24k</span><span class="lbl">This Week</span></div>
-                <div class="stat-group"><span class="num">89</span><span class="lbl">Transactions</span></div>
                 <div class="card-action">Procurement <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -282,8 +324,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">15</span><span class="lbl">Sows</span></div>
-                <div class="stat-group"><span class="num">5</span><span class="lbl">Boars</span></div>
                 <div class="card-action">Feed Animal <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -299,8 +339,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">112</span><span class="lbl">Pens Today</span></div>
-                <div class="stat-group"><span class="num">1,200kg</span><span class="lbl">Consumed</span></div>
                 <div class="card-action">Batch Feed <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -316,8 +354,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">5</span><span class="lbl">Active Pens</span></div>
-                <div class="stat-group"><span class="num">45</span><span class="lbl">Treated</span></div>
                 <div class="card-action">Administer <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -333,8 +369,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">12</span><span class="lbl">Batches</span></div>
-                <div class="stat-group"><span class="num">All</span><span class="lbl">Coverage</span></div>
                 <div class="card-action">Supplement <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -350,8 +384,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">8</span><span class="lbl">Pens Inspected</span></div>
-                <div class="stat-group"><span class="num">Good</span><span class="lbl">Avg Status</span></div>
                 <div class="card-action">Log Checkup <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -367,8 +399,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">2</span><span class="lbl">Upcoming</span></div>
-                <div class="stat-group"><span class="num">200</span><span class="lbl">Doses Used</span></div>
                 <div class="card-action">Vaccinate <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -384,8 +414,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num">3</span><span class="lbl">Invoices</span></div>
-                <div class="stat-group"><span class="num">45</span><span class="lbl">Heads Sold</span></div>
                 <div class="card-action">Process Sale <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
@@ -401,8 +429,6 @@ $isSuperAdmin = (isset($_SESSION['user']['USER_TYPE']) && $_SESSION['user']['USE
                 </div>
             </div>
             <div class="card-stats">
-                <div class="stat-group"><span class="num" style="color:var(--text-muted);">0</span><span class="lbl">Events Today</span></div>
-                <div class="stat-group"><span class="num" style="color:var(--text-muted);">0</span><span class="lbl">Heads Lost</span></div>
                 <div class="card-action">Log Mortality <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>

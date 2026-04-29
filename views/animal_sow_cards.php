@@ -670,9 +670,11 @@ try {
         e.preventDefault();
         
         const action = document.getElementById('action_type').value;
-        const msg = action === 'add' 
-            ? "Confirm details?\n\nThis will generate new animal records. Ensure 'Active' count is correct." 
-            : "Update this record?";
+
+        let msg = "Confirm details?\n\nIf you increased the 'Active (Alive)' count, new animal records will be automatically generated for the extra piglets.";
+        if (action === 'add') {
+            msg = "Confirm details?\n\nThis will generate new animal records. Ensure 'Active' count is correct.";
+        }
 
         if(!confirm(msg)) return;
 

@@ -31,7 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $service_cost         = !empty($_POST['cost']) ? floatval($_POST['cost']) : 0;
 
     if (!$vaccination_id || !$animal_id || !$vaccine_item_id || $quantity <= 0) {
-        echo json_encode(['success' => false, 'message' => '❌ Missing required fields or invalid quantity.']);
+        echo json_encode(['success' => false, 'message' => '  Missing required fields or invalid quantity.']);
         exit;
     }
 
@@ -205,16 +205,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 8. COMMIT EVERYTHING
         $conn->commit();
         $response['success'] = true;
-        $response['message'] = '✅ Record updated and inventory adjusted.';
+        $response['message'] = '  Record updated and inventory adjusted.';
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        $response['message'] = '❌ Update Failed: ' . $e->getMessage();
+        $response['message'] = '  Update Failed: ' . $e->getMessage();
     }
 } else {
-    $response['message'] = '❌ Invalid request method.';
+    $response['message'] = '  Invalid request method.';
 }
 
 echo json_encode($response);

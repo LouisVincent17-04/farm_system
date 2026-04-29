@@ -22,7 +22,7 @@ $test_key = strtolower(trim($body['test']   ?? ''));
 $device   = trim($body['device'] ?? '');
 
 if (empty($test_key) || empty($device)) {
-    echo json_encode(['success' => false, 'message' => '❌ Missing test or device name.']);
+    echo json_encode(['success' => false, 'message' => '  Missing test or device name.']);
     exit;
 }
 
@@ -32,7 +32,7 @@ $store_file = __DIR__ . '/runner_registry.json';
 if (!file_exists($store_file)) {
     echo json_encode([
         'success' => false,
-        'message' => '❌ No devices registered. Run test_runner_server.py on your device first.'
+        'message' => '  No devices registered. Run test_runner_server.py on your device first.'
     ]);
     exit;
 }
@@ -42,7 +42,7 @@ $registry = json_decode(file_get_contents($store_file), true) ?? [];
 if (!isset($registry[$device])) {
     echo json_encode([
         'success' => false,
-        'message' => "❌ Device '<strong>$device</strong>' is not registered. Run test_runner_server.py on this device first."
+        'message' => "  Device '<strong>$device</strong>' is not registered. Run test_runner_server.py on this device first."
     ]);
     exit;
 }
@@ -64,7 +64,7 @@ curl_close($ch);
 if ($err || !$response) {
     echo json_encode([
         'success' => false,
-        'message' => "❌ Could not reach runner on '<strong>$device</strong>'. Make sure test_runner_server.py is still running."
+        'message' => "  Could not reach runner on '<strong>$device</strong>'. Make sure test_runner_server.py is still running."
     ]);
     exit;
 }

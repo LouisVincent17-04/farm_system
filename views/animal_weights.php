@@ -1,7 +1,7 @@
 <?php
 // views/animal_weights.php
 ob_start(); 
-error_reporting(E_ALL);
+error_reporting(0); // Suppress warnings
 ini_set('display_errors', 0); 
 
 $page = "farm";
@@ -27,7 +27,14 @@ if (isset($_GET['action'])) {
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
         if ($action === 'get_pens' && isset($_GET['bldg_id'])) {
-            $stmt = $conn->prepare("SELECT PEN_ID, PEN_NAME FROM pens WHERE BUILDING_ID = ? ORDER BY PEN_NAME");
+            // UPDATED SQL: Now actively counts the animals inside each pen
+            $stmt = $conn->prepare("
+                SELECT p.PEN_ID, p.PEN_NAME,
+                       (SELECT COUNT(*) FROM animal_records a WHERE a.PEN_ID = p.PEN_ID AND a.IS_ACTIVE = 1 AND a.CURRENT_STATUS != 'Sold') as ANIMAL_COUNT
+                FROM pens p 
+                WHERE p.BUILDING_ID = ? 
+                ORDER BY p.PEN_NAME ASC
+            ");
             $stmt->execute([$_GET['bldg_id']]);
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC)); exit;
         }
@@ -97,6 +104,7 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
             --red:            #f87171;
             --red-dim:        rgba(248,113,113,0.12);
             --blue:           #3b82f6;
+            --pink:           #f472b6;
             
             --text-primary:   #f1f5f9;
             --text-secondary: #94a3b8;
@@ -233,6 +241,7 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         .date-val { font-family: var(--font-mono); color: var(--text-primary); font-size: 0.95rem; }
 
         /* Weight Inputs */
+        .input-wrap { display: flex; flex-direction: column; }
         .weight-input { 
             background: var(--bg-elevated); border: 1px solid var(--border); color: #fff; 
             padding: 10px 12px; border-radius: 8px; width: 110px; text-align: right; 
@@ -267,7 +276,30 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .w-table th, .w-table td { padding: 12px; }
-            #table-container { max-height: none; }
+            #table-container { max-height: none; overflow: visible; }
+            
+            /* Card Layout for Mobile Table */
+            .w-table, .w-table tbody, .w-table tr, .w-table td { display: block; width: 100%; box-sizing: border-box; }
+            .w-table thead { display: none; }
+            
+            .w-table tr { 
+                background: var(--bg-surface); border: 1px solid var(--border); 
+                border-radius: var(--radius-lg); margin-bottom: 1rem; padding: 1.25rem; 
+            }
+            .w-table td { 
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 0.75rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); 
+            }
+            .w-table td:last-child { border-bottom: none; padding-bottom: 0;}
+            
+            .w-table td::before { 
+                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
+                font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; 
+            }
+            
+            .w-table td.td-tag { padding-left: 0 !important; }
+            .tag-info { align-items: flex-end; text-align: right; }
+            .input-wrap { align-items: flex-end; }
         }
     </style>
 </head>
@@ -396,8 +428,10 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         target.innerHTML = '<option value="">Loading...</option>';
         const data = await fetchJson(`?action=get_buildings&loc_id=${id}`);
         target.innerHTML = '<option value="">-- Choose Building --</option>';
-        populateSelect(target, data, 'BUILDING_ID', 'BUILDING_NAME');
-        target.disabled = false;
+        if(Array.isArray(data) && data.length) {
+            data.forEach(b => target.innerHTML += `<option value="${b.BUILDING_ID}">${b.BUILDING_NAME}</option>`);
+            target.disabled = false;
+        }
     }
 
     async function loadPens() {
@@ -408,20 +442,27 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
 
         target.innerHTML = '<option value="">Loading...</option>';
         const data = await fetchJson(`?action=get_pens&bldg_id=${id}`);
+        
         target.innerHTML = '<option value="">-- Choose Pen --</option>';
-        populateSelect(target, data, 'PEN_ID', 'PEN_NAME');
-        target.disabled = false;
+        
+        let validPens = 0;
+        data.forEach(p => {
+            const count = parseInt(p.ANIMAL_COUNT) || 0;
+            if(count > 0) {
+                target.innerHTML += `<option value="${p.PEN_ID}">${p.PEN_NAME} (${count} animals)</option>`;
+                validPens++;
+            }
+        });
+
+        if(validPens === 0) {
+            target.innerHTML = '<option value="">-- No Occupied Pens --</option>';
+            target.disabled = true;
+        } else {
+            target.disabled = false;
+        }
     }
 
     function resetSelect(el, msg) { el.innerHTML = `<option value="">${msg}</option>`; el.disabled = true; }
-    function populateSelect(el, data, valKey, txtKey) {
-        data.forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item[valKey];
-            opt.text = item[txtKey];
-            el.appendChild(opt);
-        });
-    }
 
     // --- Table Logic ---
     async function loadAnimals() {
@@ -482,40 +523,37 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
             const weaningPlaceholder = isWeaningDisabled ? 'N/A' : '0.00';
             
             html += `
-                <tr>
-                    <td style="padding-left: 2rem;">
+                <tr data-id="${a.ANIMAL_ID}">
+                    <td data-label="Tag / Info" class="td-tag" style="padding-left: 2rem;">
                         <div class="tag-info">
                             <span class="tag-no">${a.TAG_NO}</span>
                             <span class="animal-meta">${sexIcon} SysID: ${a.ANIMAL_ID}</span>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="Farrowing Date">
                         <span class="date-val">${a.FMT_BIRTH_DATE}</span>
                     </td>
-                    <td>
-                        <div>
-                            <input type="number" step="0.01" min="0" class="weight-input" 
-                                   name="birth_weights[${a.ANIMAL_ID}]" 
+                    <td data-label="Birth Wt">
+                        <div class="input-wrap">
+                            <input type="number" step="0.01" min="0" class="weight-input weight-birth" 
                                    value="${birth > 0 ? birth.toFixed(2) : ''}" placeholder="0.00"
                                    oninput="handleInput(this, ${birth}); syncCurrentWeight(this, ${birth}, ${current}, '${a.ANIMAL_ID}')">
                             <span class="diff-tag"></span>
                         </div>
                     </td>
-                    <td>
-                        <div>
-                            <input type="number" step="0.01" min="0" class="weight-input" 
-                                   name="weaning_weights[${a.ANIMAL_ID}]" 
+                    <td data-label="Weaning Wt">
+                        <div class="input-wrap">
+                            <input type="number" step="0.01" min="0" class="weight-input weight-wean" 
                                    value="${weaning > 0 ? weaning.toFixed(2) : ''}" placeholder="${weaningPlaceholder}"
                                    oninput="handleInput(this, ${weaning})" ${weaningAttr}>
                             <span class="diff-tag"></span>
                         </div>
                     </td>
-                    <td>
-                        <div>
-                            <input type="number" step="0.01" min="0" class="weight-input" 
-                                   name="current_weights[${a.ANIMAL_ID}]" 
+                    <td data-label="Current Wt">
+                        <div class="input-wrap">
+                            <input type="number" step="0.01" min="0" class="weight-input weight-curr" 
                                    value="${current > 0 ? current.toFixed(2) : ''}" placeholder="0.00"
-                                   oninput="handleInput(this, ${current})">
+                                   oninput="handleInput(this, ${current})" id="curr_${a.ANIMAL_ID}">
                             <span class="diff-tag"></span>
                         </div>
                     </td>
@@ -561,7 +599,7 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
     // Live Syncs the current weight on every keystroke if birth weight is being initialized
     function syncCurrentWeight(birthInput, oldBirth, oldCurrent, animalId) {
         if (Number(oldBirth) === 0) {
-            const currentInput = document.getElementsByName('current_weights[' + animalId + ']')[0];
+            const currentInput = document.getElementById('curr_' + animalId);
             if (currentInput) {
                 currentInput.value = birthInput.value;
                 handleInput(currentInput, Number(oldCurrent));
@@ -569,29 +607,53 @@ $locs = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll
         }
     }
 
+    // --- JSON Payload Submission ---
     function saveWeights() {
-        const form = document.getElementById('weightForm');
-        if(!form) return;
+        const rows = document.querySelectorAll('#table-container tbody tr');
+        let payload = [];
+        
+        rows.forEach(tr => {
+            const id = tr.getAttribute('data-id');
+            const birthInput = tr.querySelector('.weight-birth');
+            const weanInput = tr.querySelector('.weight-wean');
+            const currInput = tr.querySelector('.weight-curr');
 
-        const formData = new FormData(form);
+            // Only send rows where an input was actually changed
+            if ((birthInput && birthInput.classList.contains('changed')) || 
+                (weanInput && weanInput.classList.contains('changed')) || 
+                (currInput && currInput.classList.contains('changed'))) {
+                
+                payload.push({
+                    id: id,
+                    birth: birthInput ? birthInput.value : '',
+                    weaning: weanInput && !weanInput.disabled ? weanInput.value : '',
+                    current: currInput ? currInput.value : ''
+                });
+            }
+        });
+
+        if (payload.length === 0) {
+            showToast("No weight changes detected to save.", "error"); 
+            return; 
+        }
+
+        if(!confirm("Update records with these new weights?")) return;
+
         const btn = document.getElementById('btn_save');
-
-        let hasChanges = false;
-        for(let pair of formData.entries()) { if(pair[1] !== "") hasChanges = true; }
-
-        if(!hasChanges) { showToast("Please enter at least one weight.", "error"); return; }
-        if(!confirm("Update records with these weights?")) return;
-
         const ogText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Committing...';
 
-        fetch('../process/updateWeights.php', { method: 'POST', body: formData })
+        const fd = new FormData();
+        fd.append('payload', JSON.stringify(payload));
+        fd.append('weighing_date', new Date().toISOString().split('T')[0]);
+
+        fetch('../process/updateWeights.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
             if(data.success) {
                 showToast(data.message, "success");
-                loadAnimals(); // Refresh data
+                loadAnimals(); // Refresh data to clear 'changed' statuses
             } else {
                 showToast(data.message, "error");
                 btn.disabled = false;

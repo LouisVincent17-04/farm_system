@@ -1,78 +1,78 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-1. Feeding will not be individual, it should be by pen and all animals in that pen are being fed ✅
-2. Cost Monitoring -> All animals must have an individual record of their costs ✅
-3. If an animal gives birth, all of its expenses (NOT INCLUDING THE PURCHASE COST) will be divided to the newly births ✅
+1. Feeding will not be individual, it should be by pen and all animals in that pen are being fed  
+2. Cost Monitoring -> All animals must have an individual record of their costs  
+3. If an animal gives birth, all of its expenses (NOT INCLUDING THE PURCHASE COST) will be divided to the newly births  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-COSTING: MAKE A FILTER THAT SHOWS THE HISTORY OF ALL, ACTIVE, SOLD, DISEASED ✅
+COSTING: MAKE A FILTER THAT SHOWS THE HISTORY OF ALL, ACTIVE, SOLD, DISEASED  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
 Business Cycle:
-Animal ->  eats, medication, vaccination, vitamins & supplementation, feeding ✅
+Animal ->  eats, medication, vaccination, vitamins & supplementation, feeding  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
 If an Animal will give birth:
--> Entire cost for medication, vaccination, vitamins & supplementation, feeding will be divided to the piglets ✅
--> Piglets will have an acquisition cost depending on how much the divided cost ✅
+-> Entire cost for medication, vaccination, vitamins & supplementation, feeding will be divided to the piglets  
+-> Piglets will have an acquisition cost depending on how much the divided cost  
 
-Create a page that will make process that will transfer the cost of each category such as: medication, vaccination, vitamins & supplementation, feeding ✅
-Select Animal Tag No (Parent) -> Transfer Cost -> [Total Cost of X category / Number of piglets] ✅
+Create a page that will make process that will transfer the cost of each category such as: medication, vaccination, vitamins & supplementation, feeding  
+Select Animal Tag No (Parent) -> Transfer Cost -> [Total Cost of X category / Number of piglets]  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-Add Classification in Animals (Add also in database): ✅
-Piglet : N1 - N2 days ✅
-Starter Hog : N1 - N2 days ✅
-Grower Hog : N1 - N2 days ✅
-Finisher Hog - N1 - N2 days ✅
-Jr. Boar & Gilt - N1 - N2 ✅
-Boar & Sow - N1 - N2 ✅
+Add Classification in Animals (Add also in database):  
+Piglet : N1 - N2 days  
+Starter Hog : N1 - N2 days  
+Grower Hog : N1 - N2 days  
+Finisher Hog - N1 - N2 days  
+Jr. Boar & Gilt - N1 - N2  
+Boar & Sow - N1 - N2  
 
-    -> IF A MALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to JR BOAR then -> BOAR ✅
-    -> IF A FEMALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to GILT then -> SOW  ✅
+    -> IF A MALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to JR BOAR then -> BOAR  
+    -> IF A FEMALE FINISHER HOG IS NOT SOLD, SYSTEM WILL CONVERT ITS Classification to GILT then -> SOW   
 
-NOTE: DAYS ARE NOT FIXED, CREATE A TABLE THAT WILL DEFINE THE DAYS, THE SYSTEM WILL AUTOMATICALLY CLASSIFY  ✅
-WHETHER THE ANIMAL IS Piglet, Started Hog, etc... IF THE ANIMAL IS 80 DAYS, IT BELONGS TO GROWER HOG, BUT IF  ✅
+NOTE: DAYS ARE NOT FIXED, CREATE A TABLE THAT WILL DEFINE THE DAYS, THE SYSTEM WILL AUTOMATICALLY CLASSIFY   
+WHETHER THE ANIMAL IS Piglet, Started Hog, etc... IF THE ANIMAL IS 80 DAYS, IT BELONGS TO GROWER HOG, BUT IF   
 THE USER EXPLICITLY UPDATES THE FOR EXAMPLE STARTED HOG TO MAX 80 DAYS, ALL EXISTING RECORDS THAT ARE 80 DAYS YEARS  v
-OLD BELONGS TO STARTED HOG AND NOT GROWER HOG. ✅
+OLD BELONGS TO STARTED HOG AND NOT GROWER HOG.  
 
-Classification Table: ✅
-int class_id ✅
-varchar stages ✅
-start date ✅
-end date ✅
-fcr ✅
+Classification Table:  
+int class_id  
+varchar stages  
+start date  
+end date  
+fcr  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
--> PURCHASED ANIMALS DATE OF BIRTH CAN BE ALTERED ✅
+-> PURCHASED ANIMALS DATE OF BIRTH CAN BE ALTERED  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-BREEDING SOW STATUS ✅
--> DRY            (IF AN ANIMAL BECOMES SOW CLASSIFICATION, THIS IS THE DEFAULT STATUS)  ✅
--> SERVICE 1      (USER OPERATED) ✅
--> SERVICE 2      (USER OPERATED) ✅
--> SERVICE 3      (USER OPERATED) ✅
--> SERVICE 4      (USER OPERATED) ✅
--> SERVICE 5      (USER OPERATED) ✅
--> PREGNANT       (USER OPERATED) ✅
--> BIRTHING       (USER OPERATED) ✅
+BREEDING SOW STATUS  
+-> DRY            (IF AN ANIMAL BECOMES SOW CLASSIFICATION, THIS IS THE DEFAULT STATUS)   
+-> SERVICE 1      (USER OPERATED)  
+-> SERVICE 2      (USER OPERATED)  
+-> SERVICE 3      (USER OPERATED)  
+-> SERVICE 4      (USER OPERATED)  
+-> SERVICE 5      (USER OPERATED)  
+-> PREGNANT       (USER OPERATED)  
+-> BIRTHING       (USER OPERATED)  
 
-IF DONE BIRTHING, GO BACK TO DRY ✅
+IF DONE BIRTHING, GO BACK TO DRY  
 
-NOTE: CREATE A TABLE THAT WILL SHOW THE NUMBER OF DAYS OF SERVICE 1 - 5 ✅
+NOTE: CREATE A TABLE THAT WILL SHOW THE NUMBER OF DAYS OF SERVICE 1 - 5  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,24 +90,24 @@ Dashboard is responsible for all push notifications
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-MAKE A SOW CARD FOR BIRTHING: SOW CARD ALSO CONSIST OF THE ANIMAL THAT BELONGS TO SOW ANIMAL CLASSIFICATION AND THEIR TAG ID ✅
-(THESE ARE COLUMNS) ✅
-PARITY - BIRTH INSTANCE ✅
-BORN - N of Birth ✅
-ACTIVE - N of Survived ✅
-DEAD  - N of Dead ✅
-MUMMIFIED - N of Mummified ✅
+MAKE A SOW CARD FOR BIRTHING: SOW CARD ALSO CONSIST OF THE ANIMAL THAT BELONGS TO SOW ANIMAL CLASSIFICATION AND THEIR TAG ID  
+(THESE ARE COLUMNS)  
+PARITY - BIRTH INSTANCE  
+BORN - N of Birth  
+ACTIVE - N of Survived  
+DEAD  - N of Dead  
+MUMMIFIED - N of Mummified  
 
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-Alter the database of Animal Records to include the Current Estiamted Weight.... Weight at Birth......... Current Actual Weight ✅
+Alter the database of Animal Records to include the Current Estiamted Weight.... Weight at Birth......... Current Actual Weight  
 ============================================================================================================================================================
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-CREATE A PAGE THAT SHOWS THE FCR OF EACH PEN: [OPTION: GET FCR (FEED CONVERSION RATE)] ✅
+CREATE A PAGE THAT SHOWS THE FCR OF EACH PEN: [OPTION: GET FCR (FEED CONVERSION RATE)]  
 PROCESS: 
     WEIGHT AT BIRTH: [SYSTEM INPUT] [Sample Data: 2.5] (THE USER MUST CHOOSE A TAG NUMBER.. INCLUDE THOSE LOCATION FILTERS)
     FEED CONSUMPTION: [SYSTEM INPUT] [ALL ANIMALS IN PEN ARE THE SAME] [Sample Data: 150 kgs] (the SYSTEM must get all the kgs of feed in that pen divided by all animals in that pen)
@@ -141,47 +141,47 @@ SO, UPDATE THE FEEDING TRANSACTION THAT IT WILL FEED ALL ANIMALS IN THAT PEN WIT
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ============================================================================================================================================================
-✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅
+                                                                
 ============================================================================================================================================================
 
-- PREVENT THE CLOSING OF PURCHASE MODALS WHEN OUTSIDE IS CLICKED ✅
-- ADD LEDGERS/INFORMATION TO FEEDS, VITAMINS, MEDICINES, AND VACCINES ✅
-- ADD A MULTIPLE SELECTION OF ANIMALS IN MEDICATION, VACCINATION, VITAMINS, AND CHECKUPS, AND PROCESS SALES ✅
-- ADD AN OPTION IN PROCESS SALES TO SELL AN ANIMAL PER KG OR PER PC... IF PER KG, IT WILL MULTIPLY THE ANIMAL'S ACTUAL WEIGHT ✅
-AND THE FINAL PRICE WILL AUTO COMPLETE ✅
-- ADD A PAGE THAT ALLOWS USERS TO INPUT ACTUAL WEIGHTS BASED ON LOCATION > BUILDING > PEN ✅
-- ADD A DATE AND TIME OPTION IN animal_sow_status.php THAT WILL SHOW THE [STATUS] DATE ✅
-    - BEFORE COMPLETING THE BIRTHING STATUS, YOU SHOULD CREATE A SOW CARD ✅
-    - AFTER PREGNANCY, THERE WILL BE OPTIONS SUCH AS BIRTHING AND ABORTION, AFTER ABORTION > DRY ✅
-    - ACTIVE MUST NOT BE EDITABLE, ACTIVE IS ONLY SET UP WHEN DEAD OR MUMMIFIED HAS AN INPUT ✅
-        - ACTIVE = BORN - DEAD - MUMMIFIED ✅
-- IN SOW SERVICE HISTORY, DURING SERVICES, THE USER MUST CHOOSE WHO (A BOAR) SERVICED THE SOW AND RECORD IT IN THE DATABASE ✅
-- UPDATE THE SOW_SERVICE_HISTORY TABLE TO ADD A BOAR ✅
-- ADD A LINK BETWEEN SOW CARD AND ANIMAL RECORDS ✅
-    - IF THE SOW STATUS IS SET TO BE BIRTHING, IT WILL GO FIRST IN SOW CARDS ✅
-    - AFTER THE SOW CARDS, IT WILL SHOW A PAGE THAT WILL ADD A NEWLY REGISTERED BIRTH ✅
+- PREVENT THE CLOSING OF PURCHASE MODALS WHEN OUTSIDE IS CLICKED  
+- ADD LEDGERS/INFORMATION TO FEEDS, VITAMINS, MEDICINES, AND VACCINES  
+- ADD A MULTIPLE SELECTION OF ANIMALS IN MEDICATION, VACCINATION, VITAMINS, AND CHECKUPS, AND PROCESS SALES  
+- ADD AN OPTION IN PROCESS SALES TO SELL AN ANIMAL PER KG OR PER PC... IF PER KG, IT WILL MULTIPLY THE ANIMAL'S ACTUAL WEIGHT  
+AND THE FINAL PRICE WILL AUTO COMPLETE  
+- ADD A PAGE THAT ALLOWS USERS TO INPUT ACTUAL WEIGHTS BASED ON LOCATION > BUILDING > PEN  
+- ADD A DATE AND TIME OPTION IN animal_sow_status.php THAT WILL SHOW THE [STATUS] DATE  
+    - BEFORE COMPLETING THE BIRTHING STATUS, YOU SHOULD CREATE A SOW CARD  
+    - AFTER PREGNANCY, THERE WILL BE OPTIONS SUCH AS BIRTHING AND ABORTION, AFTER ABORTION > DRY  
+    - ACTIVE MUST NOT BE EDITABLE, ACTIVE IS ONLY SET UP WHEN DEAD OR MUMMIFIED HAS AN INPUT  
+        - ACTIVE = BORN - DEAD - MUMMIFIED  
+- IN SOW SERVICE HISTORY, DURING SERVICES, THE USER MUST CHOOSE WHO (A BOAR) SERVICED THE SOW AND RECORD IT IN THE DATABASE  
+- UPDATE THE SOW_SERVICE_HISTORY TABLE TO ADD A BOAR  
+- ADD A LINK BETWEEN SOW CARD AND ANIMAL RECORDS  
+    - IF THE SOW STATUS IS SET TO BE BIRTHING, IT WILL GO FIRST IN SOW CARDS  
+    - AFTER THE SOW CARDS, IT WILL SHOW A PAGE THAT WILL ADD A NEWLY REGISTERED BIRTH  
         EXAMPLE:
-            IF THERE ARE 7 NEWLY BIRTH, THE PAGE WILL ADD 7 ROWS... THE SYSTEM WILL AUTO-GENERATE ✅
-            THE TAG NUMBER WITH THIS FORMAT [SOW TAG - PARITY # - ORDER OF BIRTH] THE SYSTEM WILL PROMPT THE USER ✅
-            TO EDIT THE INFO OF THE 7 NEWLY BIRTH... THE USER SAVES AND IT WILL STORE THE INFO TO ANIMAL_RECORDS DATABASE! ✅
-    - AFTER CREATING ALL NEWLY BIRTHS, IT WILL GO TO SOW STATUS AND WILL CONFIRM ✅
+            IF THERE ARE 7 NEWLY BIRTH, THE PAGE WILL ADD 7 ROWS... THE SYSTEM WILL AUTO-GENERATE  
+            THE TAG NUMBER WITH THIS FORMAT [SOW TAG - PARITY # - ORDER OF BIRTH] THE SYSTEM WILL PROMPT THE USER  
+            TO EDIT THE INFO OF THE 7 NEWLY BIRTH... THE USER SAVES AND IT WILL STORE THE INFO TO ANIMAL_RECORDS DATABASE!  
+    - AFTER CREATING ALL NEWLY BIRTHS, IT WILL GO TO SOW STATUS AND WILL CONFIRM  
     [NOTE: WEAN IS WHEN A PIGLET DOESN'T NEED THEIR MOM ANYMORE]
     - WHEN A PIGLET IS ALREADY WEANING OR IT WILL GO NEXT STAGE LIKE STARTER HOG, IT WILL SET THE SOW DRY
-- IN THE SERVICE, THERE WILL BE TWO CHOICES OF SERVICING,... NATURAL OR ARTIFICIAL INSEMINATION ✅
-- CREATE A BIRTH CERTIFICATE OF ALL NEWLY REGISTERED BIRTH, ALL FIELDS ARE OPTIONAL EXCEPT THE IMPORTANT INFOS ✅
-- CREATE SELECT GROUP PROCESS WHERE WE CAN: ✅
-    - TRANSFER SELECTED GROUPS OF ANIMALS FROM PEN X TO PEN Y ✅
-    - SELL SELECTED GROUPS OF ANIMALS ✅
-    - ALL TRANSACTIONS EXCEPT FEEDING SINCE FEEDING IS ALREADY DONE ✅
-- TRANSFER COST WILL BE BOAR AND SOW OPERATIONAL COST COMBINED ✅
-- FIX THE SEARCHING OF ALL REPORTS ✅
+- IN THE SERVICE, THERE WILL BE TWO CHOICES OF SERVICING,... NATURAL OR ARTIFICIAL INSEMINATION  
+- CREATE A BIRTH CERTIFICATE OF ALL NEWLY REGISTERED BIRTH, ALL FIELDS ARE OPTIONAL EXCEPT THE IMPORTANT INFOS  
+- CREATE SELECT GROUP PROCESS WHERE WE CAN:  
+    - TRANSFER SELECTED GROUPS OF ANIMALS FROM PEN X TO PEN Y  
+    - SELL SELECTED GROUPS OF ANIMALS  
+    - ALL TRANSACTIONS EXCEPT FEEDING SINCE FEEDING IS ALREADY DONE  
+- TRANSFER COST WILL BE BOAR AND SOW OPERATIONAL COST COMBINED  
+- FIX THE SEARCHING OF ALL REPORTS  
 - SOW AND BOAR'S TRANSFERRABLE COST CAN BE EDITED
-- CREATE A TRANSFER COST WHEN THE COST IS TRANSFERRED.... ADD A START DATE AND END DATE OF OPERATIONAL COST ✅
-- ADD A BUYER DATABASE AND PAGE ........... AND ALSO, MAKE IT A DROP DOWN IN THE SELECT BUYER ✅
-- ADD A PAGE THAT SHOWS ALL OPERATIONAL TRANSACTIONS TO ANIMALS ✅
+- CREATE A TRANSFER COST WHEN THE COST IS TRANSFERRED.... ADD A START DATE AND END DATE OF OPERATIONAL COST  
+- ADD A BUYER DATABASE AND PAGE ........... AND ALSO, MAKE IT A DROP DOWN IN THE SELECT BUYER  
+- ADD A PAGE THAT SHOWS ALL OPERATIONAL TRANSACTIONS TO ANIMALS  
 - ANIMAL SALES REPORT PDF SHOULD BE FIXED
-- ANIMAL RECORD MUST HAVE DAYS OLD ✅
-- ADD EVENTS PAGE WHERE IT SHOWS THE TABLE OF CLASSIFICATIONS AND THEIR EQUIVALENT MED, VITS, ETC  ✅
+- ANIMAL RECORD MUST HAVE DAYS OLD  
+- ADD EVENTS PAGE WHERE IT SHOWS THE TABLE OF CLASSIFICATIONS AND THEIR EQUIVALENT MED, VITS, ETC   
 
 
 
@@ -189,233 +189,233 @@ AND THE FINAL PRICE WILL AUTO COMPLETE ✅
 
 02 / 01 / 2026
 
-- Successfully Registered Modal ✅
-- Create a process in the registration that the newly registered users has NO ACCESS AT ALL ✅
-- Create a back to each page ✅
-- Select All to Group Vaccination ✅
-- All Group Operations should have a default remarks ✅
-- Update the Animal Report ✅
- - In animal_report.php, include how many animals in that animal_type (stat-card) ✅
- - Add a filter (Detailed Summary, Summary (Pen), Summary (Building)) ✅
-  - In the Detailed Summary, Keep the existing one ✅
-  - In the Summary (Pen), include how many animals are there (stat-card), how much the cost overall (stat-card), ✅
-    what are all animal classifications are there (stat-card), include also all the animals in that pen ✅
-- Manage Access (When choosing admin, it selects all the applicable boxes - make sure to rename unselect all to all boxes that are selected all) ✅
-- Restore the individual feeding TRANSACTION ✅
-- In the feed, whatever location is chosen in the select pen location, it will retrieve all the feeds ONLY IN THAT LOCATION ✅
-- After a sales transaction, there will be pdf generate receipt. Generate a receipt to animal sales transaction ✅ 
+- Successfully Registered Modal  
+- Create a process in the registration that the newly registered users has NO ACCESS AT ALL  
+- Create a back to each page  
+- Select All to Group Vaccination  
+- All Group Operations should have a default remarks  
+- Update the Animal Report  
+ - In animal_report.php, include how many animals in that animal_type (stat-card)  
+ - Add a filter (Detailed Summary, Summary (Pen), Summary (Building))  
+  - In the Detailed Summary, Keep the existing one  
+  - In the Summary (Pen), include how many animals are there (stat-card), how much the cost overall (stat-card),  
+    what are all animal classifications are there (stat-card), include also all the animals in that pen  
+- Manage Access (When choosing admin, it selects all the applicable boxes - make sure to rename unselect all to all boxes that are selected all)  
+- Restore the individual feeding TRANSACTION  
+- In the feed, whatever location is chosen in the select pen location, it will retrieve all the feeds ONLY IN THAT LOCATION  
+- After a sales transaction, there will be pdf generate receipt. Generate a receipt to animal sales transaction   
 - Fix Reports (Save as PDF, EXCEL, CSV)
-- In available_feeds.php, create a view where you can view the quantity of that specific feeds across all farms ✅
-- Animal Mortality Page where it is the same with sales but you have recovered cost (can be sold), you dont✅
-need to create a database with it because just merge it with the sales database BUT you should add a type column✅
-where 0 is Mortality and 1 is Sales ✅ 
-- CREATE UNDO TO ALL TRANSACTIONS ✅
- - In animal_sales_process.php, only the admin with USER_TYPE of 4 can undo the transaction including the restoration. ✅
- - All transactions can be undoed by the admin with USER_TYPE of 4 ✅
-- Create in the farm_dashboard.php an Inventory Adjustment Page ✅
-    - There is a disposal transaction ✅ 
-    - Type: Expired, Damaged, Stolen ✅ 
-- Create also an expiration date to ALL medicines, feeds, vitamins & supplements, vaccines ✅
- - Fields to Note [All medicines, feeds, vitamins & supplements, vaccines confirmation] ✅
- - When selecting medicines, feeds, vitamins & supplements, vaccines, even with the same name, it will not be ✅
- combined if it has different expiration date ✅
- - FCR Management ✅
-  - Update FCR in where it replaces FCR Per Class to FCR Per Pen or FCR Per Age (Min - Max) ✅
-  - Create a Table in the FCR which we can choose category (FCR Per Pen, FCR Per Age)       ✅
-  - It shows all Animals in that Age or Pen ✅
-  - The Current FCR Management is the individual FCR config ✅
-   - The New FCR Managament is By Pen but there will be days configurations ✅
+- In available_feeds.php, create a view where you can view the quantity of that specific feeds across all farms  
+- Animal Mortality Page where it is the same with sales but you have recovered cost (can be sold), you dont 
+need to create a database with it because just merge it with the sales database BUT you should add a type column 
+where 0 is Mortality and 1 is Sales   
+- CREATE UNDO TO ALL TRANSACTIONS  
+ - In animal_sales_process.php, only the admin with USER_TYPE of 4 can undo the transaction including the restoration.  
+ - All transactions can be undoed by the admin with USER_TYPE of 4  
+- Create in the farm_dashboard.php an Inventory Adjustment Page  
+    - There is a disposal transaction   
+    - Type: Expired, Damaged, Stolen   
+- Create also an expiration date to ALL medicines, feeds, vitamins & supplements, vaccines  
+ - Fields to Note [All medicines, feeds, vitamins & supplements, vaccines confirmation]  
+ - When selecting medicines, feeds, vitamins & supplements, vaccines, even with the same name, it will not be  
+ combined if it has different expiration date  
+ - FCR Management  
+  - Update FCR in where it replaces FCR Per Class to FCR Per Pen or FCR Per Age (Min - Max)  
+  - Create a Table in the FCR which we can choose category (FCR Per Pen, FCR Per Age)        
+  - It shows all Animals in that Age or Pen  
+  - The Current FCR Management is the individual FCR config  
+   - The New FCR Managament is By Pen but there will be days configurations  
 
 =================================================================================================
 
-Add Inventory Adjustment Transactions to Ledger ✅
-    - Feeds ✅
-    - Medicines  ✅
-    - Vaccines  ✅
-    - Vitamins  ✅
-Add Ledgers to Reports  ✅
-    - Feeds ✅
-    - Medicines  ✅
-    - Vaccines  ✅
-    - Vitamins  ✅
+Add Inventory Adjustment Transactions to Ledger  
+    - Feeds  
+    - Medicines   
+    - Vaccines   
+    - Vitamins   
+Add Ledgers to Reports   
+    - Feeds  
+    - Medicines   
+    - Vaccines   
+    - Vitamins   
 
 =================================================================================================
 - Purchasing New Animal (Weight) Does not reflect to the Animal Records
-- Modify the Group Feeding where you can choose the buildings ✅
-- Super admin users should assign farm employees to a location... Refer to the 'locations' table... ✅
-    Users that are assigned in that location can only access transactions within that location only..✅
-    ✅ purch_admin_records.php
-    ✅ purch_animals.php
-    ✅ purch_breeding_reproduction.php
-    ✅ purch_farm_equipment.php
-    ✅ purch_housing_facilities.php
-    ✅ purch_maintenance_parts.php
-    ✅ purch_medicines.php
-    ✅ purch_others.php
-    ✅ purch_sanitation_waste_m.php
-    ✅ purch_utilities_consumables.php
-    ✅ purch_vaccines.php
-    ✅ purch_vitamins_supplements.php
-    ✅ group_animal_sales.php
-    ✅ group_checkup.php
-    ✅ group_feed_transaction.php
-    ✅ group_medication.php
-    ✅ group_mortality.php
-    ✅ group_vaccination.php
-    ✅ group_vitamins.php
-    ✅ animal_cost_transfers.php
-    ✅ animal_operations.php
-    ✅ animal_records.php
-    ✅ admin_records_report.php
+- Modify the Group Feeding where you can choose the buildings  
+- Super admin users should assign farm employees to a location... Refer to the 'locations' table...  
+    Users that are assigned in that location can only access transactions within that location only.. 
+      purch_admin_records.php
+      purch_animals.php
+      purch_breeding_reproduction.php
+      purch_farm_equipment.php
+      purch_housing_facilities.php
+      purch_maintenance_parts.php
+      purch_medicines.php
+      purch_others.php
+      purch_sanitation_waste_m.php
+      purch_utilities_consumables.php
+      purch_vaccines.php
+      purch_vitamins_supplements.php
+      group_animal_sales.php
+      group_checkup.php
+      group_feed_transaction.php
+      group_medication.php
+      group_mortality.php
+      group_vaccination.php
+      group_vitamins.php
+      animal_cost_transfers.php
+      animal_operations.php
+      animal_records.php
+      admin_records_report.php
 
 - Change all date formats into MM-DD-YYYY
-    ✅ animal_record.php
-    ✅ employees.php
-    ✅ inventory_adjustment.php
-    ✅ edit_animal_bio.php
-    ✅ events_scheduler.php
-    ✅ animal_sow_status.php
-    ✅ animal_sow_cards.php
-    ✅ animal_report.php
-    ✅ active_users_report.php
-    ✅ medicine_report.php
-    ✅ feeds_report.php
-    ✅ housing_report.php
-    ✅ equipment_report.php
-    ✅ sanitation_report.php
-    ✅ breeding_report.php
-    ✅ admin_records_report.php
-    ✅ maintenance_report.php
-    ✅ utilities_report.php
-    ✅ vitamins_report.php
-    ✅ vaccine_report.php
-    ✅ others_report.php
-    ✅ audit_log_report.php
-    ✅ animal_sales_reports.php
-    ✅ feeds_usage_report.php
-    ✅ vaccines_usage_report.php
-    ✅ vitamins_usage_report.php
-    ✅ medicine_usage_report.php
-    ✅ purch_animals.php
-    ✅ purch_medicines.php
-    ✅ purch_vitamins_supplements.php
-    ✅ purch_vaccines.php
-    ✅ purch_feeds_feeding.php
-    ✅ purch_housing_facilities.php
-    ✅ purch_farm_equipment_tools.php
-    ✅ purch_sanitation_waste_m.php
-    ✅ purch_breeding_reproduction.php
-    ✅ purch_admin_records.php
-    ✅ purch_maintenance_parts.php
-    ✅ purch_utilities_consumables.php
-    ✅ single_feed_transaction.php
-    ✅ group_feed_transaction.php
-    ✅ group_medication.php
-    ✅ group_vitamins.php
-    ✅ group_checkup.php
-    ✅ group_vaccination.php
-    ✅ group_animal_sales.php
-    ✅ group_mortality.php
-    ✅ accounts.php
-    ✅ audit_logs.php
-    ✅
-    ✅
-    ✅
-    ✅
-    ✅
-- in animal_sow_status, filter the boars (the location is already  given) Drop down the building and the pen and it shows the boar ✅
-- Select a date of completed PREGNANCY in animal_sow_status ✅
-- In Animal Cost Transfer, the SOW acquisition cost must be included ✅
-- Include in the Animal Operation the Transferring of cost transaction ✅
-- Include in the viewAnimalLedger the Transferring of cost transaction ✅
-- Modify the viewAnimalLedger because the query of all transactions except feeding  ✅
-- The expiry should not be less than the purchase date ✅
-- Alter the items table and add supplier and reference number column ✅
-- Add a supplier page where it contains all the suppliers name may it be an individual or company ✅
-- Add a reference number to all purchases (reference number should be manually inputted in the purchase pages) ✅
-- Add a supplier and reference number input to all purchases...  ✅
-- Add a weaning weight in animal_records ✅
-- Add an editable weaning weight, editable birth weight, editable current weight in animal_weights.php ✅
-- Add this weaning weight including to the animal reports and also in the animal records ✅
-- Add date time to all stages in animal sow status ✅
+      animal_record.php
+      employees.php
+      inventory_adjustment.php
+      edit_animal_bio.php
+      events_scheduler.php
+      animal_sow_status.php
+      animal_sow_cards.php
+      animal_report.php
+      active_users_report.php
+      medicine_report.php
+      feeds_report.php
+      housing_report.php
+      equipment_report.php
+      sanitation_report.php
+      breeding_report.php
+      admin_records_report.php
+      maintenance_report.php
+      utilities_report.php
+      vitamins_report.php
+      vaccine_report.php
+      others_report.php
+      audit_log_report.php
+      animal_sales_reports.php
+      feeds_usage_report.php
+      vaccines_usage_report.php
+      vitamins_usage_report.php
+      medicine_usage_report.php
+      purch_animals.php
+      purch_medicines.php
+      purch_vitamins_supplements.php
+      purch_vaccines.php
+      purch_feeds_feeding.php
+      purch_housing_facilities.php
+      purch_farm_equipment_tools.php
+      purch_sanitation_waste_m.php
+      purch_breeding_reproduction.php
+      purch_admin_records.php
+      purch_maintenance_parts.php
+      purch_utilities_consumables.php
+      single_feed_transaction.php
+      group_feed_transaction.php
+      group_medication.php
+      group_vitamins.php
+      group_checkup.php
+      group_vaccination.php
+      group_animal_sales.php
+      group_mortality.php
+      accounts.php
+      audit_logs.php
+     
+     
+     
+     
+     
+- in animal_sow_status, filter the boars (the location is already  given) Drop down the building and the pen and it shows the boar  
+- Select a date of completed PREGNANCY in animal_sow_status  
+- In Animal Cost Transfer, the SOW acquisition cost must be included  
+- Include in the Animal Operation the Transferring of cost transaction  
+- Include in the viewAnimalLedger the Transferring of cost transaction  
+- Modify the viewAnimalLedger because the query of all transactions except feeding   
+- The expiry should not be less than the purchase date  
+- Alter the items table and add supplier and reference number column  
+- Add a supplier page where it contains all the suppliers name may it be an individual or company  
+- Add a reference number to all purchases (reference number should be manually inputted in the purchase pages)  
+- Add a supplier and reference number input to all purchases...   
+- Add a weaning weight in animal_records  
+- Add an editable weaning weight, editable birth weight, editable current weight in animal_weights.php  
+- Add this weaning weight including to the animal reports and also in the animal records  
+- Add date time to all stages in animal sow status  
 - Remove all Single Transactions from the chatbot
 - Hide Feature if they don't have access rights
-- Notification about the birthing in 114 should have a link that if we click the link, it will go to animal_sow_status.php?location_id=13&building_id=11&animal_id=68 (Sample Data) ✅
-- Add how many times the SOW got dry, serviced, pregnant, birthing, abortion ✅
-- Add a SOW Filter where we can show only those who are dry, pregnant, serviced, birthing, abortion ✅
-- in the animal_report, I should see tag_no, acq_cost, all operation_cost, and lastly total_cost ✅
-- add a usage_report where we can export and filter date range and once i select a location, it displays all usage in the feeds, vaccines, ✅
- vitamins, medicine with (Building > Pen Header)... And when i select a building, it does the same but all in the building with Pen (Header) ✅
- And I can also select up until to the animal....✅
- Table  ✅
- Header ✅
- |Feed Name| Total Kgs | Total Cost | Date Range |  ✅
- |Feed Name 2| Total Kgs | Total Cost | Date Range |  ✅
- ... ✅
-TOTAL                                       N   ✅            
-- add feeds_usage_report, vaccines_usage_report, vitamins_usage_report, and medicine_usage_report ✅
-- in the viewFeedsLedger.php, show how many purchased feeds with that specific feed and then show the adjustments, and show the  ✅
-used... ✅
-- Include the Farrowing date here in the file (Read-only) Also include a filter that will filter the farrowing date (Start and End Date)... ✅
-- Include the existing animals in the destination pen  ✅
+- Notification about the birthing in 114 should have a link that if we click the link, it will go to animal_sow_status.php?location_id=13&building_id=11&animal_id=68 (Sample Data)  
+- Add how many times the SOW got dry, serviced, pregnant, birthing, abortion  
+- Add a SOW Filter where we can show only those who are dry, pregnant, serviced, birthing, abortion  
+- in the animal_report, I should see tag_no, acq_cost, all operation_cost, and lastly total_cost  
+- add a usage_report where we can export and filter date range and once i select a location, it displays all usage in the feeds, vaccines,  
+ vitamins, medicine with (Building > Pen Header)... And when i select a building, it does the same but all in the building with Pen (Header)  
+ And I can also select up until to the animal.... 
+ Table   
+ Header  
+ |Feed Name| Total Kgs | Total Cost | Date Range |   
+ |Feed Name 2| Total Kgs | Total Cost | Date Range |   
+ ...  
+TOTAL                                       N                
+- add feeds_usage_report, vaccines_usage_report, vitamins_usage_report, and medicine_usage_report  
+- in the viewFeedsLedger.php, show how many purchased feeds with that specific feed and then show the adjustments, and show the   
+used...  
+- Include the Farrowing date here in the file (Read-only) Also include a filter that will filter the farrowing date (Start and End Date)...  
+- Include the existing animals in the destination pen   
 - Include that there is a page for auto weaning and then in the table, you can see that there is a Location Name and then Weaning Days... 
 You can modify the weaning days in that location...Affected pages would be the autoUpdateAnimalClasses.php
-- If i select a birthing date and go to the animal_sow_cards the farrowing date must be the date being  ✅
-set in the birthing date in the animal_sow_status.php ✅
+- If i select a birthing date and go to the animal_sow_cards the farrowing date must be the date being   
+set in the birthing date in the animal_sow_status.php  
 - Display also the acquisition cost and the total operation cost in the animal transfer for both the sow and the boar below the names
 - In the animal_cost, there will be a transferred cost 
 - add Iron notif after birthing
 - sow card must be printed
 - birthing must have a memo
 - animal_mortality.php should have a acq + operation_cost displayed
-- add a hyperlink in the ___ page where: ✅
- - group feeding should have a hyperlink of purch_feeds_feeding.php ✅
- - group vaccination should have a hyperlink of purch_vaccines.php ✅
- - group vitamins should have a hyperlink of purch_vitamins_supplements.php ✅
- - group medication should have a hyperlink of purch_medicines.php ✅
+- add a hyperlink in the ___ page where:  
+ - group feeding should have a hyperlink of purch_feeds_feeding.php  
+ - group vaccination should have a hyperlink of purch_vaccines.php  
+ - group vitamins should have a hyperlink of purch_vitamins_supplements.php  
+ - group medication should have a hyperlink of purch_medicines.php  
 - create a super admin portal, each of them has a passkey... Farm Databases are assigned using the passkey
  - If you want to access database X and Y, you must have a passkey that is assigned to both of them... 
  - If you own the farm databases X and Y, you strictly must have one passkey to redirect to a dashboard choosing which farm you want to login
- - Building should have a modal featuring how many pens are there, what are those pens, how many pens are empty and occupied ✅
- - Pen page should have a sorting by Pen Name and how many animals are there in the pen...  ✅
+ - Building should have a modal featuring how many pens are there, what are those pens, how many pens are empty and occupied  
+ - Pen page should have a sorting by Pen Name and how many animals are there in the pen...   
  - In the reverse transaction, the user can check in the checkbox which transaction/s they want to reserve
- - Create a batch SAVE in the searching for boar, so basically when i assign a sire/boar in a animal record, if that animal record ✅
-  has the same dam and the same birthdate, automatically, all of the animals with the same info would have the boar so that ✅
-  it will not be like editing all piglets to have the same father  ✅
-  - Record Service Details, When the user presses the Start Service, the system shows a modal... the system must only ✅
-  show the pens that has BOAR in it... Also when i hover the pen, it would show the list of boars ✅
-  - Animal Record Issues: ✅
-    - If one record updates the lineage (sow/boar). It should update all animals with the same SOW/DAM and the same birthdate. ✅
-    - When I add an animal and those which pen they should be in, I should see how many animals are there in a pen like when i press✅ 
-       the select and the select displays all the pens in that building, it should be [PEN NAME] [NUMBER OF ANIMALS IN THAT PEN] ✅
-    - When I edit an animal, if they have a mother, STRICTLY AUTO SELECT THE MOTHER IN THE EDIT MODAL AND IF THEY HAVE SEX, STRICTLY ✅
-    AUTO SELECT THE SEX ✅
-- Animal Transfer Pen should also have how many animals are there in the select pen ✅
-- In Animal Feeding, Add a feature where you can choose whether to put the quantity per head or the overall quantity fed in pen ✅
-- If Gestating Pen has an animal, we wont allow transferring or putting an animal to it (Hide them by default) ✅
-    - animal_record ✅
-    - animal_transfer ✅
-- Add a Tag Editing File in the Farm ✅
-    - saveTags.php ✅
+ - Create a batch SAVE in the searching for boar, so basically when i assign a sire/boar in a animal record, if that animal record  
+  has the same dam and the same birthdate, automatically, all of the animals with the same info would have the boar so that  
+  it will not be like editing all piglets to have the same father   
+  - Record Service Details, When the user presses the Start Service, the system shows a modal... the system must only  
+  show the pens that has BOAR in it... Also when i hover the pen, it would show the list of boars  
+  - Animal Record Issues:  
+    - If one record updates the lineage (sow/boar). It should update all animals with the same SOW/DAM and the same birthdate.  
+    - When I add an animal and those which pen they should be in, I should see how many animals are there in a pen like when i press  
+       the select and the select displays all the pens in that building, it should be [PEN NAME] [NUMBER OF ANIMALS IN THAT PEN]  
+    - When I edit an animal, if they have a mother, STRICTLY AUTO SELECT THE MOTHER IN THE EDIT MODAL AND IF THEY HAVE SEX, STRICTLY  
+    AUTO SELECT THE SEX  
+- Animal Transfer Pen should also have how many animals are there in the select pen  
+- In Animal Feeding, Add a feature where you can choose whether to put the quantity per head or the overall quantity fed in pen  
+- If Gestating Pen has an animal, we wont allow transferring or putting an animal to it (Hide them by default)  
+    - animal_record  
+    - animal_transfer  
+- Add a Tag Editing File in the Farm  
+    - saveTags.php  
 - Include in the SOW the information of their birthing like how many alive dead or mummified and also who is the boar and ALL INFORMATION RELATED TO SERVICE, BIRTHING, ETC TO SOW
-- In the create_client_farm.php, auto populate the database name to (For example: Catmon Farms.... DatbaseName: catmon_farms (Spaces are replaced with underscore and everything is lowercase())) ✅
-- Add in the register.php an option (with 16 character farm code) ✅
-    - Checks if the farm code exist in sadmin_farms.users['farm_code'] ✅
-    - If farm_code exists, register it ✅
-- The owner will approve the registration (the backend will turn status to 1) or reject (backend turns status to -1) ✅
-- purch_animals.php (edit piece into head (1 Head)) ✅
-- In the animal_records.php, modify the code to make the loading of purchased animals quick. Instead of individual selection, you can have ✅
-    a checkbox to click and there will be a global select where you can select all the checked animals in the select source ✅
-    Add other file processes if necessary. ✅
-    - Autoselect the animal type and breed of the last animal that is loaded or selected (in the Add Purchased Animal) if I a new Add Purchased ✅
-    Animal because there is a high chance that all of my added animals are in the same Breed and Animal Type ✅
-    - Everything is ok but I need the item names to be their tag numbers... Also if all the animals are in  ✅
-    the sane location > buildings > pen autoselect it... Autofill the tag number ok?? the value is the item name ✅
-    - In the purch_animals, the + Add Animal in the Add Animal Purchase Modal should be put also in the modal-footer so that ✅
-    I can add the Nth animal without going back at the top of the modal  ✅
-    - You notice in the + Add Animal, put a quantity so that when i input for example 50, there will be 50 rows shown and also, put a default  ✅
-    weight and cost so that all 50 rows will inherit the default weight and cost... Remember to make all of it optional and the cost and weights  ✅
-    can be edited ✅
+- In the create_client_farm.php, auto populate the database name to (For example: Catmon Farms.... DatbaseName: catmon_farms (Spaces are replaced with underscore and everything is lowercase()))  
+- Add in the register.php an option (with 16 character farm code)  
+    - Checks if the farm code exist in sadmin_farms.users['farm_code']  
+    - If farm_code exists, register it  
+- The owner will approve the registration (the backend will turn status to 1) or reject (backend turns status to -1)  
+- purch_animals.php (edit piece into head (1 Head))  
+- In the animal_records.php, modify the code to make the loading of purchased animals quick. Instead of individual selection, you can have  
+    a checkbox to click and there will be a global select where you can select all the checked animals in the select source  
+    Add other file processes if necessary.  
+    - Autoselect the animal type and breed of the last animal that is loaded or selected (in the Add Purchased Animal) if I a new Add Purchased  
+    Animal because there is a high chance that all of my added animals are in the same Breed and Animal Type  
+    - Everything is ok but I need the item names to be their tag numbers... Also if all the animals are in   
+    the sane location > buildings > pen autoselect it... Autofill the tag number ok?? the value is the item name  
+    - In the purch_animals, the + Add Animal in the Add Animal Purchase Modal should be put also in the modal-footer so that  
+    I can add the Nth animal without going back at the top of the modal   
+    - You notice in the + Add Animal, put a quantity so that when i input for example 50, there will be 50 rows shown and also, put a default   
+    weight and cost so that all 50 rows will inherit the default weight and cost... Remember to make all of it optional and the cost and weights   
+    can be edited  
 
     - Animal Reports should have a filter by Building, Pen, And Location
     - In the group_mortality.php, improve the page that it will have a total (- TOTAL) or (+ POSITIVE) total which means if the dead animal
@@ -457,6 +457,7 @@ viewVitaminsLedger.php
 
 admin_dashboard.php
 animal_records.php
+animal_record_dashboard.php
 employees.php
 farm_roles.php
 animal_type.php
@@ -571,3 +572,88 @@ profile.php
 ==========================================================================================================================================================
 END OF MODERNED FILES
 ==========================================================================================================================================================
+
+==========================================================================================================================================================
+Sort the records in natural numeric order
+==========================================================================================================================================================
+
+pen.php
+building.php
+location.php
+
+
+==========================================================================================================================================================
+End of Sort the records in natural numeric order
+==========================================================================================================================================================
+
+
+==========================================================================================================================================================
+MODAL RESPONSIVENESS
+==========================================================================================================================================================
+
+purch_medicines.php
+purch_vaccines.php
+purch_vitamins_supplements.php
+purch_housing_facilities.php
+purch_farm_equipment_tools.php
+purch_others.php
+purch_feeds_feeding.php
+purch_utilities_consumables.php
+purch_sanitation_waste_m.php
+purch_maintenance_parts.php
+purch_breeding_reproduction.php
+purch_admin_records.php
+==========================================================================================================================================================
+End of MODAL RESPONSIVENESS
+==========================================================================================================================================================
+
+
+
+- Add Concerns and File Concerns in the Manage Access, Access Control in db
+- Put many days the SOW is dry in the file  
+- put in the pages where miscellanious fees are applicable
+    - animal_cost.php
+    - animal_report.php
+    - viewAnimalLedger.php
+
+- Add Limits to TextAreas
+    - farm_roles.php
+    - 
+- Add also the security of edit acquisition cost and the table ✅
+- When users drops down pens, the pens should have an indicator as to how much
+animals are there... 
+- In the feeding page, the system must have a line 2 where i can feed the animals at once
+using more than 1 feed. Same goes with vaccines, vitamins, and medicines ✅
+- After Birthing, count up to 28 days until weaning, the system
+    then counts up to 2 days and then notify the user to check the SOW # if the SOW is
+    reheating and then within, 3-7 days, Notify the user to service the SOW. If missed,
+    it will be noted in the database (Create reheating table). The system then counts again
+    up to 17 days and then notify again the user. The system continues again to notify the user 
+    in between 18th -21st days. There will be another page also to disable the notification.
+    Remember that the system automatically creates the notification base on how many SOW. 
+- Make a Reheat Page where the system tags a SOW # if that SOW is not confirmed pregnant after 18 days
+    - 18 days NOT CONFIRMED PREGNANT
+    - 19 days NOT CONFIRMED PREGNANT
+    - 20 days NOT CONFIRMED PREGNANT 
+    - 21 days NOT CONFIRMED PREGNANT
+    AFTER 21 DAYS, IF NOT YET CONFIRMED PREGNANT, THIS IS THE TIME THE SYSTEM WILL LABEL [REHEAT]
+- Put an upload option in all transactions and records
+    - animal_records 
+        - Required Fields For CSV: 
+            Tag No, Animal Type, Breed, Gender, Mother, Father, Is Purchased, Weight At Birth, Acquisition Cost,
+    - purch_feedings
+- Put a parity option and users can freely choose parity number, also modify the backend ✅
+- Allow undo whenever i accidentally reset to dry after birthing ✅
+- When the user proceeds to birthing, the default date appearing is the last service + 114 days ✅
+- When the user proceeds to resetting it to dry, the default date appearing is the birthing + 28 days ✅
+- When the user proceeds to birth confirmation, the default date appearing is the last service + 25 days ✅
+
+- Put default value for items that doesn't have any expiration:
+    - feeds 
+    - vaccines 
+    - medications 
+    - vitamins 
+    
+
+
+

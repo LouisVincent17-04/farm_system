@@ -543,7 +543,7 @@ $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
         const t = document.createElement('div');
         t.className = 'toast';
         t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
-        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        t.innerHTML = `${type === 'error' ? ' ' : ' '} ${msg}`;
         document.getElementById('toastContainer').appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }

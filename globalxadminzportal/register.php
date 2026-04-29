@@ -14,6 +14,7 @@ if (isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register | GATZ SmartFarm</title>
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap');
 
@@ -373,7 +374,7 @@ if (isset($_SESSION['user_id'])) {
         }
 
         if (raw.length < 4) {
-            status.textContent = '❌ Farm Code is too short.';
+            status.textContent = '  Farm Code is too short.';
             status.className   = 'farm-key-status error';
             return;
         }
@@ -387,11 +388,11 @@ if (isset($_SESSION['user_id'])) {
                 const data = await res.json();
 
                 if (data.valid) {
-                    status.innerHTML = `✅ Farm found: <strong style="color:#fff">${data.farm_name}</strong>`;
+                    status.innerHTML = `  Farm found: <strong style="color:#fff">${data.farm_name}</strong>`;
                     status.className = 'farm-key-status ok';
                     farmKeyValid     = true;
                 } else {
-                    status.textContent = `❌ ${data.message || 'Invalid Farm Code.'}`;
+                    status.textContent = `  ${data.message || 'Invalid Farm Code.'}`;
                     status.className   = 'farm-key-status error';
                     farmKeyValid       = false;
                 }
@@ -426,20 +427,20 @@ if (isset($_SESSION['user_id'])) {
             const name  = document.getElementById('full_name').value.trim();
             const email = document.getElementById('reg_email').value.trim();
 
-            if (!name)  { showAlert('error', '❌ Full name is required.'); return false; }
+            if (!name)  { showAlert('error', '  Full name is required.'); return false; }
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showAlert('error', '❌ A valid email address is required.');
+                showAlert('error', '  A valid email address is required.');
                 return false;
             }
 
             if (selectedRole === 'employee') {
                 const key = document.getElementById('farm_code').value.trim();
                 if (!key) {
-                    showAlert('error', '❌ Farm Code is required for employee registration.');
+                    showAlert('error', '  Farm Code is required for employee registration.');
                     return false;
                 }
                 if (!farmKeyValid) {
-                    showAlert('error', '❌ Please enter a valid Farm Code before continuing.');
+                    showAlert('error', '  Please enter a valid Farm Code before continuing.');
                     return false;
                 }
             }
@@ -462,7 +463,7 @@ if (isset($_SESSION['user_id'])) {
             {w:'25%',  bg:'#ef4444',     t:'Weak'},
             {w:'50%',  bg:'#f59e0b',     t:'Fair'},
             {w:'75%',  bg:'#60a5fa',     t:'Good'},
-            {w:'100%', bg:'#34d399',     t:'Strong ✅'},
+            {w:'100%', bg:'#34d399',     t:'Strong  '},
         ];
         const l = levels[score] || levels[0];
         bar.style.width      = l.w;
@@ -491,11 +492,11 @@ if (isset($_SESSION['user_id'])) {
         const confirm  = document.getElementById('reg_confirm').value;
 
         if (!password || password.length < 8) {
-            showAlert('error', '❌ Password must be at least 8 characters.');
+            showAlert('error', '  Password must be at least 8 characters.');
             return;
         }
         if (password !== confirm) {
-            showAlert('error', '❌ Passwords do not match.');
+            showAlert('error', '  Passwords do not match.');
             return;
         }
 
@@ -528,7 +529,7 @@ if (isset($_SESSION['user_id'])) {
                 data = JSON.parse(raw);
             } catch (e) {
                 console.error('Non-JSON response:', raw);
-                showAlert('error', '❌ Server error — check the console.');
+                showAlert('error', '  Server error — check the console.');
                 btn.disabled    = false;
                 btn.textContent = 'Create Account';
                 return;
@@ -549,14 +550,14 @@ if (isset($_SESSION['user_id'])) {
 
                 goStep(2);
             } else {
-                showAlert('error', '❌ ' + data.message);
+                showAlert('error', '  ' + data.message);
                 btn.disabled    = false;
                 btn.textContent = 'Create Account';
             }
 
         } catch (err) {
             console.error(err);
-            showAlert('error', '❌ System error — please try again.');
+            showAlert('error', '  System error — please try again.');
             btn.disabled    = false;
             btn.textContent = 'Create Account';
         }

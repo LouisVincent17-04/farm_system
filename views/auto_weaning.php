@@ -186,11 +186,13 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME, COALESCE(WEANING_D
         /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
-            .page-header { text-align: center; }
+            .page-header { flex-direction: column; align-items: flex-start; text-align: left; }
+            .header-info { width: 100%; }
             .info-banner { flex-direction: column; align-items: flex-start; text-align: left; }
             
-            .table-wrap { border: none; background: transparent; overflow: visible;}
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; }
+            .table-wrap { border: none; background: transparent; overflow-x: visible; box-shadow: none; }
+            .table { min-width: 100%; } /* CRITICAL FIX */
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; box-sizing: border-box; }
             .table thead { display: none; }
             .table tbody tr { 
                 background: var(--bg-surface); border: 1px solid var(--border); 
@@ -199,16 +201,26 @@ $locations = $conn->query("SELECT LOCATION_ID, LOCATION_NAME, COALESCE(WEANING_D
             }
             .table td { 
                 display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                padding: 0.75rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
-            .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
+            .table td:last-child { border-bottom: none; padding-top: 1rem; }
             .table td::before { 
                 content: attr(data-label); font-weight: 700; color: var(--text-muted); 
-                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-right: 1rem;
             }
+
+            /* Clean Card Header */
+            .table td[data-label="Location"] { display: block; text-align: left; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+            .table td[data-label="Location"]::before { display: none; }
+            .location-name { font-size: 1.15rem; color: var(--amber); }
+
+            /* Action Button Full Width */
+            .table td[data-label="Action"] { border-top: 1px dashed var(--border); margin-top: 10px; padding-bottom: 0; display: block; }
+            .table td[data-label="Action"]::before { display: none; }
+            
             .input-wrapper { justify-content: flex-end; }
             .day-input { width: 90px; }
-            .btn-save { width: 100%; }
+            .btn-save { width: 100%; justify-content: center; }
         }
     </style>
 </head>

@@ -142,7 +142,7 @@ try {
     $conn->commit();
     echo json_encode([
         'success' => true, 
-        'message' => "✅ Undo Successful. $total_qty_restored kg restored to inventory."
+        'message' => "  Undo Successful. $total_qty_restored kg restored to inventory."
     ]);
 
 } catch (Exception $e) {

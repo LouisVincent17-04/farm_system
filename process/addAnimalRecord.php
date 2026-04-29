@@ -150,7 +150,7 @@ try {
 
         echo json_encode([
             'success'   => true,
-            'message'   => '✅ Animal record added successfully!',
+            'message'   => '  Animal record added successfully!',
             'animal_id' => $new_animal_id
         ]);
     } else {
@@ -161,6 +161,6 @@ try {
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
-    echo json_encode(['success' => false, 'message' => '❌ An error occurred: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => '  An error occurred: ' . $e->getMessage()]);
 }
 ?>

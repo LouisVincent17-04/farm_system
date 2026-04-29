@@ -41,6 +41,7 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Client Farm | GATZ SmartFarm</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -331,7 +332,7 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
 
     <!-- ── Success box — shown after provisioning ─────────────────────────── -->
     <div class="success-box" id="successBox">
-        <h3>✅ Farm Database Created!</h3>
+        <h3>  Farm Database Created!</h3>
         <p>The farm database has been provisioned and the owner has been seeded as Farm Super Admin.<br>
         The owner can view their Farm Code anytime from the <strong style="color:#fff;">My Farms</strong> page.</p>
 
@@ -436,14 +437,14 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
         if (!/^[a-z0-9_]+$/.test(raw)) {
             input.classList.add('invalid');
             status.className   = 'db-status error';
-            status.textContent = '❌ Only lowercase letters (a-z), numbers, and underscores allowed.';
+            status.textContent = '  Only lowercase letters (a-z), numbers, and underscores allowed.';
             return;
         }
 
         if (raw.length < 3) {
             input.classList.add('invalid');
             status.className   = 'db-status error';
-            status.textContent = '❌ Must be at least 3 characters.';
+            status.textContent = '  Must be at least 3 characters.';
             return;
         }
 
@@ -470,13 +471,13 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
             if (data.available) {
                 input.classList.remove('invalid'); input.classList.add('valid');
                 status.className   = 'db-status ok';
-                status.textContent = '✅ Available — this database name is not taken.';
+                status.textContent = '  Available — this database name is not taken.';
                 dbNameValid        = true;
                 btn.disabled       = false;
             } else {
                 input.classList.remove('valid'); input.classList.add('invalid');
                 status.className   = 'db-status error';
-                status.textContent = '❌ Already taken — choose a different name.';
+                status.textContent = '  Already taken — choose a different name.';
                 dbNameValid        = false;
                 btn.disabled       = true;
             }
@@ -502,14 +503,14 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
         document.getElementById('successBox').style.display = 'none';
 
         if (!dbNameValid) {
-            showAlert('error', '❌ Please enter a valid and available database name.');
+            showAlert('error', '  Please enter a valid and available database name.');
             return;
         }
 
         const ownerEmail = document.getElementById('owner_email').value.trim();
         const ownerName  = document.getElementById('owner_name').value.trim();
         if (!ownerEmail || !ownerName) {
-            showAlert('error', '❌ Owner name and email are required. Use the search to find a registered owner.');
+            showAlert('error', '  Owner name and email are required. Use the search to find a registered owner.');
             return;
         }
 
@@ -537,7 +538,7 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
                 data = JSON.parse(raw);
             } catch (err) {
                 console.error('Non-JSON response:', raw);
-                showAlert('error', '❌ Server error — check the browser console.');
+                showAlert('error', '  Server error — check the browser console.');
                 btn.disabled  = false;
                 btn.innerHTML = 'Create Farm Database';
                 return;
@@ -550,13 +551,13 @@ $current_role = $_SESSION['role'] ?? 'superadmin';
                 btn.innerHTML = 'Create Farm Database';
 
             } else {
-                showAlert('error', '❌ ' + data.message);
+                showAlert('error', '  ' + data.message);
                 btn.disabled  = false;
                 btn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg> Provision Farm Database';
             }
         } catch (err) {
             console.error(err);
-            showAlert('error', '❌ System error — please try again.');
+            showAlert('error', '  System error — please try again.');
             btn.disabled  = false;
             btn.innerHTML = 'Provision Farm Database';
         }

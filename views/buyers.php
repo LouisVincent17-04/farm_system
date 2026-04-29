@@ -253,8 +253,9 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
             .filters-wrapper { flex-direction: column; }
             .sort-select { width: 100%; }
 
-            .table-wrap { border: none; background: transparent; }
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; }
+            .table-wrap { border: none; background: transparent; overflow-x: visible; }
+            .table { min-width: 100%; } /* CRITICAL FIX */
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; box-sizing: border-box; }
             .table thead { display: none; }
             .table tbody tr { 
                 background: var(--bg-surface); border: 1px solid var(--border); 
@@ -262,14 +263,21 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
             }
             .table td { 
                 display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
             .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
             .table td::before { 
                 content: attr(data-label); font-weight: 700; color: var(--text-muted); 
-                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-right: 1rem;
             }
             .actions { justify-content: flex-end; width: 100%; }
+
+            /* Fix Modals for Mobile */
+            .modal-content { padding: 1rem; }
+            .modal-header, .modal-footer { padding: 1rem 1.25rem; }
+            .modal-body { padding: 1.25rem; }
+            .modal-footer { flex-direction: column-reverse; gap: 10px; }
+            .modal-footer .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>

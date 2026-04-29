@@ -46,20 +46,17 @@ $f_loc     = $_GET['f_loc'] ?? '';
 $f_bld     = $_GET['f_bld'] ?? '';
 $f_pen     = $_GET['f_pen'] ?? '';
 $f_ani     = $_GET['f_animal'] ?? '';
-$date_from = $_GET['date_from'] ?? ''; // Default blank for placeholders
-$date_to   = $_GET['date_to'] ?? '';   // Default blank for placeholders
+$date_from = $_GET['date_from'] ?? '';
+$date_to   = $_GET['date_to'] ?? '';
 
-// Formatted strings for display
 $display_date_range = ($date_from && $date_to) 
     ? date('m/d/Y', strtotime($date_from)) . " - " . date('m/d/Y', strtotime($date_to)) 
     : "All Time";
 
-// Auto-assign location filter if user is restricted
 if ($USER_LOCATION_ != 1000) {
     $f_loc = $USER_LOCATION_;
 }
 
-// Fetch Locations for UI
 if ($USER_LOCATION_ != 1000) {
     $stmt = $conn->prepare("SELECT * FROM locations WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME");
     $stmt->execute([$USER_LOCATION_]);
@@ -68,7 +65,6 @@ if ($USER_LOCATION_ != 1000) {
     $locations = $conn->query("SELECT * FROM locations ORDER BY LOCATION_NAME")->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Determine Current Location Name for Header
 $current_location_name = "All Locations";
 if ($f_loc) {
     foreach ($locations as $loc) {
@@ -97,7 +93,6 @@ try {
         $purch_params[':df'] = $date_from;
         $purch_params[':dt'] = $date_to;
     }
-    
     if ($f_loc) {
         $purch_where .= " AND i.LOCATION_ID = :ploc";
         $purch_params[':ploc'] = $f_loc;
@@ -119,7 +114,8 @@ try {
                         l.LOCATION_NAME,
                         i.ITEM_NAME, 
                         SUM(COALESCE(i.TOTAL_QTY, (i.QUANTITY * i.ITEM_NET_WEIGHT), i.QUANTITY)) as qty, 
-                        SUM(i.TOTAL_COST) as cost 
+                        SUM(i.TOTAL_COST) as cost,
+                        GROUP_CONCAT(DISTINCT NULLIF(i.REFERENCE_NO, '') ORDER BY i.REFERENCE_NO SEPARATOR ', ') as dr_numbers
                   FROM items i
                   LEFT JOIN locations l ON i.LOCATION_ID = l.LOCATION_ID
                   WHERE i.STATUS = 1 AND i.ITEM_TYPE_ID = 2
@@ -134,14 +130,15 @@ try {
         $loc_name = $p['LOCATION_NAME'] ?? 'Unassigned Location';
         $key = strtolower(trim($loc_name)) . '_' . strtolower(trim($p['ITEM_NAME']));
         $purchases_by_feed[$key] = [
-            'qty' => $p['qty'],
-            'cost' => $p['cost'],
+            'qty'           => $p['qty'],
+            'cost'          => $p['cost'],
             'original_name' => $p['ITEM_NAME'],
-            'location_name' => $loc_name
+            'location_name' => $loc_name,
+            'dr_numbers'    => $p['dr_numbers'] ?? '',
         ];
     }
 
-    // --- B. FETCH USAGE (OUTWARDS) WITH LEFT JOINS ---
+    // --- B. FETCH USAGE (OUTWARDS) WITH ANIMAL TAGS & DR NUMBERS ---
     $where = " WHERE 1=1 ";
     $params = [];
 
@@ -161,6 +158,7 @@ try {
         $select_tag = "a.TAG_NO";
     }
 
+    // Main grouped query — adds ANIMAL_TAGS and DR_NUMBERS via subqueries / GROUP_CONCAT
     $sql = "SELECT 
                 COALESCE(loc.LOCATION_NAME, 'Unassigned Location') AS LOCATION_NAME, 
                 COALESCE(bld.BUILDING_NAME, 'Unassigned Building') AS BUILDING_NAME, 
@@ -170,7 +168,18 @@ try {
                 SUM(ft.QUANTITY_KG) as TOTAL_KGS,
                 SUM(ft.TRANSACTION_COST) as TOTAL_COST,
                 MIN(DATE(ft.TRANSACTION_DATE)) as MIN_DATE,
-                MAX(DATE(ft.TRANSACTION_DATE)) as MAX_DATE
+                MAX(DATE(ft.TRANSACTION_DATE)) as MAX_DATE,
+                -- Animal tags fed in this pen for this feed
+                GROUP_CONCAT(DISTINCT a.TAG_NO ORDER BY a.TAG_NO SEPARATOR ', ') AS ANIMAL_TAGS,
+                -- DR numbers from purchase items matched by feed name + location
+                (
+                    SELECT GROUP_CONCAT(DISTINCT NULLIF(ii.REFERENCE_NO, '') ORDER BY ii.REFERENCE_NO SEPARATOR ', ')
+                    FROM items ii
+                    WHERE ii.STATUS = 1
+                      AND ii.ITEM_TYPE_ID = 2
+                      AND ii.ITEM_NAME = COALESCE(f.FEED_NAME, 'Deleted Feed Batch')
+                      AND ii.LOCATION_ID = loc.LOCATION_ID
+                ) AS DR_NUMBERS
             FROM feed_transactions ft
             LEFT JOIN feeds f ON ft.FEED_ID = f.FEED_ID
             LEFT JOIN animal_records a ON ft.ANIMAL_ID = a.ANIMAL_ID
@@ -178,7 +187,7 @@ try {
             LEFT JOIN buildings bld ON p.BUILDING_ID = bld.BUILDING_ID
             LEFT JOIN locations loc ON bld.LOCATION_ID = loc.LOCATION_ID
             $where
-            GROUP BY $group_by_clause, f.FEED_NAME
+            GROUP BY $group_by_clause, f.FEED_NAME, loc.LOCATION_ID
             ORDER BY loc.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME, f.FEED_NAME";
 
     $stmt = $conn->prepare($sql);
@@ -210,7 +219,7 @@ try {
         $unique_feeds[$row['FEED_NAME']] = true;
     }
 
-    // --- C. FETCH INVENTORY ADJUSTMENTS (ADDITIONS & DEDUCTIONS) ---
+    // --- C. FETCH INVENTORY ADJUSTMENTS ---
     $adj_params = [];
     $adj_where = " WHERE ia.CATEGORY = 'feed' ";
     
@@ -251,10 +260,9 @@ try {
             $total_deducted += $adj['QUANTITY'];
         }
     }
-    // Net Adjustment = Additions - Deductions
     $net_adjustments = $total_added - $total_deducted;
 
-    // --- D. FETCH CURRENT WAREHOUSE STOCK (BALANCE) FROM FEEDS TABLE ---
+    // --- D. CURRENT WAREHOUSE STOCK ---
     $stock_params = [];
     $stock_where = "";
     if ($f_loc) {
@@ -271,7 +279,6 @@ try {
     error_log($e->getMessage());
 }
 
-// Count active filters
 $active_filters = 0;
 if ($date_from || $date_to) $active_filters++;
 if ($f_loc !== '' && $USER_LOCATION_ == 1000) $active_filters++;
@@ -308,7 +315,7 @@ if ($f_ani !== '') $active_filters++;
             --bg-elevated:    #111f35;
             --bg-hover:       #162540;
             --border:         rgba(255,255,255,0.07);
-            --border-active:  rgba(245,158,11,0.5); /* Amber Accent */
+            --border-active:  rgba(245,158,11,0.5);
             --amber:          #f59e0b;
             --amber-dim:      rgba(245,158,11,0.12);
             --amber-glow:     rgba(245,158,11,0.25);
@@ -324,6 +331,10 @@ if ($f_ani !== '') $active_filters++;
             --cyan-dim:       rgba(6,182,212,0.12);
             --red:            #f87171;
             --red-dim:        rgba(248,113,113,0.12);
+            --orange:         #fb923c;
+            --orange-dim:     rgba(251,146,60,0.12);
+            --teal:           #2dd4bf;
+            --teal-dim:       rgba(45,212,191,0.10);
             --text-primary:   #f1f5f9;
             --text-secondary: #94a3b8;
             --text-muted:     #475569;
@@ -336,7 +347,6 @@ if ($f_ani !== '') $active_filters++;
             --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
         }
 
-        /* ─── RESET & BASE ─── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: var(--font);
@@ -348,7 +358,7 @@ if ($f_ani !== '') $active_filters++;
         }
         .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-        /* ─── TOP BAR & HEADER ─── */
+        /* ─── TOP BAR ─── */
         .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
         .back-link {
             display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
@@ -357,7 +367,6 @@ if ($f_ani !== '') $active_filters++;
             border-radius: var(--radius-md); transition: all var(--transition);
         }
         .back-link:hover { color: var(--text-primary); border-color: var(--border-active); background: var(--bg-hover); }
-
         .page-badge {
             display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
             font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
@@ -365,22 +374,17 @@ if ($f_ani !== '') $active_filters++;
             padding: 6px 12px; border-radius: 99px;
         }
 
+        /* ─── PAGE HEADER ─── */
         .page-header { margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;}
         .header-info h1 {
             font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
             color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
         }
-        .header-info h1 span {
-            background: linear-gradient(135deg, var(--amber), #d97706);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
+        .header-info h1 span { background: linear-gradient(135deg, var(--amber), #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
 
         /* ─── ACCOUNTING STAT CARDS ─── */
-        .acc-summary-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.25rem; margin-bottom: 2.5rem;
-        }
+        .acc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem; }
         .acc-card {
             background: var(--bg-surface); border: 1px solid var(--border);
             border-radius: var(--radius-lg); padding: 1.5rem;
@@ -389,88 +393,59 @@ if ($f_ani !== '') $active_filters++;
         }
         .acc-card:hover { transform: translateY(-2px); }
         .acc-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
-        
         .c-inwards::before  { background: var(--emerald); }
         .c-outwards::before { background: var(--amber); }
         .c-variance::before { background: var(--blue); }
         .c-adjust::before   { background: var(--purple); }
         .c-adj-net::before  { background: var(--pink); }
         .c-stock::before    { background: var(--cyan); }
-
         .acc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem; }
         .acc-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
-        
         .c-inwards .acc-icon { background: var(--emerald-dim); color: var(--emerald); }
         .c-outwards .acc-icon { background: var(--amber-dim); color: var(--amber); }
         .c-variance .acc-icon { background: var(--blue-dim); color: var(--blue); }
         .c-adjust .acc-icon { background: var(--purple-dim); color: var(--purple); }
         .c-adj-net .acc-icon { background: var(--pink-dim); color: var(--pink); }
         .c-stock .acc-icon { background: var(--cyan-dim); color: var(--cyan); }
-
         .acc-title { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.05em;}
         .acc-val { font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1; }
-        
         .c-inwards .acc-val { color: var(--emerald); }
         .c-outwards .acc-val { color: var(--amber); }
         .c-variance .acc-val { color: var(--blue); }
         .c-adj-net .acc-val { color: var(--pink); }
         .c-stock .acc-val { color: var(--cyan); }
-
         .acc-sub { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono);}
 
         /* ─── FILTER PANEL ─── */
-        .filter-panel {
-            background: var(--bg-surface); border: 1px solid var(--border);
-            border-radius: var(--radius-xl); margin-bottom: 2rem; overflow: hidden;
-        }
-        .filter-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
-            cursor: pointer; user-select: none;
-        }
+        .filter-panel { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); margin-bottom: 2rem; overflow: hidden; }
+        .filter-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
         .filter-header-left { display: flex; align-items: center; gap: 10px; }
         .filter-header-title { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
-        .filter-badge {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700;
-            background: var(--amber); color: #000; border-radius: 99px; padding: 0 6px;
-        }
-        .filter-toggle-btn {
-            display: flex; align-items: center; gap: 6px; font-size: 0.8rem;
-            font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer;
-        }
+        .filter-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700; background: var(--amber); color: #000; border-radius: 99px; padding: 0 6px; }
+        .filter-toggle-btn { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer; }
         .filter-toggle-btn i { transition: transform 0.25s ease; }
         .filter-toggle-btn.collapsed i { transform: rotate(-90deg); }
-
         .filter-body { padding: 1.5rem; display: grid; transition: all 0.25s ease; }
         .filter-body.hidden { display: none; }
-
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end; }
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px; }
         .form-label.accent { color: var(--amber); }
-
         .form-control, .form-select {
             width: 100%; padding: 0 12px; height: 40px; background: var(--bg-elevated);
             border: 1px solid var(--border); color: var(--text-primary);
             border-radius: var(--radius-md); font-size: 0.875rem; font-family: var(--font);
             outline: none; transition: border-color var(--transition), box-shadow var(--transition);
         }
-        .form-select {
-            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
-        }
+        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer; }
         .form-control:focus, .form-select:focus { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-glow); background: var(--bg-hover); }
         .form-select:disabled, .form-control:disabled { opacity: 0.5; cursor: not-allowed; }
         .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
-        /* Filter Actions */
-        .filter-footer {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 1rem 1.5rem; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 1rem;
-        }
+        .filter-footer { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 1rem; }
         .filter-footer-left, .filter-footer-right { display: flex; gap: 8px; flex-wrap: wrap; }
 
+        /* ─── BUTTONS ─── */
         .btn {
             display: inline-flex; align-items: center; justify-content: center; gap: 7px;
             padding: 0 16px; height: 38px; border-radius: var(--radius-md);
@@ -482,7 +457,6 @@ if ($f_ani !== '') $active_filters++;
         .btn-primary:hover { background: #fbbf24; box-shadow: 0 0 16px var(--amber-glow); }
         .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
         .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
-        
         .btn-pdf { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
         .btn-pdf:hover { background: #1e40af; box-shadow: 0 0 12px rgba(29,78,216,0.4); }
         .btn-excel { background: #059669; color: #fff; border-color: #059669; }
@@ -504,9 +478,9 @@ if ($f_ani !== '') $active_filters++;
         }
         .group-header.warehouse { color: var(--emerald); border-bottom-color: var(--emerald-dim); }
         .group-header.adjustments { color: var(--purple); background: var(--purple-dim); }
-        
+
         .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        table { width: 100%; border-collapse: collapse; min-width: 960px; }
         thead th {
             background: rgba(0,0,0,0.2); color: var(--text-muted);
             font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
@@ -521,12 +495,34 @@ if ($f_ani !== '') $active_filters++;
         .row-total { background: var(--bg-elevated); border-top: 2px solid var(--border) !important; }
         .row-total td { font-weight: 700; color: #fff; }
 
-        /* Cell Formatting */
         .t-right { text-align: right; }
         .col-name { font-weight: 600; color: #fff; font-size: 0.95rem;}
         .val-mono { font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem;}
         .val-money { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
 
+        /* ─── ANIMAL TAG PILLS ─── */
+        .tag-pills { display: flex; flex-wrap: wrap; gap: 4px; max-width: 280px; }
+        .tag-pill {
+            display: inline-flex; align-items: center; gap: 3px;
+            background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
+            color: #93c5fd; border-radius: 5px; padding: 2px 7px;
+            font-size: 0.68rem; font-weight: 700; font-family: var(--font-mono);
+            white-space: nowrap; letter-spacing: 0.02em;
+        }
+        .tag-pill i { font-size: 0.55rem; opacity: 0.7; }
+
+        /* ─── DR NUMBER PILLS ─── */
+        .dr-pills { display: flex; flex-wrap: wrap; gap: 4px; max-width: 200px; }
+        .dr-pill {
+            display: inline-flex; align-items: center; gap: 3px;
+            background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+            color: #fcd34d; border-radius: 5px; padding: 2px 7px;
+            font-size: 0.68rem; font-weight: 700; font-family: var(--font-mono);
+            white-space: nowrap; letter-spacing: 0.02em;
+        }
+        .dr-pill i { font-size: 0.55rem; opacity: 0.7; }
+
+        /* ─── BADGE ─── */
         .badge {
             display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
             border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
@@ -539,9 +535,7 @@ if ($f_ani !== '') $active_filters++;
         .empty-state h3 { font-size: 1rem; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 600;}
 
         /* ─── RESPONSIVE ─── */
-        @media (max-width: 900px) {
-            .filter-grid { grid-template-columns: 1fr 1fr; }
-        }
+        @media (max-width: 900px) { .filter-grid { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .page-header { flex-direction: column; align-items: flex-start; }
@@ -550,28 +544,16 @@ if ($f_ani !== '') $active_filters++;
             .filter-footer { flex-direction: column; align-items: stretch; }
             .filter-footer-left, .filter-footer-right { justify-content: stretch; }
             .filter-footer .btn { flex: 1; }
-
-            /* Mobile Table to Cards */
             .table-wrap { border: none; background: transparent; overflow: visible; }
             table { min-width: 0; display: block; }
             thead { display: none; }
             tbody { display: block; }
-            tbody tr {
-                display: block; background: var(--bg-elevated);
-                border: 1px solid var(--border); border-radius: var(--radius-lg);
-                margin-bottom: 0.75rem; padding: 1rem; box-shadow: var(--shadow-sm);
-            }
-            td {
-                display: flex; justify-content: space-between; align-items: center;
-                gap: 1rem; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: right;
-            }
+            tbody tr { display: block; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 0.75rem; padding: 1rem; box-shadow: var(--shadow-sm); }
+            td { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: right; flex-wrap: wrap; }
             td:last-child { border-bottom: none; }
-            td::before {
-                content: attr(data-label); font-size: 0.7rem; font-weight: 700;
-                text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
-                white-space: nowrap; flex-shrink: 0; padding-top: 2px; text-align: left;
-            }
+            td::before { content: attr(data-label); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; padding-top: 2px; text-align: left; }
             .row-total { background: var(--blue-dim); border-color: rgba(59,130,246,0.3); }
+            .tag-pills, .dr-pills { justify-content: flex-end; }
         }
     </style>
 </head>
@@ -676,7 +658,6 @@ if ($f_ani !== '') $active_filters++;
         <div class="filter-body" id="filterBody">
             <form method="GET" id="filterForm">
                 <div class="filter-grid">
-                    
                     <div class="form-group">
                         <label class="form-label accent"><i class="fa-solid fa-calendar-days"></i> Transaction Period</label>
                         <div class="input-row">
@@ -722,7 +703,6 @@ if ($f_ani !== '') $active_filters++;
                             <option value="">All Animals</option>
                         </select>
                     </div>
-
                 </div>
             </form>
         </div>
@@ -771,6 +751,8 @@ if ($f_ani !== '') $active_filters++;
                         <thead>
                             <tr>
                                 <th>Feed Name</th>
+                                <th style="color:var(--teal);">Animal Tags Fed</th>
+                                <th style="color:var(--amber);">DR Numbers</th>
                                 <th class="t-right" style="color:var(--emerald);">Location Purch. (IN)</th>
                                 <th class="t-right">Used KGs (OUT)</th>
                                 <th class="t-right">Used Cost</th>
@@ -779,8 +761,39 @@ if ($f_ani !== '') $active_filters++;
                         </thead>
                         <tbody>
                             <?php foreach ($group['items'] as $item): ?>
+                                <?php
+                                    // Build tag pills
+                                    $tag_list = !empty($item['ANIMAL_TAGS']) ? array_filter(array_map('trim', explode(',', $item['ANIMAL_TAGS']))) : [];
+                                    // Build DR pills
+                                    $dr_list = !empty($item['DR_NUMBERS']) ? array_filter(array_map('trim', explode(',', $item['DR_NUMBERS']))) : [];
+                                ?>
                                 <tr>
                                     <td data-label="Feed Name" class="col-name"><?= htmlspecialchars($item['FEED_NAME']) ?></td>
+
+                                    <td data-label="Animal Tags Fed">
+                                        <?php if (!empty($tag_list)): ?>
+                                            <div class="tag-pills">
+                                                <?php foreach ($tag_list as $tag): ?>
+                                                    <span class="tag-pill"><i class="fa-solid fa-tag"></i><?= htmlspecialchars($tag) ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td data-label="DR Numbers">
+                                        <?php if (!empty($dr_list)): ?>
+                                            <div class="dr-pills">
+                                                <?php foreach ($dr_list as $dr): ?>
+                                                    <span class="dr-pill"><i class="fa-solid fa-receipt"></i><?= htmlspecialchars($dr) ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+                                        <?php endif; ?>
+                                    </td>
+
                                     <td data-label="Purchased (IN)" class="t-right val-mono text-green">
                                         <?= number_format($item['PURCHASED_QTY'], 2) ?> kg
                                     </td>
@@ -795,6 +808,8 @@ if ($f_ani !== '') $active_filters++;
                             <?php endforeach; ?>
                             <tr class="row-total">
                                 <td data-label="Summary">SUBTOTAL</td>
+                                <td data-label="Animal Tags" style="color:var(--text-muted);font-size:0.78rem;">—</td>
+                                <td data-label="DR Numbers" style="color:var(--text-muted);font-size:0.78rem;">—</td>
                                 <td data-label="Purchased (IN)" class="t-right" style="color:var(--text-muted); font-weight:normal;">-</td>
                                 <td data-label="Used KGs (OUT)" class="t-right val-mono"><?= number_format($group['sub_kg'], 2) ?> kg</td>
                                 <td data-label="Used Cost" class="t-right val-money">₱<?= number_format($group['sub_cost'], 2) ?></td>
@@ -868,6 +883,7 @@ if ($f_ani !== '') $active_filters++;
                             <tr>
                                 <th>Location</th>
                                 <th>Feed Name</th>
+                                <th style="color:var(--amber);">DR Numbers</th>
                                 <th class="t-right" style="color:var(--emerald);">Purchased (IN)</th>
                                 <th class="t-right">Used KGs (OUT)</th>
                                 <th class="t-right">Purchased Cost</th>
@@ -876,9 +892,23 @@ if ($f_ani !== '') $active_filters++;
                         <tbody>
                             <?php foreach ($purchases_by_feed as $fName => $pData): ?>
                                 <?php if(!isset($pData['processed'])): ?>
+                                    <?php
+                                        $wh_dr_list = !empty($pData['dr_numbers']) ? array_filter(array_map('trim', explode(',', $pData['dr_numbers']))) : [];
+                                    ?>
                                 <tr>
                                     <td data-label="Location" style="color:var(--blue); font-weight:600;"><?= htmlspecialchars($pData['location_name']) ?></td>
                                     <td data-label="Feed Name" class="col-name"><?= htmlspecialchars($pData['original_name']) ?></td>
+                                    <td data-label="DR Numbers">
+                                        <?php if (!empty($wh_dr_list)): ?>
+                                            <div class="dr-pills">
+                                                <?php foreach ($wh_dr_list as $dr): ?>
+                                                    <span class="dr-pill"><i class="fa-solid fa-receipt"></i><?= htmlspecialchars($dr) ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span style="color:var(--text-muted);font-size:0.78rem;">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td data-label="Purchased (IN)" class="t-right val-mono text-green">
                                         <?= number_format($pData['qty'], 2) ?> kg
                                     </td>
@@ -923,7 +953,6 @@ if ($f_ani !== '') $active_filters++;
         const body = document.getElementById('filterBody');
         const btn  = document.getElementById('filterToggleBtn');
         const label = document.getElementById('filterToggleLabel');
-
         body.classList.toggle('hidden', !filterOpen);
         btn.classList.toggle('collapsed', !filterOpen);
         label.textContent = filterOpen ? 'Collapse' : 'Expand';
@@ -941,20 +970,16 @@ if ($f_ani !== '') $active_filters++;
 
     const API_URL = window.location.pathname.split("/").pop();
 
-    // Auto-load dropdowns based on PHP state
     document.addEventListener('DOMContentLoaded', async () => {
         const loc = document.getElementById('f_loc').value;
         const bld = "<?= $f_bld ?>";
         const pen = "<?= $f_pen ?>";
         const ani = "<?= $f_ani ?>";
-
         if (loc) {
             await loadBuildings(loc, bld);
             if (bld) {
                 await loadPens(bld, pen);
-                if (pen) {
-                    await loadAnimals(pen, ani);
-                }
+                if (pen) { await loadAnimals(pen, ani); }
             }
         }
     });
@@ -976,7 +1001,6 @@ if ($f_ani !== '') $active_filters++;
         resetSelect('f_pen', 'All Pens'); 
         resetSelect('f_animal', 'All Animals');
         if(!id) return;
-
         const data = await fetchJson(`?action=get_buildings&loc_id=${id}`);
         const el = document.getElementById('f_bld');
         data.forEach(item => {
@@ -991,7 +1015,6 @@ if ($f_ani !== '') $active_filters++;
         resetSelect('f_pen', 'All Pens'); 
         resetSelect('f_animal', 'All Animals');
         if(!id) return;
-
         const data = await fetchJson(`?action=get_pens&bldg_id=${id}`);
         const el = document.getElementById('f_pen');
         data.forEach(item => {
@@ -1005,7 +1028,6 @@ if ($f_ani !== '') $active_filters++;
         const id = prePen || document.getElementById('f_pen').value;
         resetSelect('f_animal', 'All Animals');
         if(!id) return;
-        
         const data = await fetchJson(`?action=get_animals&pen_id=${id}`);
         const el = document.getElementById('f_animal');
         data.forEach(item => {
@@ -1033,37 +1055,36 @@ if ($f_ani !== '') $active_filters++;
     function generateExportData() {
         const rows = [];
         
-        // Add Accounting Header
-        rows.push(['--- ACCOUNTANCY SUMMARY ---', '', '', '', '']);
-        rows.push(['Confirmed Purchases (IN)', `${accSummary.purchQty} kg`, `PHP ${accSummary.purchCost}`, '', '']);
-        rows.push(['Total Consumed (OUT)', `${grandTotals.kg} kg`, `PHP ${grandTotals.cost}`, '', '']);
-        rows.push(['Raw Period Net (IN - OUT)', `${accSummary.varQty} kg`, `PHP ${accSummary.varCost}`, '', '']);
-        rows.push(['Net Adjustments (ADJ)', `${accSummary.netAdj} kg`, '', '', '']);
-        rows.push(['Adjusted Period Net (IN - OUT + ADJ)', `${accSummary.expectedNet} kg`, '', '', '']);
-        rows.push(['Current Warehouse Stock', `${accSummary.stock} kg`, '', '', '']);
-        rows.push(['', '', '', '', '']);
+        rows.push(['--- ACCOUNTANCY SUMMARY ---', '', '', '', '', '', '']);
+        rows.push(['Confirmed Purchases (IN)', `${accSummary.purchQty} kg`, `PHP ${accSummary.purchCost}`, '', '', '', '']);
+        rows.push(['Total Consumed (OUT)', `${grandTotals.kg} kg`, `PHP ${grandTotals.cost}`, '', '', '', '']);
+        rows.push(['Raw Period Net (IN - OUT)', `${accSummary.varQty} kg`, `PHP ${accSummary.varCost}`, '', '', '', '']);
+        rows.push(['Net Adjustments (ADJ)', `${accSummary.netAdj} kg`, '', '', '', '', '']);
+        rows.push(['Adjusted Period Net (IN - OUT + ADJ)', `${accSummary.expectedNet} kg`, '', '', '', '', '']);
+        rows.push(['Current Warehouse Stock', `${accSummary.stock} kg`, '', '', '', '', '']);
+        rows.push(['', '', '', '', '', '', '']);
         
-        // Detailed Usage Breakdown
-        rows.push(['--- DETAILED USAGE BREAKDOWN ---', '', '', '', '']);
+        rows.push(['--- DETAILED USAGE BREAKDOWN ---', '', '', '', '', '', '']);
         for (const [header, group] of Object.entries(rawData)) {
-            rows.push([`>>> ${header.toUpperCase()} <<<`, '', '', '', '']); 
+            rows.push([`>>> ${header.toUpperCase()} <<<`, '', '', '', '', '', '']); 
             group.items.forEach(i => {
                 rows.push([
                     i.FEED_NAME, 
+                    i.ANIMAL_TAGS || '—',
+                    i.DR_NUMBERS || '—',
                     `${parseFloat(i.PURCHASED_QTY).toFixed(2)} kg`, 
                     `${parseFloat(i.TOTAL_KGS).toFixed(2)} kg`, 
                     `PHP ${parseFloat(i.TOTAL_COST).toFixed(2)}`, 
                     reportDateRange
                 ]);
             });
-            rows.push(['SUBTOTAL', '-', `${parseFloat(group.sub_kg).toFixed(2)} kg`, `PHP ${parseFloat(group.sub_cost).toFixed(2)}`, '']);
-            rows.push(['', '', '', '', '']); // Spacing
+            rows.push(['SUBTOTAL', '—', '—', '-', `${parseFloat(group.sub_kg).toFixed(2)} kg`, `PHP ${parseFloat(group.sub_cost).toFixed(2)}`, '']);
+            rows.push(['', '', '', '', '', '', '']);
         }
 
-        // Adjustments Table
         if(adjustmentsData && adjustmentsData.length > 0) {
-            rows.push(['--- INVENTORY ADJUSTMENTS ---', '', '', '', '']);
-            rows.push(['Date', 'Location & Feed Name', 'Type', 'Qty Adjusted', 'Reason']);
+            rows.push(['--- INVENTORY ADJUSTMENTS ---', '', '', '', '', '', '']);
+            rows.push(['Date', 'Location & Feed Name', 'Type', 'Qty Adjusted', 'Reason', '', '']);
             adjustmentsData.forEach(adj => {
                 const typeStr = adj.ADJUSTMENT_TYPE.toLowerCase() === 'add' ? 'Addition (+)' : 'Deduction (-)';
                 rows.push([
@@ -1071,22 +1092,23 @@ if ($f_ani !== '') $active_filters++;
                     `[${adj.LOCATION_NAME}] ${adj.ITEM_NAME}`,
                     typeStr,
                     `${parseFloat(adj.QUANTITY).toFixed(2)} kg`,
-                    adj.REASON
+                    adj.REASON, '', ''
                 ]);
             });
-            rows.push(['', '', '', '', '']); // Spacing
+            rows.push(['', '', '', '', '', '', '']);
         }
 
-        // Add unused purchases
         let hasUnused = false;
         for(let key in purchasesData) {
             if(!purchasesData[key].processed) {
                 if(!hasUnused) {
-                    rows.push(['--- WAREHOUSE STOCK (Purchased but 0 Usage) ---', '', '', '', '']);
+                    rows.push(['--- WAREHOUSE STOCK (Purchased but 0 Usage) ---', '', '', '', '', '', '']);
                     hasUnused = true;
                 }
                 rows.push([
                     `[${purchasesData[key].location_name}] ${purchasesData[key].original_name}`,
+                    '—',
+                    purchasesData[key].dr_numbers || '—',
                     `${parseFloat(purchasesData[key].qty).toFixed(2)} kg`,
                     '0.00 kg',
                     `PHP ${parseFloat(purchasesData[key].cost).toFixed(2)}`,
@@ -1103,32 +1125,31 @@ if ($f_ani !== '') $active_filters++;
         doc.setFontSize(16);
         doc.setTextColor(59, 130, 246);
         doc.text("Feeds Usage & Ledger Report", 14, 15);
-        
         doc.setFontSize(10);
         doc.setTextColor(100);
-        
         let now = new Date();
         let formattedNow = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
-        
         doc.text(`Generated: ${formattedNow}`, 14, 22);
         doc.text(`Date Range: ${reportDateRange}`, 14, 28);
         doc.text(`Location: ${currentLocationName}`, 14, 34);
-
         const rows = generateExportData();
-
         doc.autoTable({
-            head: [['Name / Grouping / Date', 'Purchases (IN) / Loc', 'Used (OUT) / Type', 'Cost / Qty', 'Date Range / Reason']],
+            head: [['Name / Group', 'Animal Tags', 'DR Numbers', 'Purch. (IN)', 'Used (OUT)', 'Cost', 'Date Range']],
             body: rows,
             startY: 40,
-            styles: { fontSize: 8 },
+            styles: { fontSize: 7 },
             headStyles: { fillColor: [59, 130, 246] },
+            columnStyles: {
+                1: { cellWidth: 30 },
+                2: { cellWidth: 22 },
+            },
             didParseCell: function (data) {
-                if (data.row.raw[0].startsWith('---')) {
+                if (data.row.raw[0] && data.row.raw[0].startsWith('---')) {
                     data.cell.styles.fontStyle = 'bold';
                     data.cell.styles.fillColor = [51, 65, 85];
                     data.cell.styles.textColor = [255, 255, 255];
                 }
-                if (data.row.raw[0].startsWith('>>>')) {
+                if (data.row.raw[0] && data.row.raw[0].startsWith('>>>')) {
                     data.cell.styles.fontStyle = 'bold';
                     data.cell.styles.fillColor = [240, 240, 240];
                     data.cell.styles.textColor = [0, 0, 0];
@@ -1139,18 +1160,16 @@ if ($f_ani !== '') $active_filters++;
                 }
             }
         });
-
         doc.save('Feeds_Ledger_Report.pdf');
     }
 
     function exportExcel() {
         const rows = generateExportData();
-        rows.unshift([`Location: ${currentLocationName}`, '', '', '', '']); 
-        
+        rows.unshift(['Feed Name', 'Animal Tags Fed', 'DR Numbers', 'Purchased (IN)', 'Used (OUT)', 'Used Cost', 'Date Range']);
+        rows.unshift([`Location: ${currentLocationName}`, '', '', '', '', '', '']); 
         const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Feeds Ledger");
-        
         let now = new Date();
         let filenameDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         XLSX.writeFile(wb, `Feeds_Ledger_Report_${filenameDate}.xlsx`);
@@ -1158,17 +1177,15 @@ if ($f_ani !== '') $active_filters++;
 
     function exportCSV() {
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += `Location: ${currentLocationName}\n\n`;
-        
+        csvContent += `Location: ${currentLocationName}\n`;
+        csvContent += `"Feed Name","Animal Tags Fed","DR Numbers","Purchased (IN)","Used (OUT)","Used Cost","Date Range"\n`;
         const rows = generateExportData();
         rows.forEach(r => {
-            const rowStr = r.map(e => `"${e}"`).join(",");
+            const rowStr = r.map(e => `"${String(e).replace(/"/g, '""')}"`).join(",");
             csvContent += rowStr + "\n";
         });
-
         let now = new Date();
         let filenameDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);

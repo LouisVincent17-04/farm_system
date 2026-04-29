@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             echo json_encode([
                 'success' => true, 
-                'message' => '✅ Breeding & Reproduction item added successfully (ID: ' . $new_item_id . ')'
+                'message' => '  Breeding & Reproduction item added successfully (ID: ' . $new_item_id . ')'
             ]);
             
         } else {
@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {

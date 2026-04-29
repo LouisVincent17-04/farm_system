@@ -43,6 +43,9 @@ $permission_map = [
         "sow_cards"         => "Sow Cards",
         "birth_certificate" => "Birth Certificate",
         "cost_transfer"     => "Cost Transfer",
+        "concerns"     => "Concerns",
+        "file_concerns"     => "File Concerns",
+        "animal_misc_fees"  => "Miscellaneous Fees",
     ],
     "ANALYTICS" => [
         "analytics_dashboard"              => "Analytics Dashboard",

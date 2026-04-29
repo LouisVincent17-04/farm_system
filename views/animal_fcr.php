@@ -319,8 +319,8 @@ try {
         fetch('../process/saveAnimalFCR.php', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
-            if(data.success) { alert("✅ FCR Updated & Weight Logged!"); location.reload(); }
-            else { alert("❌ Error: " + data.message); }
+            if(data.success) { alert("  FCR Updated & Weight Logged!"); location.reload(); }
+            else { alert("  Error: " + data.message); }
         });
     });
 </script>

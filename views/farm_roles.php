@@ -170,6 +170,9 @@ try {
         .form-control:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-glow); }
         textarea.form-control { resize: none; min-height: 100px; }
 
+        /* Character Counter */
+        .char-counter { text-align: right; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
         /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
             .page-header { flex-direction: column; align-items: flex-start; }
@@ -273,7 +276,8 @@ try {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Description</label>
-                    <textarea id="description" name="description" class="form-control" rows="3" placeholder="Brief details about the responsibilities..."></textarea>
+                    <textarea id="description" name="description" class="form-control" rows="3" placeholder="Brief details about the responsibilities..." maxlength="250" oninput="updateCharCount(this)"></textarea>
+                    <div id="charCount" class="char-counter">0 / 250</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -285,6 +289,11 @@ try {
 </div>
 
 <script>
+    function updateCharCount(textarea) {
+        const currentLength = textarea.value.length;
+        document.getElementById('charCount').textContent = `${currentLength} / 250`;
+    }
+
     function openModal(mode, btn = null) {
         const form = document.getElementById('roleForm');
         form.reset();
@@ -292,12 +301,16 @@ try {
 
         if (mode === 'add') {
             document.getElementById('modalTitle').textContent = 'Add Role';
+            document.getElementById('charCount').textContent = '0 / 250';
         } else {
             document.getElementById('modalTitle').textContent = 'Edit Role';
             const tr = btn.closest('tr');
             document.getElementById('role_id').value = tr.dataset.id;
             document.getElementById('role_name').value = tr.dataset.name;
-            document.getElementById('description').value = tr.dataset.desc;
+            
+            const descField = document.getElementById('description');
+            descField.value = tr.dataset.desc;
+            document.getElementById('charCount').textContent = `${descField.value.length} / 250`;
         }
         document.getElementById('roleModal').classList.add('show');
     }

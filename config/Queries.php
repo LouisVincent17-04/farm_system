@@ -16,7 +16,7 @@ function retrieveData($conn, $sql, $params = []) {
 
         if (!$result) {
             $errorInfo = $stmt->errorInfo();
-            die("❌ Execute error: " . $errorInfo[2]);
+            die("  Execute error: " . $errorInfo[2]);
         }
 
         // Fetch all results as an associative array
@@ -25,7 +25,7 @@ function retrieveData($conn, $sql, $params = []) {
         return $rows;
 
     } catch (PDOException $e) {
-        die("❌ Error: " . $e->getMessage());
+        die("  Error: " . $e->getMessage());
     }
 }
 
@@ -46,13 +46,13 @@ function modifyTable($conn, $sql, $params = []) {
 
         if (!$result) {
             $errorInfo = $stmt->errorInfo();
-            die("❌ Execute error: " . $errorInfo[2]);
+            die("  Execute error: " . $errorInfo[2]);
         }
 
         return true;
 
     } catch (PDOException $e) {
-        die("❌ Error: " . $e->getMessage());
+        die("  Error: " . $e->getMessage());
     }
 }
 ?>

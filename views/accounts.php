@@ -243,8 +243,9 @@ try {
             .filter-tabs { flex-wrap: wrap; justify-content: center; }
             .filter-link { flex: 1; text-align: center; }
 
-            .table-wrap { border: none; background: transparent; }
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; }
+            .table-wrap { border: none; background: transparent; overflow-x: visible; box-shadow: none; }
+            .table { min-width: 100%; } /* CRITICAL FIX */
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; box-sizing: border-box; }
             .table thead { display: none; }
             .table tbody tr { 
                 background: var(--bg-surface); border: 1px solid var(--border); 
@@ -252,7 +253,7 @@ try {
             }
             .table td { 
                 display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
             .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
             .table td::before { 
@@ -265,8 +266,8 @@ try {
             .table td[data-label="Actions"]::before { display: none; }
             
             .modal-content { padding: 1rem; }
-            .modal-footer { flex-direction: column; }
-            .btn-modal { width: 100%; }
+            .modal-footer { flex-direction: column-reverse; }
+            .btn-modal { width: 100%; justify-content: center; }
         }
     </style>
 </head>

@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         echo json_encode([
             'success' => true, 
-            'message' => '✅ Purchase confirmed and inventory updated (Expiry: ' . $expiration_date . ').'
+            'message' => '  Purchase confirmed and inventory updated (Expiry: ' . $expiration_date . ').'
         ]);
 
     } catch (Exception $e) {
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         }
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {

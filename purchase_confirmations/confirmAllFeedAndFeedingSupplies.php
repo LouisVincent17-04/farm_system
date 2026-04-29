@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         echo json_encode([
             'success' => true, 
-            'message' => "✅ Successfully processed $affected_rows purchase records. Inventory updated with expiration tracking."
+            'message' => "  Successfully processed $affected_rows purchase records. Inventory updated with expiration tracking."
         ]);
 
     } catch (Exception $e) {
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {

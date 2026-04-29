@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // 4. Commit
         $conn->commit();
         
-        echo json_encode(['success' => true, 'message' => '✅ Check-up deleted successfully.']);
+        echo json_encode(['success' => true, 'message' => '  Check-up deleted successfully.']);
         
         // Note: You can't redirect with headers after echoing JSON unless buffering is on.
         // It's better to handle the redirect on the client-side (Javascript) upon success.
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);

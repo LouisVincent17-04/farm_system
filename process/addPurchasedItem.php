@@ -128,7 +128,7 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => '✅ Item added successfully! (ID: ' . $new_id . ')'
+        'message' => '  Item added successfully! (ID: ' . $new_id . ')'
     ]);
     
 } catch (Exception $e) {
@@ -139,7 +139,7 @@ try {
 
     echo json_encode([
         'success' => false,
-        'message' => '❌ An error occurred: ' . $e->getMessage()
+        'message' => '  An error occurred: ' . $e->getMessage()
     ]);
 }
 ?>

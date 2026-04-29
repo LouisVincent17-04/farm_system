@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         echo json_encode([
             'success' => true, 
-            'message' => '✅ Check-up recorded successfully!'
+            'message' => '  Check-up recorded successfully!'
         ]);
         
     } catch (Exception $e) {
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {

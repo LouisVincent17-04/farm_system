@@ -171,13 +171,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // 6. Commit
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => '✅ Check-up updated successfully!']);
+        echo json_encode(['success' => true, 'message' => '  Check-up updated successfully!']);
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);

@@ -160,7 +160,7 @@ try {
     
     echo json_encode([
         'success' => true,
-        'message' => '✅ Item updated successfully!'
+        'message' => '  Item updated successfully!'
     ]);
     
 } catch (Exception $e) {
@@ -171,7 +171,7 @@ try {
     
     echo json_encode([
         'success' => false,
-        'message' => '❌ An error occurred: ' . $e->getMessage()
+        'message' => '  An error occurred: ' . $e->getMessage()
     ]);
 }
 ?>

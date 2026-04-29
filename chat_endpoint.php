@@ -51,7 +51,7 @@ curl_close($ch);
 if ($curl_err) {
     echo json_encode([
         'status'  => 'error',
-        'message' => '❌ Could not reach AI server. Make sure Python is running. (' . $curl_err . ')',
+        'message' => '  Could not reach AI server. Make sure Python is running. (' . $curl_err . ')',
         'links'   => []
     ]);
     exit;
@@ -61,7 +61,7 @@ if ($curl_err) {
 if ($http_code !== 200) {
     echo json_encode([
         'status'  => 'error',
-        'message' => '❌ AI server returned HTTP ' . $http_code,
+        'message' => '  AI server returned HTTP ' . $http_code,
         'links'   => []
     ]);
     exit;
@@ -73,7 +73,7 @@ $decoded = json_decode($response, true);
 if (!$decoded) {
     echo json_encode([
         'status'  => 'error',
-        'message' => '❌ Invalid response from AI server.',
+        'message' => '  Invalid response from AI server.',
         'links'   => []
     ]);
     exit;

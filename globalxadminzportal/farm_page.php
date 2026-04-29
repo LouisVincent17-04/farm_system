@@ -75,6 +75,7 @@ $is_global = $_SESSION['is_global'] ?? 0;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | FarmPro Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -553,7 +554,7 @@ $is_global = $_SESSION['is_global'] ?? 0;
             <div class="nav-avatar"><?= strtoupper(substr($full_name, 0, 1)) ?></div>
             <span class="nav-username"><?= htmlspecialchars($full_name) ?></span>
             <?php if ($is_global): ?>
-            <span class="nav-badge">In-Charge</span>
+            <span class="nav-badge">System Owner</span>
             <?php endif; ?>
         </div>
     </div>
@@ -581,7 +582,7 @@ $is_global = $_SESSION['is_global'] ?? 0;
         </div>
 
         <div class="stat-card teal">
-            <div class="stat-icon">✅</div>
+            <div class="stat-icon"> </div>
             <div class="stat-label">Active Farms</div>
             <div class="stat-value"><?= $active_farms ?></div>
             <div class="stat-sub">Currently operational</div>
@@ -610,9 +611,9 @@ $is_global = $_SESSION['is_global'] ?? 0;
 
         <div class="stat-card orange">
             <div class="stat-icon">👑</div>
-            <div class="stat-label">In-Charge</div>
+            <div class="stat-label">System Owner</div>
             <div class="stat-value"><?= $incharge_users ?></div>
-            <div class="stat-sub">Assigned as In-Charge</div>
+            <div class="stat-sub">Assigned as System Owner</div>
         </div>
 
         <div class="stat-card red">

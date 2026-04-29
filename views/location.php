@@ -20,10 +20,21 @@ $msg = $_GET['msg'] ?? '';
 
 try {
     if (!isset($conn)) { throw new Exception("Database connection failed."); }
-    $sql = "SELECT * FROM Locations ORDER BY LOCATION_ID ASC";
+    $sql = "SELECT * FROM LOCATIONS";
     $stmt = $conn->prepare($sql);
     $stmt->execute();
     $location_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // ====================================================================================
+    // TRUE NATURAL SORTING (PHP)
+    // Sorts alphabetically first, then numerically when it encounters numbers.
+    // E.g., Location 1 -> Location 2 -> Location 10
+    // ====================================================================================
+    usort($location_data, function($a, $b) {
+        return strnatcasecmp($a['LOCATION_NAME'], $b['LOCATION_NAME']);
+    });
+    // ====================================================================================
+
 } catch (Exception $e) {
     $location_data = [];
     $status = 'error';
@@ -59,6 +70,8 @@ try {
             --emerald-glow:   rgba(16,185,129,0.25);
             --blue:           #38bdf8;
             --blue-dim:       rgba(56,189,248,0.12);
+            --purple:         #a78bfa;
+            --purple-dim:     rgba(167,139,250,0.12);
             --red:            #f87171;
             --red-dim:        rgba(248,113,113,0.12);
             --text-primary:   #f1f5f9;
@@ -70,15 +83,14 @@ try {
             --font:           'DM Sans', system-ui, sans-serif;
             --font-mono:      'DM Mono', monospace;
             --transition:     0.18s cubic-bezier(0.4,0,0.2,1);
+            --shadow-md:      0 10px 15px -3px rgba(0,0,0,0.3);
         }
 
         /* ─── RESET & BASE ─── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: var(--font);
-            background: var(--bg-base);
-            color: var(--text-primary);
-            min-height: 100vh;
+            font-family: var(--font); background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; padding-bottom: 60px;
             background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(16,185,129,0.06) 0%, transparent 60%);
         }
         .container { max-width: 1560px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -95,163 +107,209 @@ try {
 
         .page-badge {
             display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem;
-            font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
             color: var(--emerald); background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.2);
             padding: 6px 12px; border-radius: 99px;
         }
 
         /* ─── HEADER ─── */
-        .page-header {
-            display: flex; justify-content: space-between; align-items: flex-end;
-            margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
-        }
-        .header-info h1 {
-            font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
-            color: var(--text-primary); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.25rem;
-        }
-        .header-info h1 span {
-            background: linear-gradient(135deg, var(--emerald), #059669);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .header-info p { color: var(--text-secondary); font-size: 0.95rem; }
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; gap: 1.5rem; flex-wrap: wrap; }
+        .header-info h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin: 0 0 0.5rem 0; color: #fff; letter-spacing: -0.02em;}
+        .header-info h1 span { background: linear-gradient(135deg, var(--emerald), #047857); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-info p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
 
-        /* ─── BUTTONS ─── */
-        .btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            padding: 10px 20px; border-radius: var(--radius-md); font-size: 0.9rem;
-            font-weight: 600; font-family: var(--font); border: 1px solid transparent;
-            cursor: pointer; transition: all var(--transition); text-decoration: none; white-space: nowrap;
-        }
-        .btn-primary { background: var(--emerald); color: #000; }
-        .btn-primary:hover { background: #34d399; box-shadow: 0 0 16px var(--emerald-glow); transform: translateY(-1px); }
-        .btn-gps { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(56,189,248,0.2); font-size: 0.8rem; padding: 8px 12px; }
-        .btn-gps:hover { background: var(--blue); color: #000; }
-        .btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
-        .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+        /* ─── LAYOUT GRID ─── */
+        .main-grid { display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; align-items: start; }
 
-        /* ─── SEARCH ─── */
-        .search-container { position: relative; margin-bottom: 1.5rem; }
-        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 18px; height: 18px; }
-        .search-input {
-            width: 100%; padding: 14px 14px 14px 2.8rem; background: var(--bg-surface);
-            border: 1px solid var(--border); border-radius: var(--radius-lg);
-            color: var(--text-primary); font-size: 1rem; font-family: var(--font);
-            outline: none; transition: all var(--transition);
-        }
-        .search-input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); background: var(--bg-hover); }
-
-        /* ─── TABLE ─── */
-        .table-card {
+        /* ─── CONTROL PANEL (LEFT) ─── */
+        .control-panel {
             background: var(--bg-surface); border: 1px solid var(--border);
-            border-radius: var(--radius-xl); overflow: hidden;
+            border-radius: var(--radius-xl); padding: 2rem; position: sticky; top: 1.5rem;
+            box-shadow: var(--shadow-md); z-index: 10; display: flex; flex-direction: column;
         }
-        .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; }
-        thead th {
-            background: var(--bg-elevated); color: var(--text-muted);
-            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.07em; padding: 14px 16px; text-align: left;
-            border-bottom: 1px solid var(--border);
+        .panel-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 10px;}
+        .panel-title i { color: var(--emerald); }
+        .panel-subtitle { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 2rem; }
+
+        .btn-add {
+            width: 100%; padding: 14px; background: var(--emerald); border: none;
+            border-radius: var(--radius-md); color: #000; font-weight: 700; font-size: 1rem; font-family: var(--font);
+            cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 2rem;
         }
-        tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
-        tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: rgba(255,255,255,0.02); }
-        td { padding: 14px 16px; font-size: 0.9rem; color: var(--text-primary); vertical-align: middle; }
+        .btn-add:hover { background: #34d399; box-shadow: 0 4px 15px var(--emerald-glow); transform: translateY(-2px); }
+
+        .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 6px;}
+        .form-label { color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center; }
+        
+        .form-control, .form-select {
+            width: 100%; padding: 12px 14px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; transition: var(--transition); outline: none; box-sizing: border-box; font-family: var(--font);
+        }
+        .form-select {
+            appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+        }
+        .form-control:focus, .form-select:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); background: var(--bg-hover); }
+        .form-select:disabled, .form-control:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); border-color: transparent;}
+
+        .search-container { position: relative; margin-bottom: 1.5rem; }
+        .search-input { width: 100%; padding: 12px 14px 12px 40px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: var(--transition); font-family: var(--font);}
+        .search-input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); }
+        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;}
+
+        .btn-gps { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(56,189,248,0.2); font-size: 0.8rem; padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition); font-family: var(--font); font-weight: 600;}
+        .btn-gps:hover { background: var(--blue); color: #000; box-shadow: 0 0 10px rgba(56,189,248,0.4);}
+
+        /* ─── WORKSPACE (RIGHT) ─── */
+        .workspace-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+        
+        .table-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-md);}
+        .section-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border); background: var(--bg-elevated); flex-wrap: wrap; gap: 1rem;}
+        .section-title { font-size: 1.15rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;}
+        .section-title i { color: var(--emerald); }
+
+        .table-scroll-wrapper { overflow-x: auto; }
+        .table-scroll-wrapper::-webkit-scrollbar { height: 8px; }
+        .table-scroll-wrapper::-webkit-scrollbar-track { background: var(--bg-surface); }
+        .table-scroll-wrapper::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        .data-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .data-table th {
+            background: var(--bg-base); color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;
+            letter-spacing: 0.05em; padding: 16px; text-align: left; font-weight: 700; border-bottom: 1px solid var(--border);
+        }
+        .data-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-primary); vertical-align: middle;}
+        .data-table tr:hover { background: rgba(255,255,255,0.01); }
 
         .col-id { font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; }
-        .col-name { font-weight: 600; color: #fff; }
-        .col-coord { font-family: var(--font-mono); color: var(--blue); font-size: 0.85rem; }
+        .col-name { font-weight: 700; color: #fff; font-size: 1.05rem; }
+        .col-coord { font-family: var(--font-mono); color: var(--blue); font-size: 0.85rem; background: rgba(56,189,248,0.05); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(56,189,248,0.1); display: inline-block;}
+        .location-address { color: var(--text-secondary); font-size: 0.9rem; }
 
-        /* Actions */
-        .actions { display: flex; gap: 8px; }
+        .actions { display: flex; gap: 8px; justify-content: center;}
         .action-btn {
-            width: 32px; height: 32px; border-radius: 6px;
-            border: 1px solid var(--border); background: var(--bg-elevated);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+            width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
         }
-        .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-        .action-btn.view:hover { color: var(--blue); border-color: var(--blue); }
-        .action-btn.edit:hover { color: var(--emerald); border-color: var(--emerald); }
-        .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
+        .action-btn:hover { background: var(--bg-hover); color: #fff; }
+        .action-btn.view:hover { color: var(--blue); border-color: var(--blue); background: var(--blue-dim);}
+        .action-btn.edit:hover { color: var(--emerald); border-color: var(--emerald); background: var(--emerald-dim);}
+        .action-btn.delete:hover { color: var(--red); border-color: var(--red); background: var(--red-dim);}
+
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); font-style: italic; }
 
         /* ─── MODALS ─── */
-        .modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
-            padding: 1rem;
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem;
+            opacity: 0; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .modal.show { display: flex; }
-        .modal-content {
-            background: var(--bg-surface); border: 1px solid var(--border);
-            border-radius: var(--radius-xl); width: 100%; max-width: 650px;
-            max-height: 95vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            overflow: hidden;
+        .modal-overlay.show { display: flex; opacity: 1; }
+        
+        .modal-card {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-xl);
+            width: 100%; max-width: 650px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); transform: scale(0.95); opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; display: flex; flex-direction: column;
+            max-height: 95vh;
         }
-        .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
-        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--emerald); }
-        .modal-body { padding: 1.5rem; overflow-y: auto; }
-        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); }
+        .modal-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--emerald), #047857); }
+        .modal-overlay.show .modal-card { transform: scale(1); opacity: 1; }
 
-        /* Form Layout */
-        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
-        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
-        .form-control {
-            width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border);
-            color: var(--text-primary); border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
-            outline: none; transition: all var(--transition);
-        }
-        .form-control:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px var(--emerald-glow); }
+        .modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); background: var(--bg-elevated); display: flex; justify-content: space-between; align-items: center;}
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;}
+        .modal-header h2 i { color: var(--emerald); }
+        .btn-close { background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color var(--transition); }
+        .btn-close:hover { color: var(--red); }
+        
+        .modal-body { padding: 2rem; overflow-y: auto; }
+        .modal-footer { padding: 1.25rem 2rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); border-radius: 0 0 var(--radius-xl) var(--radius-xl);}
+
+        .btn-cancel { padding: 12px 24px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-md); cursor: pointer; font-weight: 700; font-family: var(--font); transition: var(--transition);}
+        .btn-cancel:hover { background: var(--bg-hover); color: #fff; border-color: var(--text-muted);}
+        .btn-confirm { padding: 12px 24px; background: var(--emerald); border: none; color: #000; border-radius: var(--radius-md); font-weight: 700; font-family: var(--font); cursor: pointer; transition: var(--transition); box-shadow: 0 4px 15px rgba(16,185,129,0.2); display: inline-flex; align-items: center; gap: 8px;}
+        .btn-confirm:hover { background: #34d399; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.4);}
 
         /* Map UI */
-        #map, #viewMap { height: 300px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin: 10px 0; z-index: 1; }
+        #map, #viewMap { height: 280px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin: 10px 0; z-index: 1; }
         .location-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-        .location-search { flex: 1; margin-bottom: 0; }
+        .location-search { flex: 1; margin-bottom: 0; position: relative; }
         .search-results {
             position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-elevated);
-            border: 1px solid var(--border); border-radius: 8px; z-index: 100; max-height: 200px;
-            overflow-y: auto; display: none; box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-active); border-radius: 8px; z-index: 100; max-height: 200px;
+            overflow-y: auto; display: none; box-shadow: var(--shadow-md); margin-top: 4px;
         }
-        .search-result { padding: 10px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
-        .search-result:hover { background: var(--bg-hover); color: var(--emerald); }
+        .search-result { padding: 10px 14px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+        .search-result:last-child { border-bottom: none; }
+        .search-result:hover { background: var(--bg-hover); color: var(--text-primary); }
         
-        .location-info { background: var(--bg-elevated); padding: 12px; border-radius: 8px; border-left: 3px solid var(--emerald); margin-top: 10px; }
-        .location-info-item { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
-        .location-info-label { color: var(--text-muted); font-weight: 600; }
-        .location-info-value { font-family: var(--font-mono); color: var(--text-primary); }
+        .location-info { background: var(--bg-elevated); padding: 12px 16px; border-radius: 8px; border-left: 3px solid var(--emerald); margin-top: 10px; border-right: 1px solid var(--border); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);}
+        .location-info-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 4px; }
+        .location-info-item:last-child { margin-bottom: 0; }
+        .location-info-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;}
+        .location-info-value { font-family: var(--font-mono); color: var(--emerald); font-weight: 700;}
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
         /* Alerts */
-        .alert-box { padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem; text-align: center; font-weight: 600; font-size: 0.9rem; }
-        .alert-success { background: var(--emerald-dim); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--emerald); }
-        .alert-error { background: var(--red-dim); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--red); }
+        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: var(--bg-surface); border: 1px solid var(--border); color: #fff;
+            padding: 1rem 1.5rem; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem; font-weight: 600; animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 8px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
         /* ─── RESPONSIVE ─── */
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .control-panel { position: relative; top: 0; }
+        }
+        
         @media (max-width: 768px) {
+            .container { padding: 1rem; }
             .page-header { flex-direction: column; align-items: flex-start; }
-            .header-buttons, .btn-primary { width: 100%; }
-            .table-wrap { border: none; background: transparent; }
-            table, thead, tbody, th, td, tr { display: block; }
-            thead { display: none; }
-            tbody tr { 
-                background: var(--bg-surface); border: 1px solid var(--border); 
-                border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1.25rem;
+            
+            /* UI & Modal Adjustments */
+            .modal-header, .modal-footer { padding: 1rem 1.25rem; }
+            .modal-body { padding: 1.25rem; }
+            .modal-footer { flex-direction: column-reverse; gap: 0.75rem; }
+            .btn-cancel, .btn-confirm { width: 100%; justify-content: center; }
+            
+            /* Table to Cards CSS fixes */
+            .table-section { background: transparent; border: none; box-shadow: none; }
+            .section-header { background: var(--bg-surface); border-radius: var(--radius-lg); margin-bottom: 1rem; border: 1px solid var(--border); }
+            .table-scroll-wrapper { overflow-x: visible; }
+            
+            /* CRITICAL FIX: Override the 800px min-width */
+            .data-table { min-width: 100%; } 
+            .data-table thead { display: none; }
+            .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
+            
+            .data-table tr {
+                background: var(--bg-surface); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); margin-bottom: 1rem; padding: 1rem;
+                box-shadow: var(--shadow-md);
             }
-            td { 
-                display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+            .data-table td {
+                display: flex; justify-content: space-between; align-items: flex-start; text-align: right;
+                padding: 0.75rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); white-space: normal;
+                gap: 1rem;
             }
-            td:last-child { border-bottom: none; justify-content: center; padding-top: 1rem; }
-            td::before { 
-                content: attr(data-label); font-weight: 700; color: var(--text-muted); 
-                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+            .data-table td:last-child { border-bottom: none; padding-top: 1rem; padding-bottom: 0; justify-content: flex-end;}
+            
+            .data-table td::before {
+                content: attr(data-label); font-weight: 700; color: var(--text-muted);
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-top: 2px;
             }
+            
             .actions { justify-content: flex-end; width: 100%; }
-            .location-controls { flex-direction: column; }
-            .btn-gps { width: 100%; }
+            .location-controls { flex-direction: column; align-items: stretch;}
+            .form-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+
+<div id="toastContainer"></div>
 
 <div class="container">
     
@@ -262,103 +320,126 @@ try {
         <span class="page-badge"><i class="fa-solid fa-map-pin"></i> Geography</span>
     </div>
 
-    <div class="page-header">
+    <header class="page-header">
         <div class="header-info">
             <h1>Location <span>Management</span></h1>
             <p>Define and manage physical farm sites and geographic data.</p>
         </div>
-        <button class="btn btn-primary" onclick="openAddModal()">
-            <i class="fa-solid fa-plus"></i> Add New Location
-        </button>
-    </div>
+    </header>
 
-    <?php if (!empty($msg)): ?>
-        <div class="alert-box alert-<?php echo htmlspecialchars($status); ?>">
-            <i class="fa-solid <?php echo ($status == 'success') ? 'fa-circle-check' : 'fa-circle-exclamation'; ?> me-2"></i>
-            <?php echo htmlspecialchars(urldecode($msg)); ?>
+    <div class="main-grid">
+
+        <div class="control-panel">
+            <button class="btn-add" onclick="openAddModal()">
+                <i class="fa-solid fa-plus"></i> Add New Location
+            </button>
+
+            <div class="panel-title"><i class="fa-solid fa-filter"></i> Refine List</div>
+            <div class="panel-subtitle">Filter and search existing locations.</div>
+
+            <div class="search-container">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search by name or address..." onkeyup="filterTable()">
+            </div>
+
+            <div style="border-top: 1px dashed var(--border); margin: 1.5rem 0;"></div>
+
+            <div class="form-group">
+                <label class="form-label">Sort Data</label>
+                <select id="sortSelect" class="form-select" onchange="sortData(this.value)">
+                    <option value="name_asc">Location Name (A-Z)</option>
+                    <option value="name_desc">Location Name (Z-A)</option>
+                </select>
+            </div>
         </div>
-    <?php endif; ?>
 
-    <div class="search-container">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-        <input type="text" class="search-input" placeholder="Search locations by name or address..." onkeyup="filterTable()">
-    </div>
-
-    <div class="table-card">
-        <div class="table-wrap">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th style="width: 100px;">ID</th>
-                        <th>Location Name</th>
-                        <th>Address</th>
-                        <th>Coordinates</th>
-                        <th style="text-align: center; width: 150px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="location-table">
-                    <?php foreach($location_data as $data): ?>
-                    <tr data-id="<?php echo $data['LOCATION_ID']; ?>" 
-                        data-lat="<?php echo $data['LATITUDE']; ?>" 
-                        data-lon="<?php echo $data['LONGITUDE']; ?>"
-                        data-address="<?php echo htmlspecialchars($data['COMPLETE_ADDRESS'] ?? ''); ?>"
-                        data-city="<?php echo htmlspecialchars($data['CITY'] ?? ''); ?>"
-                        data-province="<?php echo htmlspecialchars($data['PROVINCE'] ?? ''); ?>">
-                        
-                        <td data-label="ID" class="col-id">#<?php echo $data['LOCATION_ID']; ?></td>
-                        <td data-label="Location Name" class="col-name"><?php echo htmlspecialchars($data['LOCATION_NAME']); ?></td>
-                        <td data-label="Address">
-                            <span class="location-address" style="color: var(--text-secondary);">
-                                <?php echo !empty($data['COMPLETE_ADDRESS']) ? htmlspecialchars($data['COMPLETE_ADDRESS']) : '-'; ?>
-                            </span>
-                        </td>
-                        <td data-label="Coordinates" class="col-coord">
-                            <?php 
-                            if(!empty($data['LATITUDE']) && !empty($data['LONGITUDE'])) {
-                                echo number_format($data['LATITUDE'], 4) . ', ' . number_format($data['LONGITUDE'], 4);
-                            } else { echo '-'; }
-                            ?>
-                        </td>
-                        <td data-label="Actions">
-                            <div class="actions">
-                                <button class="action-btn view" onclick="viewLocation(this)" title="View on Map"><i class="fas fa-eye"></i></button>
-                                <button class="action-btn edit" onclick="editLocation(this)" title="Edit"><i class="fas fa-edit"></i></button>
-                                <button class="action-btn delete" onclick="deleteLocation(this)" title="Delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <div id="empty-state" class="empty-state" style="<?php echo empty($location_data) ? 'display:block' : 'display:none'; ?>">
-                <i class="fa-solid fa-map-location-dot"></i>
-                <h3>No locations found</h3>
-                <p>Add your first farm site to get started.</p>
+        <div class="workspace-panel">
+            <div class="table-section">
+                <div class="section-header">
+                    <div class="section-title"><i class="fa-solid fa-list-ul"></i> Active Locations Directory</div>
+                </div>
+                
+                <div class="table-scroll-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px; padding-left: 1.5rem;">ID</th>
+                                <th>Location Name</th>
+                                <th>Address</th>
+                                <th>Coordinates</th>
+                                <th style="text-align: center; width: 150px; padding-right: 1.5rem;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="location-table">
+                            <?php foreach($location_data as $data): ?>
+                            <tr data-id="<?php echo $data['LOCATION_ID']; ?>" 
+                                data-lat="<?php echo $data['LATITUDE']; ?>" 
+                                data-lon="<?php echo $data['LONGITUDE']; ?>"
+                                data-address="<?php echo htmlspecialchars($data['COMPLETE_ADDRESS'] ?? ''); ?>"
+                                data-city="<?php echo htmlspecialchars($data['CITY'] ?? ''); ?>"
+                                data-province="<?php echo htmlspecialchars($data['PROVINCE'] ?? ''); ?>"
+                                data-name="<?php echo htmlspecialchars($data['LOCATION_NAME']); ?>">
+                                
+                                <td data-label="ID" class="col-id" style="padding-left: 1.5rem;">#<?php echo $data['LOCATION_ID']; ?></td>
+                                <td data-label="Location Name" class="col-name"><?php echo htmlspecialchars($data['LOCATION_NAME']); ?></td>
+                                <td data-label="Address">
+                                    <span class="location-address">
+                                        <?php echo !empty($data['COMPLETE_ADDRESS']) ? htmlspecialchars($data['COMPLETE_ADDRESS']) : '-'; ?>
+                                    </span>
+                                </td>
+                                <td data-label="Coordinates">
+                                    <span class="col-coord">
+                                        <?php 
+                                        if(!empty($data['LATITUDE']) && !empty($data['LONGITUDE'])) {
+                                            echo number_format($data['LATITUDE'], 4) . ', ' . number_format($data['LONGITUDE'], 4);
+                                        } else { echo '-'; }
+                                        ?>
+                                    </span>
+                                </td>
+                                <td data-label="Actions" style="padding-right: 1.5rem;">
+                                    <div class="actions">
+                                        <button class="action-btn view" onclick="viewLocation(this)" title="View on Map"><i class="fas fa-eye"></i></button>
+                                        <button class="action-btn edit" onclick="editLocation(this)" title="Edit"><i class="fas fa-pen-to-square"></i></button>
+                                        <button class="action-btn delete" onclick="deleteLocation(this)" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <div id="empty-state" class="empty-state" style="<?php echo empty($location_data) ? 'display:block' : 'display:none'; ?>">
+                        <i class="fa-solid fa-map-location-dot" style="font-size: 2.5rem; opacity:0.2; display:block; margin-bottom:1rem;"></i>
+                        <h3>No locations found</h3>
+                        <p>Try adjusting your search terms or add a new farm site.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div id="locationModal" class="modal">
-    <div class="modal-content">
+<div id="locationModal" class="modal-overlay">
+    <div class="modal-card">
         <div class="modal-header">
-            <h2 id="modal-title">Add New Location</h2>
+            <h2 id="modal-title"><i class="fa-solid fa-plus-circle"></i> Add New Location</h2>
+            <button type="button" class="btn-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <form id="locationForm" method="POST" action="../process/addLocation.php">
                 <input type="hidden" id="location_id" name="location_id">
                 
                 <div class="form-group">
-                    <label class="form-label">Location Name *</label>
+                    <label class="form-label">Location Name <span style="color:var(--red);">*</span></label>
                     <input type="text" class="form-control" id="location_name" name="location_name" placeholder="e.g. North Pasture" required>
                 </div>
 
                 <div class="location-controls">
-                    <button type="button" class="btn btn-gps" id="gpsBtn" onclick="getCurrentLocation()">
+                    <button type="button" class="btn-gps" id="gpsBtn" onclick="getCurrentLocation()">
                         <i class="fas fa-location-arrow"></i> Use My GPS
                     </button>
                     <div class="search-container location-search">
-                        <input type="text" class="form-control" id="locationSearch" placeholder="Search address...">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" class="form-control" style="padding-left:2.5rem;" id="locationSearch" placeholder="Search address...">
                         <div class="search-results" id="searchResults"></div>
                     </div>
                 </div>
@@ -375,7 +456,7 @@ try {
                 <div style="margin-top: 15px; padding: 1.25rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-lg);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <label class="form-label" style="margin:0;">Geographic Details</label>
-                        <button type="button" class="btn btn-gps" onclick="fetchAddressFromCoordinates()" id="fetchAddressBtn" style="padding: 4px 10px; font-size: 11px;">
+                        <button type="button" class="btn-gps" onclick="fetchAddressFromCoordinates()" id="fetchAddressBtn" style="padding: 4px 10px; font-size: 11px;">
                             <i class="fas fa-magic"></i> Auto-Fill
                         </button>
                     </div>
@@ -402,36 +483,37 @@ try {
             </form>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="submitForm()" id="saveBtn">Save Site</button>
+            <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn-confirm" onclick="submitForm()" id="saveBtn"><i class="fa-solid fa-floppy-disk"></i> Save Site</button>
         </div>
     </div>
 </div>
 
-<div id="viewModal" class="modal">
-    <div class="modal-content">
+<div id="viewModal" class="modal-overlay">
+    <div class="modal-card">
         <div class="modal-header">
-            <h2 id="view-title">Location Overview</h2>
+            <h2 id="view-title"><i class="fa-solid fa-map"></i> Location Overview</h2>
+            <button type="button" class="btn-close" onclick="closeViewModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <div id="viewMap"></div>
             <div class="location-info">
                 <div class="location-info-item">
                     <span class="location-info-label">Name:</span>
-                    <span class="location-info-value" id="view-name">-</span>
+                    <span class="location-info-value" style="color: #fff;" id="view-name">-</span>
                 </div>
                 <div class="location-info-item">
                     <span class="location-info-label">Coords:</span>
                     <span class="location-info-value" id="view-coordinates">-</span>
                 </div>
-                <div class="location-info-item">
+                <div class="location-info-item" style="margin-top: 8px;">
                     <span class="location-info-label">Address:</span>
-                    <span class="location-info-value" id="view-address" style="font-family: inherit; font-size: 0.8rem; text-align: right; line-height: 1.4;">-</span>
+                    <span class="location-info-value" id="view-address" style="font-family: inherit; font-size: 0.85rem; text-align: right; line-height: 1.4; color: var(--text-secondary); font-weight: normal;">-</span>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-ghost" onclick="closeViewModal()">Close</button>
+            <button type="button" class="btn-cancel" onclick="closeViewModal()" style="width: 100%;">Close Window</button>
         </div>
     </div>
 </div>
@@ -445,13 +527,50 @@ try {
     let map, viewMap, marker, searchTimeout;
     let isEditMode = false;
 
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Toasts from PHP redirect messages
+        <?php if (!empty($msg)): ?>
+            showToast("<?= addslashes(urldecode($msg)) ?>", "<?= $status === 'success' ? 'success' : 'error' ?>");
+            window.history.replaceState(null, null, window.location.pathname);
+        <?php endif; ?>
+    });
+
+    function showToast(msg, type = 'success') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
+        t.innerHTML = `${type === 'error' ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-check"></i>'} ${msg}`;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+
+    // --- JS TRUE NATURAL SORTING ---
+    function sortData(val) {
+        const tbody = document.getElementById('location-table');
+        const rows = Array.from(tbody.querySelectorAll('tr:not(.empty-state)'));
+        if(rows.length === 0) return;
+
+        // Sort the raw DOM elements using localeCompare with numeric mode enabled
+        rows.sort((a, b) => {
+            if (val === 'name_asc') {
+                return a.dataset.name.localeCompare(b.dataset.name, undefined, { numeric: true, sensitivity: 'base' });
+            }
+            if (val === 'name_desc') {
+                return b.dataset.name.localeCompare(a.dataset.name, undefined, { numeric: true, sensitivity: 'base' });
+            }
+        });
+        
+        // Re-append to DOM in sorted order
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
     function openAddModal() {
         isEditMode = false;
-        document.getElementById('modal-title').textContent = 'Add New Location';
+        document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add New Location';
         document.getElementById('locationForm').reset();
         document.getElementById('locationForm').action = '../process/addLocation.php';
         document.getElementById('location_id').value = '';
-        document.getElementById('saveBtn').textContent = 'Save Location';
+        document.getElementById('saveBtn').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Location';
         document.getElementById('loc-coordinates').textContent = 'Not set';
         document.getElementById('locationModal').classList.add('show');
         
@@ -471,9 +590,9 @@ try {
         const latStr = row.getAttribute('data-lat');
         const lonStr = row.getAttribute('data-lon');
 
-        document.getElementById('modal-title').textContent = 'Edit Site Details';
+        document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit Site Details';
         document.getElementById('locationForm').action = '../process/updateLocation.php';
-        document.getElementById('saveBtn').textContent = 'Update Site';
+        document.getElementById('saveBtn').innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Update Site';
         document.getElementById('location_id').value = row.getAttribute('data-id');
         document.getElementById('location_name').value = row.querySelector('.col-name').textContent.trim();
         document.getElementById('manual_address').value = row.getAttribute('data-address');
@@ -592,7 +711,7 @@ try {
     function closeViewModal() { document.getElementById('viewModal').classList.remove('show'); }
     function submitForm() { document.getElementById('locationForm').submit(); }
 
-    window.addEventListener('click', (e) => { if (e.target.classList.contains('modal')) { closeModal(); closeViewModal(); }});
+    window.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) { closeModal(); closeViewModal(); }});
 </script>
 </body>
 </html>

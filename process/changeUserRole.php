@@ -88,14 +88,14 @@ if ($_SERVER["REQUEST_METHOD"] === 'POST') {
         $conn->commit();
 
         $response['success'] = true;
-        $response['message'] = "✅ Role for $target_user_name updated to $role_label successfully.";
+        $response['message'] = "  Role for $target_user_name updated to $role_label successfully.";
 
     } catch (Exception $e) {
         // Rollback on error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        $response['message'] = '❌ Error: ' . $e->getMessage();
+        $response['message'] = '  Error: ' . $e->getMessage();
     }
 } else {
     $response['message'] = 'Invalid request method.';

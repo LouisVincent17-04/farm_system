@@ -32,6 +32,6 @@ $options = [
 try {
     $conn = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-    die("❌ Connection failed: " . $e->getMessage());
+    die("  Connection failed: " . $e->getMessage());
 }
 ?>

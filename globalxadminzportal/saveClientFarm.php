@@ -230,6 +230,9 @@ CREATE TABLE `access_control` (
   `sow_cards` tinyint(1) NULL DEFAULT 0,
   `birth_certificate` tinyint(1) NULL DEFAULT 0,
   `cost_transfer` tinyint(1) NULL DEFAULT 0,
+  `animal_misc_fees` tinyint(1) NULL DEFAULT 0,
+  `concerns` tinyint(1) NULL DEFAULT 0,
+  `file_concerns` tinyint(1) NULL DEFAULT 0,
   `analytics_dashboard` tinyint(1) NULL DEFAULT 0,
   `animals_livestock_analytics` tinyint(1) NULL DEFAULT 0,
   `medicine_analytics` tinyint(1) NULL DEFAULT 0,
@@ -905,6 +908,21 @@ CREATE TABLE `vaccines` (
   CONSTRAINT `fk_vaccine_location` FOREIGN KEY (`LOCATION_ID`) REFERENCES `locations` (`LOCATION_ID`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
 
+CREATE TABLE `concerns` (
+  `CONCERN_ID` int(11) NOT NULL AUTO_INCREMENT,
+  `USER_ID` int(11) NOT NULL,
+  `CATEGORY` varchar(100) NOT NULL,
+  `PRIORITY` varchar(50) NOT NULL DEFAULT 'Medium',
+  `SUBJECT` varchar(255) NOT NULL,
+  `DESCRIPTION` text NOT NULL,
+  `STATUS` varchar(50) NOT NULL DEFAULT 'Pending',
+  `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UPDATED_AT` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`CONCERN_ID`),
+  KEY `user_id_idx` (`USER_ID`),
+  KEY `status_idx` (`STATUS`)
+) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
+
 -- ── vaccination_records ───────────────────────────────────────────────────────
 DROP TABLE IF EXISTS `vaccination_records`;
 CREATE TABLE `vaccination_records` (
@@ -924,6 +942,15 @@ CREATE TABLE `vaccination_records` (
   INDEX `idx_vr_animal`(`ANIMAL_ID`) USING BTREE,
   CONSTRAINT `vaccination_records_ibfk_1` FOREIGN KEY (`ANIMAL_ID`) REFERENCES `animal_records` (`ANIMAL_ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `vaccination_records_ibfk_2` FOREIGN KEY (`ITEM_ID`) REFERENCES `vaccines` (`SUPPLY_ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
+
+CREATE TABLE animal_misc_fees (
+    FEE_ID INT AUTO_INCREMENT PRIMARY KEY,
+    ANIMAL_ID INT NOT NULL,
+    AMOUNT DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    FEE_DESCRIPTION VARCHAR(500) NOT NULL,
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ANIMAL_ID) REFERENCES animal_records(ANIMAL_ID) ON DELETE CASCADE
 ) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=Compact;
 
 -- ── veterinarians ─────────────────────────────────────────────────────────────
@@ -1062,7 +1089,7 @@ SQL;
                     feed_consumption, medication_treatment, vaccinations, vitamins_supplements, veterinary_checkups,
                     farm, animal_class, edit_bio_info, event_scheduler,
                     animal_transfer, sow_status, fcr_management, animal_weights, animal_operations,
-                    sow_cards, birth_certificate, cost_transfer,
+                    sow_cards, birth_certificate, cost_transfer, animal_misc_fees, concerns, file_concerns,
                     analytics_dashboard, animals_livestock_analytics, medicine_analytics,
                     vitamins_supplements_analytics, vaccines_analytics, feeds_feeding_analytics,
                     housing_facilities_analytics, farm_equipment_tools_analytics,
@@ -1089,11 +1116,11 @@ SQL;
                     1,1,1,1,
                     1,1,1,1,1,
                     1,1,1,1,
-                    1,1,
+                    1,1,1,1,
                     1,1,1,1,1,
                     1,1,1,1,
                     1,1,1,1,1,
-                    1,1,1,
+                    1,1,1,1,
                     1,1,1,
                     1,1,1,
                     1,1,

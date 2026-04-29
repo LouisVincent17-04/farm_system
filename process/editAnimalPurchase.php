@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         echo json_encode([
             'success' => true, 
-            'message' => '✅ Animal purchase updated successfully'
+            'message' => '  Animal purchase updated successfully'
         ]);
         
     } catch (Exception $e) {
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {

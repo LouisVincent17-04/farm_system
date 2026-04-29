@@ -109,13 +109,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => "✅ Successfully recorded $inserted_count feed item(s)."]);
+        echo json_encode(['success' => true, 'message' => "  Successfully recorded $inserted_count feed item(s)."]);
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);

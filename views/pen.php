@@ -48,7 +48,7 @@ try {
         $sql .= " WHERE l.LOCATION_ID = :loc_id ";
     }
 
-    $sql .= " ORDER BY p.PEN_ID ASC";
+    // We don't strictly need SQL ORDER BY here since we do a natural sort in PHP right after
     
     $stmt = $conn->prepare($sql);
     if ($USER_LOCATION_ != 1000) {
@@ -57,6 +57,16 @@ try {
         $stmt->execute();
     }
     $pen_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // ====================================================================================
+    // TRUE NATURAL SORTING (PHP)
+    // Sorts alphabetically first, then numerically when it encounters numbers.
+    // E.g., Boar Pen 1 -> Farrowing Pen 1 -> Pen 1 -> Pen 2 -> Pen 10
+    // ====================================================================================
+    usort($pen_data, function($a, $b) {
+        return strnatcasecmp($a['PEN_NAME'], $b['PEN_NAME']);
+    });
+    // ====================================================================================
 
     // 2. Fetch Locations for Dropdown
     if ($USER_LOCATION_ != 1000) {
@@ -288,31 +298,46 @@ try {
             .main-grid { grid-template-columns: 1fr; }
             .control-panel { position: relative; top: 0; }
         }
+        
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .page-header { flex-direction: column; align-items: flex-start; }
             
-            /* Table to Cards */
-            .table-wrap { border: none; background: transparent; overflow: visible; box-shadow: none; }
+            /* UI & Modal Adjustments */
+            .modal-header, .modal-footer { padding: 1rem 1.25rem; }
+            .modal-body { padding: 1.25rem; }
+            .modal-footer { flex-direction: column-reverse; gap: 0.75rem; }
+            .btn-cancel, .btn-confirm { width: 100%; justify-content: center; }
+            
+            /* Table to Cards CSS fixes */
+            .table-section { background: transparent; border: none; box-shadow: none; }
+            .section-header { background: var(--bg-surface); border-radius: var(--radius-lg); margin-bottom: 1rem; border: 1px solid var(--border); }
+            .table-scroll-wrapper { overflow-x: visible; }
+            
+            /* CRITICAL FIX: Override the 800px min-width */
+            .data-table { min-width: 100%; } 
             .data-table thead { display: none; }
             .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
             
             .data-table tr {
                 background: var(--bg-surface); border: 1px solid var(--border);
-                border-radius: var(--radius-lg); margin-bottom: 1rem; padding: 1.25rem;
+                border-radius: var(--radius-lg); margin-bottom: 1rem; padding: 1rem;
                 box-shadow: var(--shadow-md);
             }
             .data-table td {
                 display: flex; justify-content: space-between; align-items: center; text-align: right;
-                padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); white-space: normal;
+                padding: 0.75rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); white-space: normal;
+                gap: 1rem;
             }
-            .data-table td:last-child { border-bottom: none; padding-top: 1rem; justify-content: flex-end;}
+            .data-table td:last-child { border-bottom: none; padding-top: 1rem; padding-bottom: 0; justify-content: flex-end;}
             
             .data-table td::before {
                 content: attr(data-label); font-weight: 700; color: var(--text-muted);
-                font-size: 0.75rem; text-transform: uppercase; margin-right: 1rem; text-align: left; flex-shrink: 0;
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-top: 2px;
             }
-            .path-info { justify-content: flex-end; }
+            
+            /* Specifically fix the path info layout on mobile cards */
+            .path-info { justify-content: flex-end; flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -408,7 +433,7 @@ try {
                             <tr data-id="<?php echo $data['PEN_ID']; ?>" 
                                 data-bldg="<?php echo $data['BUILDING_ID']; ?>"
                                 data-loc="<?php echo $data['LOCATION_ID']; ?>"
-                                data-name="<?php echo htmlspecialchars(strtolower($data['PEN_NAME'])); ?>"
+                                data-name="<?php echo htmlspecialchars($data['PEN_NAME']); ?>"
                                 data-count="<?php echo $data['ANIMAL_COUNT']; ?>">
                                 
                                 <td data-label="Pen Designation" class="col-name" style="padding-left: 1.5rem;"><?php echo htmlspecialchars($data['PEN_NAME']); ?></td>
@@ -468,7 +493,7 @@ try {
                 <div class="form-group">
                     <label class="form-label">Parent Location <span style="color:var(--red);">*</span></label>
                     <div class="select-wrap" id="wrap-add-loc">
-                        <select class="form-select" id="add_location_id" onchange="loadBuildingsModal(this.value, 'add_building_id')" required <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
+                        <select class="form-select" id="add_location_id" name="location_id" onchange="loadBuildingsModal(this.value, 'add_building_id')" required <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
                             <option value="">-- Select Location --</option>
                             <?php foreach($locations_data as $loc): ?>
                                 <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
@@ -478,7 +503,7 @@ try {
                         </select>
                         <i class="fa-solid fa-lock lock-badge"></i>
                         <?php if($USER_LOCATION_ != 1000): ?>
-                            <input type="hidden" name="dummy_loc" value="<?php echo $USER_LOCATION_; ?>">
+                            <input type="hidden" name="location_id" value="<?php echo $USER_LOCATION_; ?>">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -513,7 +538,7 @@ try {
                 <div class="form-group">
                     <label class="form-label">Parent Location <span style="color:var(--red);">*</span></label>
                     <div class="select-wrap" id="wrap-edit-loc">
-                        <select class="form-select" id="edit_location_id" onchange="loadBuildingsModal(this.value, 'edit_building_id')" required <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
+                        <select class="form-select" id="edit_location_id" name="location_id" onchange="loadBuildingsModal(this.value, 'edit_building_id')" required <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
                             <option value="">-- Select Location --</option>
                             <?php foreach($locations_data as $loc): ?>
                                 <option value="<?php echo $loc['LOCATION_ID']; ?>">
@@ -522,6 +547,9 @@ try {
                             <?php endforeach; ?>
                         </select>
                         <i class="fa-solid fa-lock lock-badge"></i>
+                        <?php if($USER_LOCATION_ != 1000): ?>
+                            <input type="hidden" name="location_id" value="<?php echo $USER_LOCATION_; ?>">
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:0;"> 
@@ -560,7 +588,8 @@ try {
         // Pre-load buildings for filters and add modal if user is restricted
         if (USER_LOCATION != 1000) {
             loadBuildingsFilter(USER_LOCATION);
-            loadBuildingsModal(USER_LOCATION, 'add_building_id');
+            const savedBld = localStorage.getItem('last_pen_building');
+            loadBuildingsModal(USER_LOCATION, 'add_building_id', savedBld);
             document.getElementById('wrap-filter-location').classList.add('locked');
             document.getElementById('wrap-add-loc').classList.add('locked');
             document.getElementById('wrap-edit-loc').classList.add('locked');
@@ -579,16 +608,21 @@ try {
         setTimeout(() => t.remove(), 3500);
     }
 
-    // --- SORTING ---
+    // --- JS TRUE NATURAL SORTING ---
     function sortData(val) {
         const tbody = document.getElementById('pen-table');
         const rows = Array.from(tbody.querySelectorAll('tr:not(.empty-state)'));
         if(rows.length === 0) return;
 
-        // Sort the raw DOM elements
+        // Sort the raw DOM elements using localeCompare with numeric mode enabled
         rows.sort((a, b) => {
-            if (val === 'name_asc') return a.dataset.name.localeCompare(b.dataset.name);
-            if (val === 'name_desc') return b.dataset.name.localeCompare(a.dataset.name);
+            if (val === 'name_asc') {
+                return a.dataset.name.localeCompare(b.dataset.name, undefined, { numeric: true, sensitivity: 'base' });
+            }
+            if (val === 'name_desc') {
+                return b.dataset.name.localeCompare(a.dataset.name, undefined, { numeric: true, sensitivity: 'base' });
+            }
+            
             if (val === 'count_desc') return parseInt(b.dataset.count) - parseInt(a.dataset.count);
             if (val === 'count_asc') return parseInt(a.dataset.count) - parseInt(b.dataset.count);
         });
@@ -741,10 +775,27 @@ try {
     function openAddModal() {
         document.getElementById('addPenForm').reset();
         
-        if (USER_LOCATION == 1000) {
-            const bldgSelect = document.getElementById('add_building_id');
-            bldgSelect.innerHTML = '<option value="">-- Select Location First --</option>';
-            bldgSelect.disabled = true;
+        const locSelect = document.getElementById('add_location_id');
+        const bldgSelect = document.getElementById('add_building_id');
+
+        if (USER_LOCATION == 1000) { 
+            const savedLoc = localStorage.getItem('last_pen_location');
+            const savedBld = localStorage.getItem('last_pen_building');
+
+            if (savedLoc) {
+                locSelect.value = savedLoc;
+                loadBuildingsModal(savedLoc, 'add_building_id', savedBld);
+            } else {
+                bldgSelect.innerHTML = '<option value="">-- Select Location First --</option>';
+                bldgSelect.disabled = true;
+            }
+        } else {
+            const savedBld = localStorage.getItem('last_pen_building');
+            if (savedBld) {
+                loadBuildingsModal(USER_LOCATION, 'add_building_id', savedBld);
+            } else {
+                loadBuildingsModal(USER_LOCATION, 'add_building_id');
+            }
         }
         
         document.getElementById('addModal').classList.add('show');
@@ -779,8 +830,23 @@ try {
     
     function submitAddForm() { 
         const form = document.getElementById('addPenForm');
-        if(form.checkValidity()) form.submit();
-        else form.reportValidity();
+        if(form.checkValidity()) {
+            const loc = document.getElementById('add_location_id').value;
+            const bld = document.getElementById('add_building_id').value;
+            
+            // For super admins, save the selected location
+            if (USER_LOCATION == 1000 && loc) {
+                localStorage.setItem('last_pen_location', loc);
+            }
+            // For everyone, save the selected building
+            if (bld) {
+                localStorage.setItem('last_pen_building', bld);
+            }
+            
+            form.submit();
+        } else {
+            form.reportValidity();
+        }
     }
     
     function submitEditForm() { 

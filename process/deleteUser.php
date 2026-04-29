@@ -9,7 +9,7 @@ include '../config/Connection.php';
 
 if (!isset($_SESSION['user']['USER_ID'])) {
     echo json_encode([
-        'success' => false,  // ✅ Changed from 'status'
+        'success' => false,  //   Changed from 'status'
         'message' => 'Unauthorized access.'
     ]);
     exit;
@@ -21,7 +21,7 @@ $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode([
-        'success' => false,  // ✅ Changed
+        'success' => false,  //   Changed
         'message' => 'Invalid request method.'
     ]);
     exit;
@@ -31,7 +31,7 @@ $target_user_id = $_POST['user_id'] ?? null;
 
 if (!$target_user_id) {
     echo json_encode([
-        'success' => false,  // ✅ Changed
+        'success' => false,  //   Changed
         'message' => 'User ID is missing.'
     ]);
     exit;
@@ -39,7 +39,7 @@ if (!$target_user_id) {
 
 if ($target_user_id == $user_id) {
     echo json_encode([
-        'success' => false,  // ✅ Changed
+        'success' => false,  //   Changed
         'message' => 'You cannot deactivate your own account.'
     ]);
     exit;
@@ -116,7 +116,7 @@ try {
     // END GLOBAL DEACTIVATION ===================================================================================================================
 
     echo json_encode([
-        'success' => true,  // ✅ Changed from 'status' => 'success'
+        'success' => true,  //   Changed from 'status' => 'success'
         'message' => "Account for {$target_user_name} has been deactivated."
     ]);
     exit;
@@ -129,7 +129,7 @@ try {
     }
 
     echo json_encode([
-        'success' => false,  // ✅ Changed from 'status' => 'error'
+        'success' => false,  //   Changed from 'status' => 'error'
         'message' => $e->getMessage()
     ]);
     exit;

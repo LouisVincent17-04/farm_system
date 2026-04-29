@@ -4,7 +4,7 @@ include 'Queries.php';
 
 $sqlInsert = "INSERT INTO Units (unit_name, unit_abbr) VALUES ('grams', 'g')";
 if (modifyTable($conn, $sqlInsert)) {
-    echo "✅ Insert successful!<br>";
+    echo "  Insert successful!<br>";
 }
 
 

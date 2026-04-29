@@ -198,11 +198,12 @@ $vet_data = retrieveData($conn, $sql);
         /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
             .page-header { flex-direction: column; align-items: flex-start; }
-            .header-info { width: 100%; text-align: center; }
-            .add-btn { width: 100%; justify-content: center; }
+            .header-info { width: 100%; text-align: left; }
+            .btn { width: 100%; justify-content: center; }
 
-            .table-wrap { border: none; background: transparent; }
-            table, thead, tbody, th, td, tr { display: block; }
+            .table-wrap { border: none; background: transparent; overflow-x: visible; }
+            .table { min-width: 100%; } /* CRITICAL FIX */
+            .table, thead, tbody, th, td, tr { display: block; width: 100%; box-sizing: border-box; }
             thead { display: none; }
             tbody tr { 
                 background: var(--bg-surface); border: 1px solid var(--border); 
@@ -210,15 +211,28 @@ $vet_data = retrieveData($conn, $sql);
             }
             td { 
                 display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
-            td:last-child { border-bottom: none; justify-content: center; padding-top: 1rem; }
+            td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; padding-bottom: 0;}
             td::before { 
                 content: attr(data-label); font-weight: 700; color: var(--text-muted); 
-                font-size: 0.75rem; text-transform: uppercase; text-align: left;
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-right: 1rem;
             }
-            .vet-info { justify-content: flex-end; width: 100%; }
+            
+            /* Hide data labels for cleaner visual cards */
+            td[data-label="Veterinarian"] { display: block; text-align: left; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+            td[data-label="Veterinarian"]::before { display: none; }
+            .vet-info { justify-content: flex-start; width: 100%; }
+
+            td[data-label="Actions"] { border-top: 1px dashed var(--border); margin-top: 10px; }
+            td[data-label="Actions"]::before { display: none; }
             .actions { justify-content: flex-end; width: 100%; }
+
+            /* Fix Modals for Mobile */
+            .modal-content { padding: 1rem; }
+            .modal-header, .modal-footer { padding: 1rem 1.25rem; }
+            .modal-body { padding: 1.25rem; }
+            .modal-footer { flex-direction: column-reverse; gap: 10px; }
         }
     </style>
 </head>

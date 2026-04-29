@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         echo json_encode([
             'success' => true, 
-            'message' => "✅ Successfully added to medicine inventory. ($affected_rows items processed)"
+            'message' => "  Successfully added to medicine inventory. ($affected_rows items processed)"
         ]);
 
     } catch (Exception $e) {
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {

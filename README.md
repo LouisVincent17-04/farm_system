@@ -38,11 +38,11 @@ python train_model.py
 
 You will see output like:
 ```
-✅ Total training samples : 265
-✅ Total intents          : 5
+  Total training samples : 265
+  Total intents          : 5
 📊 Running 5-fold cross-validation...
    Mean Accuracy : 0.9800 (98.00%)
-✅ Model saved to: model.pkl
+  Model saved to: model.pkl
 ```
 
 This generates `model.pkl` — the trained AI brain.

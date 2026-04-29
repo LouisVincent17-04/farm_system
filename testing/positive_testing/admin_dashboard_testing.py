@@ -47,7 +47,7 @@ driver.find_element(By.ID, "signinPassword").send_keys(VALID_PASS)
 driver.find_element(By.ID, "signinBtn").click()
 
 wait.until(EC.url_contains("admin_dashboard"))
-print("✅ Login successful — on dashboard")
+print("  Login successful — on dashboard")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -57,7 +57,7 @@ print("\n📋 Navigating to Employees page...")
 emp_url = BASE_URL.replace("login.php", "employees.php")
 driver.get(emp_url)
 wait.until(EC.presence_of_element_located((By.CLASS_NAME, "btn-add")))
-print("✅ Employees page loaded")
+print("  Employees page loaded")
 time.sleep(1)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -85,7 +85,7 @@ try:
     wait.until(EC.alert_is_present())
     alert_text = driver.switch_to.alert.text
     driver.switch_to.alert.accept()
-    print(f"✅ Add successful — Alert: {alert_text}")
+    print(f"  Add successful — Alert: {alert_text}")
 except:
     print("⚠️  No alert after add — check manually")
 
@@ -121,14 +121,14 @@ if edit_btn:
         wait.until(EC.alert_is_present())
         alert_text = driver.switch_to.alert.text
         driver.switch_to.alert.accept()
-        print(f"✅ Edit successful — Alert: {alert_text}")
+        print(f"  Edit successful — Alert: {alert_text}")
     except:
         print("⚠️  No alert after edit — check manually")
 
     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "btn-add")))
     time.sleep(1)
 else:
-    print("❌ Could not find the added employee row to edit")
+    print("  Could not find the added employee row to edit")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # STEP 5: Delete the employee
@@ -157,11 +157,11 @@ if delete_btn:
         wait.until(EC.alert_is_present())
         alert_text = driver.switch_to.alert.text
         driver.switch_to.alert.accept()
-        print(f"✅ Delete successful — Alert: {alert_text}")
+        print(f"  Delete successful — Alert: {alert_text}")
     except:
         print("⚠️  No alert after delete — check manually")
 else:
-    print("❌ Could not find the edited employee row to delete")
+    print("  Could not find the edited employee row to delete")
 
 time.sleep(2)
 print("\n🎉 All steps completed!")

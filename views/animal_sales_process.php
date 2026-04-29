@@ -149,7 +149,7 @@ if (isset($_SESSION['flash_message'])) {
         unset($_SESSION['last_sale_id']);
     }
 
-    $message = "<div class='alert alert-success'>✅ $msg_text $btn_html</div>";
+    $message = "<div class='alert alert-success'>  $msg_text $btn_html</div>";
     unset($_SESSION['flash_message']);
 }
 

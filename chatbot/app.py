@@ -20,10 +20,10 @@ try:
     pipeline   = model_data["pipeline"]
     le         = model_data["encoder"]
     intent_map = model_data["intent_map"]
-    print(f"✅ Model loaded — {len(intent_map)} intents ready")
+    print(f"  Model loaded — {len(intent_map)} intents ready")
 
 except FileNotFoundError:
-    print("❌ model.pkl not found! Run: python train_model.py")
+    print("  model.pkl not found! Run: python train_model.py")
     exit(1)
 
 # ── Prediction — returns ALL pages above threshold ───────────

@@ -42,6 +42,7 @@ include '../common/chat_support.php';
             --orange:         #f97316; --orange-dim:     rgba(249,115,22,0.12);
             --red:            #f87171; --red-dim:        rgba(248,113,113,0.12);
             --teal:           #14b8a6; --teal-dim:       rgba(20,184,166,0.12);
+            --slate:          #64748b; --slate-dim:      rgba(100,116,139,0.12);
             
             --text-primary:   #f1f5f9;
             --text-secondary: #94a3b8;
@@ -142,6 +143,8 @@ include '../common/chat_support.php';
         .category-card:hover::before { left: 100%; }
 
         /* Dynamic Card Borders on Hover */
+        .category-card.c-issues:hover { border-color: rgba(245,158,11,0.4); }
+        .category-card.c-concerns-log:hover { border-color: rgba(248,113,113,0.4); }
         .category-card.c-inventory:hover { border-color: rgba(16,185,129,0.4); }
         .category-card.c-class:hover { border-color: rgba(59,130,246,0.4); }
         .category-card.c-bio:hover { border-color: rgba(245,158,11,0.4); }
@@ -155,6 +158,8 @@ include '../common/chat_support.php';
         .category-card.c-sowcards:hover { border-color: rgba(100,116,139,0.4); }
         .category-card.c-birth:hover { border-color: rgba(56,189,248,0.4); }
         .category-card.c-cost:hover { border-color: rgba(13,148,136,0.4); }
+        .category-card.c-misc-fees:hover { border-color: rgba(168,85,247,0.4); }
+        .category-card.c-acq-cost:hover { border-color: rgba(245,158,11,0.4); } 
 
         .category-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
         
@@ -242,18 +247,62 @@ include '../common/chat_support.php';
         <div class="header-info">
             <h1 class="page-title">Farm <span>Administration</span></h1>
             <p class="page-subtitle">Centralized Control &amp; Classifications</p>
-            <p class="page-description">Manage animal stages, reproductive cycles, maintenance protocols, and transfer costs.</p>
+            <p class="page-description">Manage animal stages, reproductive cycles, maintenance protocols, transfer costs, and facility issues.</p>
         </div>
     </header>
 
     <div class="search-filter-section">
         <div class="search-bar">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="searchInput" class="search-input" placeholder="Search modules, features, or keywords...">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search modules, features, or keywords (e.g., tags, weight, issues)...">
         </div>
     </div>
 
     <div class="categories-grid">
+
+        <a href="file_concerns.php" class="category-card c-issues">
+            <div class="category-header">
+                <div class="category-icon amber"><i class="fa-solid fa-bullhorn"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">File Concerns</h3>
+                    <p class="category-subtitle">Submit Requests &amp; Issues</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Report &amp; Track</div>
+                <ul class="metrics-list">
+                    <li>Material &amp; Supply Requests</li>
+                    <li>Report Facility Damages</li>
+                    <li>Raise Safety Alerts</li>
+                    <li>Track Resolution Status</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                <span>Raise a Concern</span> <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="concerns.php" class="category-card c-concerns-log">
+            <div class="category-header">
+                <div class="category-icon red"><i class="fa-solid fa-inbox"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Concerns Log</h3>
+                    <p class="category-subtitle">Management &amp; Resolution</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Admin Oversight</div>
+                <ul class="metrics-list">
+                    <li>Review Pending Tickets</li>
+                    <li>Mark Issues as Read</li>
+                    <li>Archive Resolved Concerns</li>
+                    <li>Edit Priority &amp; Status</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                <span>Manage Log</span> <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
 
         <a href="inventory_adjustment.php" class="category-card c-inventory">
             <div class="category-header">
@@ -301,7 +350,7 @@ include '../common/chat_support.php';
 
         <a href="edit_animal_bio.php" class="category-card c-bio">
             <div class="category-header">
-                <div class="category-icon amber"><i class="fa-solid fa-dna"></i></div>
+                <div class="category-icon slate"><i class="fa-solid fa-dna"></i></div>
                 <div class="category-info">
                     <h3 class="category-title">Edit Bio Info</h3>
                     <p class="category-subtitle">Core Data Correction</p>
@@ -541,6 +590,50 @@ include '../common/chat_support.php';
             </div>
         </a>
 
+        <a href="animal_misc_fees.php" class="category-card c-misc-fees">
+            <div class="category-header">
+                <div class="category-icon purple"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Miscellaneous Fees</h3>
+                    <p class="category-subtitle">Additional Expenses</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Direct Costs</div>
+                <ul class="metrics-list">
+                    <li>Record Ad-hoc Fees</li>
+                    <li>Track Individual Animal Costs</li>
+                    <li>View Expense Ledgers</li>
+                    <li>Update Total Value</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                <span>Manage Fees</span> <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
+        <a href="edit_acquisition_cost.php" class="category-card c-acq-cost">
+            <div class="category-header">
+                <div class="category-icon amber"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <div class="category-info">
+                    <h3 class="category-title">Acquisition Cost</h3>
+                    <p class="category-subtitle">Bulk Update Tool</p>
+                </div>
+            </div>
+            <div class="analytics-preview">
+                <div class="analytics-preview-title">Manage Initial Costs</div>
+                <ul class="metrics-list">
+                    <li>Batch update animal costs</li>
+                    <li>Override existing valuations</li>
+                    <li>Fix missing purchase data</li>
+                    <li>Direct database sync</li>
+                </ul>
+            </div>
+            <div class="card-action">
+                <span>Update Costs</span> <i class="fa-solid fa-arrow-right"></i>
+            </div>
+        </a>
+
     </div>
 </div>
 
@@ -589,7 +682,7 @@ include '../common/chat_support.php';
             message.innerHTML = `
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <h3 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.25rem;">No administrative modules found for "<strong>${term}</strong>"</h3>
-                <p style="margin:0;">Try searching for: weights, lineage, schedule, adjustment, etc.</p>
+                <p style="margin:0;">Try searching for: weights, lineage, schedule, adjustment, concerns, or issue.</p>
             `;
             grid.appendChild(message);
         }

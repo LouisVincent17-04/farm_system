@@ -146,7 +146,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         echo json_encode([
             'success' => true, 
-            'message' => "✅ Record saved! Cost: ₱$cost_fmt"
+            'message' => "  Record saved! Cost: ₱$cost_fmt"
         ]);
 
     } catch (Exception $e) {
@@ -155,7 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         echo json_encode([
             'success' => false, 
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 

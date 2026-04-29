@@ -463,7 +463,7 @@ $restricted_super_json      = json_encode($restricted_for_non_superadmin);
         '2': [      // Farm Employee: basic ops (restricted columns auto-excluded by applyRestrictions)
             'dashboard', 'animal_record',
             'farm', 'animal_class', 'event_scheduler', 'animal_transfer',
-            'animal_weights', 'animal_operations',
+            'animal_weights', 'animal_operations', 'file_concerns', 'animal_misc_fees',
             'transactions', 'individual_operations', 'feeding', 'medication',
             'vitamins_supplements_trans', 'check_ups', 'vaccination',
             'batch_group_operations', 'group_medication', 'group_vitamins',

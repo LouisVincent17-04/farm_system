@@ -92,7 +92,7 @@ try {
     $conn->commit();
     
     // Redirect on success
-    header("Location: ../views/units.php?status=success&msg=" . urlencode("✅ Unit updated successfully."));
+    header("Location: ../views/units.php?status=success&msg=" . urlencode("  Unit updated successfully."));
     exit;
 
 } catch (PDOException $e) {
@@ -106,14 +106,14 @@ try {
         $errorMsg = "A unit with this name or abbreviation already exists.";
     }
 
-    header("Location: ../views/units.php?status=error&msg=" . urlencode("❌ Error updating unit: " . $errorMsg));
+    header("Location: ../views/units.php?status=error&msg=" . urlencode("  Error updating unit: " . $errorMsg));
     exit;
 
 } catch (Exception $e) {
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
-    header("Location: ../views/units.php?status=error&msg=" . urlencode("❌ Error updating unit: " . $e->getMessage()));
+    header("Location: ../views/units.php?status=error&msg=" . urlencode("  Error updating unit: " . $e->getMessage()));
     exit;
 }
 ?>

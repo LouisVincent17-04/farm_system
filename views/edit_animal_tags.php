@@ -28,21 +28,48 @@ try {
 
     $animal_types = $conn->query("SELECT * FROM Animal_Type ORDER BY ANIMAL_TYPE_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+    // MODIFIED: Added subquery to count active animals per location
     if ($USER_LOCATION_ != 1000) {
-        $loc_stmt = $conn->prepare("SELECT * FROM Locations WHERE LOCATION_ID = ? ORDER BY LOCATION_NAME ASC");
+        $loc_stmt = $conn->prepare("
+            SELECT l.*, 
+                   (SELECT COUNT(ANIMAL_ID) FROM Animal_Records ar WHERE ar.LOCATION_ID = l.LOCATION_ID AND ar.IS_ACTIVE = 1) as ANIMAL_COUNT
+            FROM Locations l 
+            WHERE l.LOCATION_ID = ? 
+            ORDER BY l.LOCATION_NAME ASC
+        ");
         $loc_stmt->execute([$USER_LOCATION_]);
         $locations = $loc_stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        $locations = $conn->query("SELECT * FROM Locations ORDER BY LOCATION_NAME ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $locations = $conn->query("
+            SELECT l.*, 
+                   (SELECT COUNT(ANIMAL_ID) FROM Animal_Records ar WHERE ar.LOCATION_ID = l.LOCATION_ID AND ar.IS_ACTIVE = 1) as ANIMAL_COUNT
+            FROM Locations l 
+            ORDER BY l.LOCATION_NAME ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // MODIFIED: Added subquery to count active animals per building
     if ($filter_loc) {
-        $stmt = $conn->prepare("SELECT * FROM Buildings WHERE LOCATION_ID = ? ORDER BY BUILDING_NAME");
+        $stmt = $conn->prepare("
+            SELECT b.*, 
+                   (SELECT COUNT(ANIMAL_ID) FROM Animal_Records ar WHERE ar.BUILDING_ID = b.BUILDING_ID AND ar.IS_ACTIVE = 1) as ANIMAL_COUNT
+            FROM Buildings b 
+            WHERE b.LOCATION_ID = ? 
+            ORDER BY b.BUILDING_NAME
+        ");
         $stmt->execute([$filter_loc]);
         $filter_buildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    // MODIFIED: Added subquery to count active animals per pen
     if ($filter_bld) {
-        $stmt = $conn->prepare("SELECT * FROM Pens WHERE BUILDING_ID = ? ORDER BY PEN_NAME");
+        $stmt = $conn->prepare("
+            SELECT p.*, 
+                   (SELECT COUNT(ANIMAL_ID) FROM Animal_Records ar WHERE ar.PEN_ID = p.PEN_ID AND ar.IS_ACTIVE = 1) as ANIMAL_COUNT
+            FROM Pens p 
+            WHERE p.BUILDING_ID = ? 
+            ORDER BY p.PEN_NAME
+        ");
         $stmt->execute([$filter_bld]);
         $filter_pens = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -312,7 +339,9 @@ try {
             <select name="f_loc" class="form-select" onchange="this.form.submit()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
                 <?php if ($USER_LOCATION_ == 1000): ?><option value="">-- Choose Location --</option><?php endif; ?>
                 <?php foreach ($locations as $loc): ?>
-                    <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>><?= htmlspecialchars($loc['LOCATION_NAME']) ?></option>
+                    <option value="<?= $loc['LOCATION_ID'] ?>" <?= $filter_loc == $loc['LOCATION_ID'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($loc['LOCATION_NAME']) ?> (<?= $loc['ANIMAL_COUNT'] ?>)
+                    </option>
                 <?php endforeach; ?>
             </select>
             <?php if ($USER_LOCATION_ != 1000): ?>
@@ -324,7 +353,9 @@ try {
             <select name="f_bld" class="form-select" onchange="this.form.submit()" <?= empty($filter_loc) ? 'disabled' : '' ?>>
                 <option value="">-- All Buildings --</option>
                 <?php foreach ($filter_buildings as $bld): ?>
-                    <option value="<?= $bld['BUILDING_ID'] ?>" <?= $filter_bld == $bld['BUILDING_ID'] ? 'selected' : '' ?>><?= htmlspecialchars($bld['BUILDING_NAME']) ?></option>
+                    <option value="<?= $bld['BUILDING_ID'] ?>" <?= $filter_bld == $bld['BUILDING_ID'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($bld['BUILDING_NAME']) ?> (<?= $bld['ANIMAL_COUNT'] ?>)
+                    </option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -333,7 +364,9 @@ try {
             <select name="f_pen" class="form-select" onchange="this.form.submit()" <?= empty($filter_bld) ? 'disabled' : '' ?>>
                 <option value="">-- All Pens --</option>
                 <?php foreach ($filter_pens as $pen): ?>
-                    <option value="<?= $pen['PEN_ID'] ?>" <?= $filter_pen == $pen['PEN_ID'] ? 'selected' : '' ?>><?= htmlspecialchars($pen['PEN_NAME']) ?></option>
+                    <option value="<?= $pen['PEN_ID'] ?>" <?= $filter_pen == $pen['PEN_ID'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($pen['PEN_NAME']) ?> (<?= $pen['ANIMAL_COUNT'] ?>)
+                    </option>
                 <?php endforeach; ?>
             </select>
         </div>

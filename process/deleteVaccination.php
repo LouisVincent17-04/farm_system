@@ -108,17 +108,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $conn->commit();
         
         $response['success'] = true;
-        $response['message'] = "✅ Record deleted and $vaccine_name stock restored.";
+        $response['message'] = "  Record deleted and $vaccine_name stock restored.";
         
     } catch (Exception $e) {
         // 6. Rollback on Error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        $response['message'] = '❌ Delete Failed: ' . $e->getMessage();
+        $response['message'] = '  Delete Failed: ' . $e->getMessage();
     }
 } else {
-    $response['message'] = '❌ Invalid request method.';
+    $response['message'] = '  Invalid request method.';
 }
 
 echo json_encode($response);

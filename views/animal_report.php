@@ -88,7 +88,7 @@ try {
         $sow_stats = $stmt_sow->fetch(PDO::FETCH_ASSOC);
     }
 
-    $select_columns = "ar.*, at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME, l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME, m.TAG_NO as MOTHER_TAG, DATE_FORMAT(ar.BIRTH_DATE, '%m/%d/%Y') as BIRTH_DATE_FMT, COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed, COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med, COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac, COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit, COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk, COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion, COALESCE((SELECT SUM(ACTIVE_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_alive, COALESCE((SELECT SUM(DEAD_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_dead, COALESCE((SELECT SUM(MUMMIFIED_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_mummified, (SELECT b_ar.TAG_NO FROM sow_service_history sh LEFT JOIN animal_records b_ar ON sh.BOAR_ID = b_ar.ANIMAL_ID WHERE sh.ANIMAL_ID = ar.ANIMAL_ID ORDER BY sh.SERVICE_START_DATE DESC LIMIT 1) as last_boar_tag, (SELECT DATE_FORMAT(SERVICE_START_DATE, '%m/%d/%Y') FROM sow_service_history WHERE ANIMAL_ID = ar.ANIMAL_ID ORDER BY SERVICE_START_DATE DESC LIMIT 1) as last_service_date";
+    $select_columns = "ar.*, at.ANIMAL_TYPE_NAME, b.BREED_NAME, ac.STAGE_NAME, l.LOCATION_NAME, bld.BUILDING_NAME, p.PEN_NAME, m.TAG_NO as MOTHER_TAG, DATE_FORMAT(ar.BIRTH_DATE, '%m/%d/%Y') as BIRTH_DATE_FMT, COALESCE((SELECT SUM(TRANSACTION_COST) FROM feed_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_feed, COALESCE((SELECT SUM(TOTAL_COST) FROM treatment_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_med, COALESCE((SELECT SUM(VACCINATION_COST + VACCINE_COST) FROM vaccination_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vac, COALESCE((SELECT SUM(TOTAL_COST) FROM vitamins_supplements_transactions WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_vit, COALESCE((SELECT SUM(COST) FROM check_ups WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as cost_chk, COALESCE((SELECT STATUS_NAME FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1), '-') as curr_sow_status, (SELECT DATEDIFF(CURDATE(), STATUS_START_DATE) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND IS_ACTIVE = 1 LIMIT 1) as days_in_status, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'DRY') as count_dry, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME LIKE 'SERVICE%') as count_service, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'PREGNANT') as count_pregnant, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'BIRTHING') as count_birthing, (SELECT COUNT(*) FROM sow_status_history WHERE ANIMAL_ID = ar.ANIMAL_ID AND STATUS_NAME = 'ABORTION') as count_abortion, COALESCE((SELECT SUM(TOTAL_BORN) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_born, COALESCE((SELECT SUM(ACTIVE_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_alive, COALESCE((SELECT SUM(DEAD_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_dead, COALESCE((SELECT SUM(MUMMIFIED_COUNT) FROM sow_birthing_records WHERE ANIMAL_ID = ar.ANIMAL_ID), 0) as total_mummified, (SELECT b_ar.TAG_NO FROM sow_service_history sh LEFT JOIN animal_records b_ar ON sh.BOAR_ID = b_ar.ANIMAL_ID WHERE sh.ANIMAL_ID = ar.ANIMAL_ID ORDER BY sh.SERVICE_START_DATE DESC LIMIT 1) as last_boar_tag, (SELECT DATE_FORMAT(SERVICE_START_DATE, '%m/%d/%Y') FROM sow_service_history WHERE ANIMAL_ID = ar.ANIMAL_ID ORDER BY SERVICE_START_DATE DESC LIMIT 1) as last_service_date, DATEDIFF(CURDATE(), ar.BIRTH_DATE) as age_in_days";
 
     if ($view === 'detailed') {
         $sql = "SELECT $select_columns FROM animal_records ar LEFT JOIN animal_type at ON ar.ANIMAL_TYPE_ID = at.ANIMAL_TYPE_ID LEFT JOIN breeds b ON ar.BREED_ID = b.BREED_ID LEFT JOIN animal_classifications ac ON ar.CLASS_ID = ac.CLASS_ID LEFT JOIN locations l ON ar.LOCATION_ID = l.LOCATION_ID LEFT JOIN buildings bld ON ar.BUILDING_ID = bld.BUILDING_ID LEFT JOIN pens p ON ar.PEN_ID = p.PEN_ID LEFT JOIN animal_records m ON ar.MOTHER_ID = m.ANIMAL_ID $where_sql ORDER BY l.LOCATION_NAME ASC, bld.BUILDING_NAME ASC, p.PEN_NAME ASC, ar.ANIMAL_ID ASC LIMIT :limit OFFSET :offset";
@@ -155,6 +155,13 @@ if ($sow_status) $active_filters++;
 if ($filter_loc) $active_filters++;
 if ($filter_bld) $active_filters++;
 if ($filter_pen) $active_filters++;
+
+
+
+$url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
+$url .= "://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+
+$_SESSION['animal_report_url'] = $url;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -611,7 +618,7 @@ if ($filter_pen) $active_filters++;
 
         .table-wrap { overflow-x: auto; }
 
-        table { width: 100%; border-collapse: collapse; min-width: 1300px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
 
         thead th {
             background: var(--bg-elevated);
@@ -708,6 +715,17 @@ if ($filter_pen) $active_filters++;
             border: 1px solid var(--border);
             color: var(--text-muted);
             font-family: var(--font-mono);
+        }
+
+        /* Tooltip Trigger Styling for Piglets & Tags */
+        .tooltip-trigger {
+            cursor: help;
+            border-bottom: 1px dotted var(--text-muted);
+            transition: color var(--transition);
+        }
+        .tooltip-trigger:hover {
+            color: var(--text-primary);
+            border-color: var(--text-primary);
         }
 
         /* ─── LEDGER BUTTON ─── */
@@ -948,7 +966,6 @@ if ($filter_pen) $active_filters++;
 
 <div class="container">
 
-    <!-- Top Bar -->
     <div class="top-bar">
         <a href="reports.php" class="back-link">
             <i class="fa-solid fa-arrow-left"></i> Back to Reports
@@ -956,13 +973,11 @@ if ($filter_pen) $active_filters++;
         <span class="page-badge"><i class="fa-solid fa-chart-bar"></i> Livestock Reports</span>
     </div>
 
-    <!-- Page Header -->
     <div class="page-header">
         <h1 class="page-title">Animal <span>Inventory</span> Report</h1>
         <p class="page-subtitle">Comprehensive livestock analysis with financial metrics and reproductive data.</p>
     </div>
 
-    <!-- Stats Cards -->
     <div class="stats-grid">
         <div class="stat-card green">
             <div class="stat-icon green"><i class="fa-solid fa-paw"></i></div>
@@ -1005,7 +1020,6 @@ if ($filter_pen) $active_filters++;
         </div>
     </div>
 
-    <!-- Sow Stats Panel -->
     <?php if ($stage == '8' || $sow_status): ?>
     <div class="sow-panel">
         <div class="sow-cell">
@@ -1027,7 +1041,6 @@ if ($filter_pen) $active_filters++;
     </div>
     <?php endif; ?>
 
-    <!-- Filter Panel -->
     <div class="filter-panel">
         <div class="filter-header" onclick="toggleFilters()" id="filterHeader">
             <div class="filter-header-left">
@@ -1047,7 +1060,6 @@ if ($filter_pen) $active_filters++;
             <form method="GET" id="filterForm">
                 <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
 
-                <!-- Section: Location Drill-down -->
                 <div class="filter-grid" style="margin-bottom: 1.25rem;">
                     <div class="filter-section-label"><i class="fa-solid fa-location-dot"></i> &nbsp;Location</div>
 
@@ -1104,7 +1116,6 @@ if ($filter_pen) $active_filters++;
                     </div>
                 </div>
 
-                <!-- Section: Animal Details -->
                 <div class="filter-grid" style="margin-bottom: 1.25rem;">
                     <div class="filter-section-label"><i class="fa-solid fa-paw"></i> &nbsp;Animal Details</div>
 
@@ -1155,7 +1166,6 @@ if ($filter_pen) $active_filters++;
                     </div>
                 </div>
 
-                <!-- Section: Status -->
                 <div class="filter-grid">
                     <div class="filter-section-label"><i class="fa-solid fa-circle-info"></i> &nbsp;Status Filters</div>
 
@@ -1208,7 +1218,6 @@ if ($filter_pen) $active_filters++;
         </div>
     </div>
 
-    <!-- ══════════════ BUILDING VIEW ══════════════ -->
     <?php if ($view === 'building'): ?>
 
         <div class="section-heading">
@@ -1253,7 +1262,6 @@ if ($filter_pen) $active_filters++;
         </div>
         <?php endforeach; ?>
 
-    <!-- ══════════════ PEN VIEW ══════════════ -->
     <?php elseif ($view === 'pen'): ?>
 
         <div class="section-heading">
@@ -1313,6 +1321,7 @@ if ($filter_pen) $active_filters++;
                                     <th class="text-right">Vacs</th>
                                     <th class="text-right">Vits</th>
                                     <th class="text-right">Chk Up</th>
+                                    <th class="text-right">Misc</th>
                                     <th class="text-right">Total</th>
                                     <th class="text-center">Action</th>
                                 </tr>
@@ -1324,23 +1333,37 @@ if ($filter_pen) $active_filters++;
                                     if(in_array($row['CURRENT_STATUS'], ['Deceased','Cull','Dead'])) $statusClass = 'b-dec';
                                     $c_feed = $row['cost_feed']; $c_med = $row['cost_med'];
                                     $c_vac = $row['cost_vac']; $c_vit = $row['cost_vit']; $c_chk = $row['cost_chk'];
-                                    $total_cost = $row['ACQUISITION_COST'] + $c_feed + $c_med + $c_vac + $c_vit + $c_chk;
+                                    $c_misc = $row['TOTAL_MISC_AMT'] ?? 0;
+                                    $total_cost = $row['ACQUISITION_COST'] + $c_feed + $c_med + $c_vac + $c_vit + $c_chk + $c_misc;
+                                    
+                                    // Generate the Age text for the tooltip
+                                    $age_text = isset($row['age_in_days']) ? $row['age_in_days'] . ' days old' : 'Age unknown';
                                 ?>
                                 <tr>
-                                    <td data-label="Tag No" class="col-name"><?= htmlspecialchars($row['TAG_NO']) ?></td>
+                                    <td data-label="Tag No" class="col-name" style="padding-left:1.75rem;">
+                                        <span class="tooltip-trigger" title="<?= $age_text ?>"><?= htmlspecialchars($row['TAG_NO']) ?></span>
+                                    </td>
                                     <td data-label="Stage"><?= htmlspecialchars($row['STAGE_NAME'] ?? '—') ?></td>
                                     <td data-label="Status"><span class="badge <?= $statusClass ?>"><?= htmlspecialchars($row['CURRENT_STATUS']) ?></span></td>
                                     <td data-label="Repro Info">
                                         <?php if($row['curr_sow_status'] === '-' && $row['count_dry'] == 0 && $row['count_service'] == 0): ?>
                                             <span style="color:var(--text-muted);">N/A</span>
                                         <?php else: ?>
-                                            <div class="repro-status"><?= htmlspecialchars($row['curr_sow_status']) ?></div>
+                                            <div class="repro-status">
+                                                <?= htmlspecialchars($row['curr_sow_status']) ?>
+                                                <?php 
+                                                // General check: if the current status is DRY or any SERVICE phase, show the accumulated days
+                                                $show_days = in_array($row['curr_sow_status'], ['DRY']) || strpos($row['curr_sow_status'], 'SERVICE') === 0;
+                                                if($show_days && isset($row['days_in_status'])): 
+                                                ?>
+                                                    <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(<?= $row['days_in_status'] ?> days)</span>
+                                                <?php endif; ?>
+                                            </div>
                                             <div class="repro-chips">
-                                                <span class="repro-chip" title="Dry">D:<?= $row['count_dry'] ?></span>
-                                                <span class="repro-chip" title="Service">S:<?= $row['count_service'] ?></span>
-                                                <span class="repro-chip" title="Pregnant">P:<?= $row['count_pregnant'] ?></span>
-                                                <span class="repro-chip" title="Birthing">B:<?= $row['count_birthing'] ?></span>
-                                                <span class="repro-chip" title="Abortion">A:<?= $row['count_abortion'] ?></span>
+                                                <span class="repro-chip" title="Serviced">Srv:<?= $row['count_service'] ?></span>
+                                                <span class="repro-chip" title="Parity (Times Birthed)">Parity:<?= $row['count_birthing'] ?></span>
+                                                <span class="repro-chip" title="Aborted">Abt:<?= $row['count_abortion'] ?></span>
+                                                <span class="repro-chip tooltip-trigger" title="Alive: <?= $row['total_alive'] ?> | Dead: <?= $row['total_dead'] ?> | Mummified: <?= $row['total_mummified'] ?>">Piglets:<?= $row['total_born'] ?></span>
                                             </div>
                                         <?php endif; ?>
                                     </td>
@@ -1351,6 +1374,7 @@ if ($filter_pen) $active_filters++;
                                     <td data-label="Vacs" class="text-right val-cost"><?= number_format($c_vac, 2) ?></td>
                                     <td data-label="Vits" class="text-right val-cost"><?= number_format($c_vit, 2) ?></td>
                                     <td data-label="Chk Up" class="text-right val-cost"><?= number_format($c_chk, 2) ?></td>
+                                    <td data-label="Misc" class="text-right val-cost"><?= number_format($c_misc, 2) ?></td>
                                     <td data-label="Total" class="text-right val-total">₱<?= number_format($total_cost, 2) ?></td>
                                     <td data-label="Action" class="text-center">
                                         <a href="viewAnimalLedger.php?id=<?= $row['ANIMAL_ID'] ?>" class="btn-ledger">
@@ -1367,7 +1391,6 @@ if ($filter_pen) $active_filters++;
         </div>
         <?php endforeach; ?>
 
-    <!-- ══════════════ DETAILED VIEW ══════════════ -->
     <?php else: ?>
 
         <div class="table-card">
@@ -1389,6 +1412,7 @@ if ($filter_pen) $active_filters++;
                             <th class="text-right">Vacs</th>
                             <th class="text-right">Vits</th>
                             <th class="text-right">Chk Up</th>
+                            <th class="text-right">Misc</th>
                             <th class="text-right">Total</th>
                             <th class="text-center">Action</th>
                         </tr>
@@ -1396,7 +1420,7 @@ if ($filter_pen) $active_filters++;
                     <tbody>
                         <?php if(empty($animals)): ?>
                             <tr>
-                                <td colspan="16">
+                                <td colspan="17">
                                     <div class="empty-state">
                                         <i class="fa-solid fa-filter-circle-xmark"></i>
                                         <p>No records found matching your filters.</p>
@@ -1410,13 +1434,13 @@ if ($filter_pen) $active_filters++;
                             foreach($animals as $row):
                                 $curr_building = $row['BUILDING_NAME'] ?: 'Unassigned Building';
                                 if ($curr_building !== $last_building) {
-                                    echo "<tr class='group-header-row'><td colspan='16'><i class='fa-solid fa-building' style='margin-right:8px;opacity:0.6;'></i>" . htmlspecialchars($curr_building) . "</td></tr>";
+                                    echo "<tr class='group-header-row'><td colspan='17'><i class='fa-solid fa-building' style='margin-right:8px;opacity:0.6;'></i>" . htmlspecialchars($curr_building) . "</td></tr>";
                                     $last_building = $curr_building;
                                     $last_pen = '';
                                 }
                                 $curr_pen = $row['PEN_NAME'] ?: 'Unassigned Pen';
                                 if ($curr_pen !== $last_pen) {
-                                    echo "<tr class='sub-group-header-row'><td colspan='16'><i class='fa-solid fa-border-all' style='margin-right:6px;'></i>Pen: " . htmlspecialchars($curr_pen) . "</td></tr>";
+                                    echo "<tr class='sub-group-header-row'><td colspan='17'><i class='fa-solid fa-border-all' style='margin-right:6px;'></i>Pen: " . htmlspecialchars($curr_pen) . "</td></tr>";
                                     $last_pen = $curr_pen;
                                 }
                                 $statusClass = 'b-active';
@@ -1424,10 +1448,16 @@ if ($filter_pen) $active_filters++;
                                 if(in_array($row['CURRENT_STATUS'], ['Deceased','Cull','Dead'])) $statusClass = 'b-dec';
                                 $c_feed = $row['cost_feed']; $c_med = $row['cost_med'];
                                 $c_vac = $row['cost_vac']; $c_vit = $row['cost_vit']; $c_chk = $row['cost_chk'];
-                                $total_cost = $row['ACQUISITION_COST'] + $c_feed + $c_med + $c_vac + $c_vit + $c_chk;
+                                $c_misc = $row['TOTAL_MISC_AMT'] ?? 0;
+                                $total_cost = $row['ACQUISITION_COST'] + $c_feed + $c_med + $c_vac + $c_vit + $c_chk + $c_misc;
+                                
+                                // Generate the Age text for the tooltip
+                                $age_text = isset($row['age_in_days']) ? $row['age_in_days'] . ' days old' : 'Age unknown';
                             ?>
                             <tr>
-                                <td data-label="Tag No" class="col-name" style="padding-left:1.75rem;"><?= htmlspecialchars($row['TAG_NO']) ?></td>
+                                <td data-label="Tag No" class="col-name" style="padding-left:1.75rem;">
+                                    <span class="tooltip-trigger" title="<?= $age_text ?>"><?= htmlspecialchars($row['TAG_NO']) ?></span>
+                                </td>
                                 <td data-label="Classification">
                                     <div><?= htmlspecialchars($row['STAGE_NAME'] ?? 'Unknown') ?></div>
                                     <div class="col-sub"><?= htmlspecialchars($row['ANIMAL_TYPE_NAME']) ?></div>
@@ -1439,17 +1469,28 @@ if ($filter_pen) $active_filters++;
                                     <?php if($row['curr_sow_status'] === '-' && $row['count_dry'] == 0 && $row['count_service'] == 0): ?>
                                         <span style="color:var(--text-muted);">N/A</span>
                                     <?php else: ?>
-                                        <div class="repro-status"><?= htmlspecialchars($row['curr_sow_status']) ?></div>
+                                        <div class="repro-status">
+                                            <?= htmlspecialchars($row['curr_sow_status']) ?>
+                                            <?php 
+                                            // General check: if the current status is DRY or any SERVICE phase, show the accumulated days
+                                            $show_days = in_array($row['curr_sow_status'], ['DRY']) || strpos($row['curr_sow_status'], 'SERVICE') === 0;
+                                            if($show_days && isset($row['days_in_status'])): 
+                                            ?>
+                                                <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(<?= $row['days_in_status'] ?> days)</span>
+                                            <?php endif; ?>
+                                        </div>
                                         <div class="repro-chips">
-                                            <span class="repro-chip" title="Dry">D:<?= $row['count_dry'] ?></span>
-                                            <span class="repro-chip" title="Service">S:<?= $row['count_service'] ?></span>
-                                            <span class="repro-chip" title="Pregnant">P:<?= $row['count_pregnant'] ?></span>
-                                            <span class="repro-chip" title="Birthing">B:<?= $row['count_birthing'] ?></span>
-                                            <span class="repro-chip" title="Abortion">A:<?= $row['count_abortion'] ?></span>
+                                            <span class="repro-chip" title="Serviced">Srv:<?= $row['count_service'] ?></span>
+                                            <span class="repro-chip" title="Parity (Times Birthed)">Parity:<?= $row['count_birthing'] ?></span>
+                                            <span class="repro-chip" title="Aborted">Abt:<?= $row['count_abortion'] ?></span>
+                                            <span class="repro-chip tooltip-trigger" title="Alive: <?= $row['total_alive'] ?> | Dead: <?= $row['total_dead'] ?> | Mummified: <?= $row['total_mummified'] ?>">Piglets:<?= $row['total_born'] ?></span>
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td data-label="Location"><?= htmlspecialchars($row['LOCATION_NAME']) ?></td>
+                                <td data-label="Location">
+                                    <strong><?= htmlspecialchars($row['LOCATION_NAME']) ?></strong><br>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);"><?= htmlspecialchars($row['BUILDING_NAME'] ?? '') ?> &rsaquo; <?= htmlspecialchars($row['PEN_NAME'] ?? '') ?></span>
+                                </td>
                                 <td data-label="Wt (kg)" class="text-right val-weight"><?= $row['CURRENT_ACTUAL_WEIGHT'] > 0 ? $row['CURRENT_ACTUAL_WEIGHT'] : '—' ?></td>
                                 <td data-label="Acq. Cost" class="text-right val-money"><?= number_format($row['ACQUISITION_COST'], 2) ?></td>
                                 <td data-label="Feed" class="text-right val-cost"><?= number_format($c_feed, 2) ?></td>
@@ -1457,6 +1498,7 @@ if ($filter_pen) $active_filters++;
                                 <td data-label="Vacs" class="text-right val-cost"><?= number_format($c_vac, 2) ?></td>
                                 <td data-label="Vits" class="text-right val-cost"><?= number_format($c_vit, 2) ?></td>
                                 <td data-label="Chk Up" class="text-right val-cost"><?= number_format($c_chk, 2) ?></td>
+                                <td data-label="Misc" class="text-right val-cost"><?= number_format($c_misc, 2) ?></td>
                                 <td data-label="Total" class="text-right val-total">₱<?= number_format($total_cost, 2) ?></td>
                                 <td data-label="Action" class="text-center">
                                     <a href="viewAnimalLedger.php?id=<?= $row['ANIMAL_ID'] ?>" class="btn-ledger">
@@ -1471,7 +1513,6 @@ if ($filter_pen) $active_filters++;
             </div>
         </div>
 
-        <!-- Pagination -->
         <?php if($total_pages > 1): ?>
         <div class="pagination">
             <?php
@@ -1579,16 +1620,21 @@ if ($filter_pen) $active_filters++;
 
         const rows = records.map(r => {
             const acq = +r.ACQUISITION_COST||0, feed=+r.cost_feed||0, med=+r.cost_med||0,
-                  vac=+r.cost_vac||0, vit=+r.cost_vit||0, chk=+r.cost_chk||0;
-            const total = acq+feed+med+vac+vit+chk;
+                  vac=+r.cost_vac||0, vit=+r.cost_vit||0, chk=+r.cost_chk||0, misc=+r.TOTAL_MISC_AMT||0;
+            const total = acq+feed+med+vac+vit+chk+misc;
+            
+            const isServiceOrDry = r.curr_sow_status === 'DRY' || (r.curr_sow_status && r.curr_sow_status.startsWith('SERVICE'));
+            const currSowStatus = isServiceOrDry && r.days_in_status !== null ? `${r.curr_sow_status} (${r.days_in_status} days)` : r.curr_sow_status;
+            
             const cycles = (r.curr_sow_status!=='-'||r.count_dry>0)
-                ? `${r.curr_sow_status} D:${r.count_dry} S:${r.count_service} P:${r.count_pregnant} B:${r.count_birthing} A:${r.count_abortion}` : 'N/A';
+                ? `${currSowStatus} Srv:${r.count_service} Parity:${r.count_birthing} Abt:${r.count_abortion} Pglts:${r.total_born||0}` : 'N/A';
+            
             return [r.TAG_NO, r.STAGE_NAME||'-', r.SEX, r.BIRTH_DATE_FMT||'-', r.CURRENT_STATUS,
-                cycles, r.LOCATION_NAME, r.CURRENT_ACTUAL_WEIGHT,
-                acq.toFixed(2), feed.toFixed(2), med.toFixed(2), vac.toFixed(2), vit.toFixed(2), chk.toFixed(2), total.toFixed(2)];
+                cycles, `${r.LOCATION_NAME} > ${r.BUILDING_NAME} > ${r.PEN_NAME}`, r.CURRENT_ACTUAL_WEIGHT,
+                acq.toFixed(2), feed.toFixed(2), med.toFixed(2), vac.toFixed(2), vit.toFixed(2), chk.toFixed(2), misc.toFixed(2), total.toFixed(2)];
         });
         doc.autoTable({
-            head: [['Tag','Stage','Sex','Birthday','Status','Repro','Location','Wt','Acq','Feed','Meds','Vacs','Vits','Chk','Total']],
+            head: [['Tag','Stage','Sex','Birthday','Status','Repro','Location','Wt','Acq','Feed','Meds','Vacs','Vits','Chk','Misc','Total']],
             body: rows, startY: 26,
             styles: { fontSize: 6, cellPadding: 1.5 },
             headStyles: { fillColor: [22, 163, 74] }
@@ -1599,19 +1645,22 @@ if ($filter_pen) $active_filters++;
     function exportExcel() {
         const data = records.map(r => {
             const acq=+r.ACQUISITION_COST||0, feed=+r.cost_feed||0, med=+r.cost_med||0,
-                  vac=+r.cost_vac||0, vit=+r.cost_vit||0, chk=+r.cost_chk||0;
+                  vac=+r.cost_vac||0, vit=+r.cost_vit||0, chk=+r.cost_chk||0, misc=+r.TOTAL_MISC_AMT||0;
+            
+            const isServiceOrDry = r.curr_sow_status === 'DRY' || (r.curr_sow_status && r.curr_sow_status.startsWith('SERVICE'));
+            const currSowStatus = isServiceOrDry && r.days_in_status !== null ? `${r.curr_sow_status} (${r.days_in_status} days)` : r.curr_sow_status;
+            
             return {
                 'Tag No': r.TAG_NO, 'Type': r.ANIMAL_TYPE_NAME, 'Breed': r.BREED_NAME,
                 'Stage': r.STAGE_NAME, 'Sex': r.SEX, 'Birthday': r.BIRTH_DATE_FMT||'-',
-                'Status': r.CURRENT_STATUS, 'Sow Status': r.curr_sow_status,
-                'Dry': r.count_dry, 'Service': r.count_service, 'Pregnant': r.count_pregnant,
-                'Birthing': r.count_birthing, 'Abortion': r.count_abortion,
+                'Status': r.CURRENT_STATUS, 'Sow Status': currSowStatus,
+                'Serviced': r.count_service, 'Parity': r.count_birthing, 'Aborted': r.count_abortion,
+                'Total Piglets': r.total_born||0,
                 'Last Boar': r.last_boar_tag||'N/A', 'Last Service': r.last_service_date||'N/A',
-                'Alive Piglets': r.total_alive||0, 'Dead Piglets': r.total_dead||0, 'Mummified': r.total_mummified||0,
-                'Location': `${r.LOCATION_NAME} - ${r.PEN_NAME}`, 'Weight': r.CURRENT_ACTUAL_WEIGHT,
+                'Location': `${r.LOCATION_NAME} > ${r.BUILDING_NAME} > ${r.PEN_NAME}`, 'Weight': r.CURRENT_ACTUAL_WEIGHT,
                 'Acq (PHP)': acq, 'Feed (PHP)': feed, 'Meds (PHP)': med,
-                'Vacs (PHP)': vac, 'Vits (PHP)': vit, 'Checkup (PHP)': chk,
-                'Total (PHP)': acq+feed+med+vac+vit+chk
+                'Vacs (PHP)': vac, 'Vits (PHP)': vit, 'Checkup (PHP)': chk, 'Misc (PHP)': misc,
+                'Total (PHP)': acq+feed+med+vac+vit+chk+misc
             };
         });
         const ws = XLSX.utils.json_to_sheet(data);
@@ -1621,19 +1670,22 @@ if ($filter_pen) $active_filters++;
     }
 
     function exportCSV() {
-        const headers = "Tag No,Type,Breed,Stage,Sex,Birthday,Status,Sow Status,Dry,Service,Pregnant,Birthing,Abortion,Last Boar,Last Service,Alive Piglets,Dead Piglets,Mummified,Location,Weight,Acq,Feed,Meds,Vacs,Vits,Checkup,Total\n";
+        const headers = "Tag No,Type,Breed,Stage,Sex,Birthday,Status,Sow Status,Serviced,Parity,Aborted,Total Piglets,Last Boar,Last Service,Location,Weight,Acq,Feed,Meds,Vacs,Vits,Checkup,Misc,Total\n";
         const rows = records.map(r => {
             const acq=+r.ACQUISITION_COST||0, feed=+r.cost_feed||0, med=+r.cost_med||0,
-                  vac=+r.cost_vac||0, vit=+r.cost_vit||0, chk=+r.cost_chk||0;
+                  vac=+r.cost_vac||0, vit=+r.cost_vit||0, chk=+r.cost_chk||0, misc=+r.TOTAL_MISC_AMT||0;
+            
+            const isServiceOrDry = r.curr_sow_status === 'DRY' || (r.curr_sow_status && r.curr_sow_status.startsWith('SERVICE'));
+            const currSowStatus = isServiceOrDry && r.days_in_status !== null ? `${r.curr_sow_status} (${r.days_in_status} days)` : r.curr_sow_status;
+            
             return [
                 r.TAG_NO, r.ANIMAL_TYPE_NAME, r.BREED_NAME, r.STAGE_NAME, r.SEX, r.BIRTH_DATE_FMT||'-',
-                r.CURRENT_STATUS, r.curr_sow_status, r.count_dry, r.count_service,
-                r.count_pregnant, r.count_birthing, r.count_abortion,
+                r.CURRENT_STATUS, currSowStatus, r.count_service, r.count_birthing,
+                r.count_abortion, r.total_born||0,
                 r.last_boar_tag||'N/A', r.last_service_date||'N/A',
-                r.total_alive||0, r.total_dead||0, r.total_mummified||0,
-                `${r.LOCATION_NAME} - ${r.PEN_NAME}`, r.CURRENT_ACTUAL_WEIGHT,
-                acq.toFixed(2), feed.toFixed(2), med.toFixed(2), vac.toFixed(2), vit.toFixed(2), chk.toFixed(2),
-                (acq+feed+med+vac+vit+chk).toFixed(2)
+                `${r.LOCATION_NAME} > ${r.BUILDING_NAME} > ${r.PEN_NAME}`, r.CURRENT_ACTUAL_WEIGHT,
+                acq.toFixed(2), feed.toFixed(2), med.toFixed(2), vac.toFixed(2), vit.toFixed(2), chk.toFixed(2), misc.toFixed(2),
+                (acq+feed+med+vac+vit+chk+misc).toFixed(2)
             ].map(e => `"${e}"`).join(',');
         }).join('\n');
         const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });

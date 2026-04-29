@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_name_to_reactivate = 'N/A';
 
     if (!$id) {
-        echo json_encode(['success' => false, 'message' => '❌ User ID is missing.']);
+        echo json_encode(['success' => false, 'message' => '  User ID is missing.']);
         exit;
     }
 
@@ -87,16 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         // END GLOBAL DEACTIVATION ===================================================================================================================
         
-        echo json_encode(['success' => true, 'message' => "✅ User $user_name_to_reactivate reactivated successfully."]);
+        echo json_encode(['success' => true, 'message' => "  User $user_name_to_reactivate reactivated successfully."]);
 
     } catch (Exception $e) {
         // Rollback on error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error reactivating user: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error reactivating user: ' . $e->getMessage()]);
     }
 } else {
-    echo json_encode(['success' => false, 'message' => '❌ Invalid request method.']);
+    echo json_encode(['success' => false, 'message' => '  Invalid request method.']);
 }
 ?>

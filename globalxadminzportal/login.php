@@ -17,6 +17,7 @@ if (isset($_SESSION['user_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <title>Admin Login | GATZFarm</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap');
@@ -420,14 +421,14 @@ if (isset($_SESSION['user_id'])) {
             const data = await res.json();
 
             if (data.success) {
-                showAlert('login-alert', 'success', '✅ Authenticated. Redirecting…');
+                showAlert('login-alert', 'success', '  Authenticated. Redirecting…');
                 setTimeout(() => window.location.href = data.redirect, 800);
             } else {
-                showAlert('login-alert', 'error', '❌ ' + data.message);
+                showAlert('login-alert', 'error', '  ' + data.message);
                 btn.classList.remove('loading'); btn.disabled = false;
             }
         } catch (err) {
-            showAlert('login-alert', 'error', '❌ System error. Please try again.');
+            showAlert('login-alert', 'error', '  System error. Please try again.');
             btn.classList.remove('loading'); btn.disabled = false;
         }
     });
@@ -446,12 +447,12 @@ if (isset($_SESSION['user_id'])) {
 
             if (data.success) {
                 toggleSection('reset');
-                showAlert('reset-alert', 'success', '✅ ' + data.message);
+                showAlert('reset-alert', 'success', '  ' + data.message);
             } else {
-                showAlert('forgot-alert', 'error', '❌ ' + data.message);
+                showAlert('forgot-alert', 'error', '  ' + data.message);
             }
         } catch (err) {
-            showAlert('forgot-alert', 'error', '❌ System error. Please try again.');
+            showAlert('forgot-alert', 'error', '  System error. Please try again.');
         }
         btn.classList.remove('loading'); btn.disabled = false;
     });
@@ -476,13 +477,13 @@ if (isset($_SESSION['user_id'])) {
                 toggleSection('login');
                 document.getElementById('email').value = userEmailForReset;
                 document.getElementById('password').value = '';
-                showAlert('login-alert', 'success', '✅ ' + data.message);
+                showAlert('login-alert', 'success', '  ' + data.message);
             } else {
-                showAlert('reset-alert', 'error', '❌ ' + data.message);
+                showAlert('reset-alert', 'error', '  ' + data.message);
                 btn.classList.remove('loading'); btn.disabled = false;
             }
         } catch (err) {
-            showAlert('reset-alert', 'error', '❌ System error. Please try again.');
+            showAlert('reset-alert', 'error', '  System error. Please try again.');
             btn.classList.remove('loading'); btn.disabled = false;
         }
     });

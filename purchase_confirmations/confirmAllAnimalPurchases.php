@@ -63,14 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         echo json_encode([
             'success' => true, 
-            'message' => "✅ Success! $rows_updated purchase records confirmed."
+            'message' => "  Success! $rows_updated purchase records confirmed."
         ]);
 
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);

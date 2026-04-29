@@ -30,11 +30,14 @@ if (isset($_GET['action'])) {
                 SELECT SUPPLY_ID, SUPPLY_NAME, TOTAL_STOCK, UNIT_ID,
                        (SELECT UNIT_ABBR FROM UNITS WHERE UNITS.UNIT_ID = VACCINES.UNIT_ID LIMIT 1) as UNIT_ABBR
                 FROM VACCINES 
-                WHERE LOCATION_ID = ? AND IS_ACTIVE = 1 
+                WHERE LOCATION_ID = ? 
                 ORDER BY SUPPLY_NAME ASC
             ");
             $stmt->execute([$locId]);
-            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Ensure we ALWAYS return an array, even if empty
+            echo json_encode($results ?: []);
             exit;
         }
 
@@ -814,7 +817,7 @@ async function handleEventAutoSelect(eventIds) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   LIVE REFRESH (NEW)
+   LIVE REFRESH
 ═══════════════════════════════════════════════════════════════ */
 async function refreshVaccineList() {
     const locId = document.getElementById('location_id').value;
@@ -896,12 +899,14 @@ function fetchVaccines(locId) {
 
         if (!locId) { sel.innerHTML = '<option value="" data-stock="0">Select Location First</option>'; resolve([]); return; }
 
-        // Use the internal handler
         fetch(`?action=get_vaccines&location_id=${locId}`)
             .then(r => r.json())
             .then(data => {
                 sel.innerHTML = '<option value="" data-stock="0">-- Select Vaccine --</option>';
-                data.forEach(v => {
+                // Handle both missing data and empty arrays gracefully
+                const list = Array.isArray(data) ? data : [];
+                
+                list.forEach(v => {
                     const opt          = new Option(`${v.SUPPLY_NAME} (Stock: ${v.TOTAL_STOCK} ${v.UNIT_ABBR})`, v.SUPPLY_ID);
                     opt.dataset.stock  = v.TOTAL_STOCK;
                     opt.dataset.unit   = v.UNIT_ABBR;
@@ -909,7 +914,7 @@ function fetchVaccines(locId) {
                     sel.appendChild(opt);
                 });
                 sel.disabled = false;
-                resolve(data);
+                resolve(list);
             })
             .catch(err => { sel.innerHTML = '<option value="">Error</option>'; reject(err); });
     });
@@ -951,7 +956,7 @@ function loadAnimals(penId) {
         .then(r => r.json())
         .then(data => {
             grid.innerHTML    = '';
-            currentPenAnimals = data || [];
+            currentPenAnimals = Array.isArray(data) ? data : [];
 
             if (!currentPenAnimals.length) {
                 grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted); padding: 2rem; font-style:italic;">No active animals found in this pen.</div>';

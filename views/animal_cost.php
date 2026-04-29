@@ -14,7 +14,6 @@ checkAccess('animal_cost');
 include '../common/navbar.php';
 include '../common/chat_support.php';
 
-
 // --- AJAX HANDLER FOR DROPDOWNS ---
 if (isset($_GET['action'])) {
     ob_end_clean();
@@ -37,7 +36,7 @@ if (isset($_GET['action'])) {
         }
         // New: Get Animals for Dropdown
         if ($action === 'get_animals' && isset($_GET['pen_id'])) {
-            $stmt = $conn->prepare("SELECT ANIMAL_ID, TAG_NO FROM ANIMAL_RECORDS WHERE PEN_ID = ? AND IS_ACTIVE = 1 ORDER BY TAG_NO");
+            $stmt = $conn->prepare("SELECT ANIMAL_ID, TAG_NO FROM animal_records WHERE PEN_ID = ? AND IS_ACTIVE = 1 ORDER BY TAG_NO");
             $stmt->execute([$_GET['pen_id']]);
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             exit;
@@ -68,32 +67,35 @@ $sql = "
         -- 1. Acquisition
         COALESCE(ar.ACQUISITION_COST, 0) as COST_ACQUISITION,
 
-        -- 2. Feed (Sum of Transaction Cost)
+        -- 2. Misc Fees (From animal_records)
+        COALESCE(ar.TOTAL_MISC_AMT, 0) as COST_MISC,
+
+        -- 3. Feed (Sum of Transaction Cost)
         (SELECT COALESCE(SUM(TRANSACTION_COST), 0) 
          FROM feed_transactions 
          WHERE ANIMAL_ID = ar.ANIMAL_ID) as COST_FEED,
 
-        -- 3. Medical (Meds)
+        -- 4. Medical (Meds)
         (SELECT COALESCE(SUM(TOTAL_COST), 0) 
          FROM treatment_transactions 
          WHERE ANIMAL_ID = ar.ANIMAL_ID) as COST_MEDS,
 
-        -- 4. Vaccine
+        -- 5. Vaccine
         (SELECT COALESCE(SUM(VACCINATION_COST + VACCINE_COST), 0) 
          FROM vaccination_records 
          WHERE ANIMAL_ID = ar.ANIMAL_ID) as COST_VACCINE,
 
-        -- 5. Vitamins
+        -- 6. Vitamins
         (SELECT COALESCE(SUM(TOTAL_COST), 0)
          FROM vitamins_supplements_transactions 
          WHERE ANIMAL_ID = ar.ANIMAL_ID) as COST_VITAMINS,
 
-        -- 6. Checkup Professional Fees
+        -- 7. Checkup Professional Fees
         (SELECT COALESCE(SUM(COST), 0) 
          FROM check_ups 
          WHERE ANIMAL_ID = ar.ANIMAL_ID) as COST_CHECKUP,
 
-        -- 7. Count of Checkups
+        -- 8. Count of Checkups
         (SELECT COUNT(*) 
          FROM check_ups 
          WHERE ANIMAL_ID = ar.ANIMAL_ID) as COUNT_CHECKUP
@@ -157,10 +159,11 @@ $total_net_worth = 0; // With Acquisition
 $total_feed = 0;
 $total_health = 0; 
 $total_acquisition = 0;
+$total_misc = 0; // Added for Misc Fees
 
 foreach ($data as $row) {
     $health_sum = $row['COST_MEDS'] + $row['COST_VACCINE'] + $row['COST_VITAMINS'] + $row['COST_CHECKUP'];
-    $operating_sum = $row['COST_FEED'] + $health_sum; // Expenses only
+    $operating_sum = $row['COST_FEED'] + $health_sum + $row['COST_MISC']; // Factored Misc into Operating
     
     $total_operating += $operating_sum;
     $total_net_worth += ($operating_sum + $row['COST_ACQUISITION']);
@@ -168,6 +171,7 @@ foreach ($data as $row) {
     $total_feed += $row['COST_FEED'];
     $total_health += $health_sum;
     $total_acquisition += $row['COST_ACQUISITION'];
+    $total_misc += $row['COST_MISC'];
 }
 ?>
 
@@ -198,6 +202,7 @@ foreach ($data as $row) {
             --amber:          #f59e0b; --amber-dim: rgba(245,158,11,0.12);
             --purple:         #a855f7; --purple-dim: rgba(168,85,247,0.12);
             --pink:           #f472b6; --pink-dim: rgba(244,114,182,0.12);
+            --indigo:         #6366f1; --indigo-dim: rgba(99,102,241,0.12);
             --red:            #f87171; --red-dim: rgba(248,113,113,0.12);
             
             --text-primary:   #f1f5f9;
@@ -269,6 +274,7 @@ foreach ($data as $row) {
         .stat-purple::before { background: var(--purple); }
         .stat-yellow::before { background: var(--amber); }
         .stat-pink::before { background: var(--pink); }
+        .stat-indigo::before { background: var(--indigo); }
 
         .stat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
         .stat-title { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;}
@@ -278,6 +284,7 @@ foreach ($data as $row) {
         .stat-purple .stat-icon { background: linear-gradient(135deg, var(--purple), #7e22ce); }
         .stat-yellow .stat-icon { background: linear-gradient(135deg, var(--amber), #b45309); }
         .stat-pink .stat-icon { background: linear-gradient(135deg, var(--pink), #be185d); }
+        .stat-indigo .stat-icon { background: linear-gradient(135deg, var(--indigo), #4338ca); }
 
         .stat-value { font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; }
         .stat-green .stat-value { color: var(--emerald); }
@@ -285,6 +292,7 @@ foreach ($data as $row) {
         .stat-purple .stat-value { color: var(--purple); }
         .stat-yellow .stat-value { color: var(--amber); }
         .stat-pink .stat-value { color: var(--pink); }
+        .stat-indigo .stat-value { color: var(--indigo); }
 
         /* ─── FILTER BAR ─── */
         .filter-bar { 
@@ -334,7 +342,7 @@ foreach ($data as $row) {
         .table-container::-webkit-scrollbar-track { background: var(--bg-surface); }
         .table-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         
-        .cost-table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        .cost-table { width: 100%; border-collapse: collapse; min-width: 1300px; }
         .cost-table th { 
             background: var(--bg-elevated); padding: 16px; text-align: left; color: var(--text-muted); 
             font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); font-weight: 700;
@@ -457,6 +465,14 @@ foreach ($data as $row) {
             </div>
             <div class="stat-value">₱<?php echo number_format($total_health, 2); ?></div>
         </div>
+
+        <div class="stat-card stat-indigo">
+            <div class="stat-header">
+                <div class="stat-title">Misc. Fees</div>
+                <div class="stat-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            </div>
+            <div class="stat-value">₱<?php echo number_format($total_misc, 2); ?></div>
+        </div>
     </div>
 
     <form class="filter-bar" method="GET">
@@ -514,6 +530,7 @@ foreach ($data as $row) {
                     <th style="text-align:right;">Acquisition</th>
                     <th style="text-align:right;">Feed Cost</th>
                     <th style="text-align:right;">Health Breakdown</th>
+                    <th style="text-align:right;">Misc Fees</th>
                     <th style="text-align:right; color:var(--blue);">Operating Cost<br><span style="font-size:0.8em; font-weight:normal; color:var(--text-muted);">(Without Acquisition)</span></th>
                     <th style="text-align:right; color:var(--emerald);">Total Net Worth<br><span style="font-size:0.8em; font-weight:normal; color:var(--text-muted);">(With Acquisition)</span></th>
                 </tr>
@@ -521,7 +538,7 @@ foreach ($data as $row) {
             <tbody>
                 <?php if (empty($data)): ?>
                     <tr>
-                        <td colspan="6" class="empty-state">
+                        <td colspan="7" class="empty-state">
                             <i class="fa-solid fa-ghost" style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
                             No animals found matching your criteria.
                         </td>
@@ -529,7 +546,7 @@ foreach ($data as $row) {
                 <?php else: ?>
                     <?php foreach ($data as $row): 
                         $health_subtotal = $row['COST_MEDS'] + $row['COST_VACCINE'] + $row['COST_VITAMINS'] + $row['COST_CHECKUP'];
-                        $operating_total = $row['COST_FEED'] + $health_subtotal;
+                        $operating_total = $row['COST_FEED'] + $health_subtotal + $row['COST_MISC'];
                         $grand_total = $operating_total + $row['COST_ACQUISITION'];
                     ?>
                     <tr>
@@ -570,6 +587,10 @@ foreach ($data as $row) {
                                 <span>Vaccine:</span> <span class="cost-val"><?php echo number_format($row['COST_VACCINE'], 2); ?></span>
                                 <span>Vitamins:</span> <span class="cost-val"><?php echo number_format($row['COST_VITAMINS'], 2); ?></span>
                             </div>
+                        </td>
+
+                        <td class="cost-col" style="color:var(--indigo);">
+                            ₱<?php echo number_format($row['COST_MISC'], 2); ?>
                         </td>
 
                         <td class="cost-col total-col-op">

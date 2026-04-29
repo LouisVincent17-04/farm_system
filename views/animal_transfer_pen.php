@@ -411,7 +411,7 @@ if ($USER_LOCATION_ != 1000) {
         const t = document.createElement('div');
         t.className = 'toast';
         t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--emerald)'}`;
-        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        t.innerHTML = `${type === 'error' ? ' ' : ' '} ${msg}`;
         document.getElementById('toastContainer').appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }
@@ -469,13 +469,24 @@ if ($USER_LOCATION_ != 1000) {
         penSelect.innerHTML = '<option value="">-- Choose Pen --</option>';
         data.forEach(p => {
             const count = p.ANIMAL_COUNT !== null ? parseInt(p.ANIMAL_COUNT) : 0;
-            const isGestating = p.PEN_NAME.toLowerCase().includes('gestating');
+            
+            // New logic: Do not show empty pens in the Source dropdown
+            if (prefix === 'src' && count === 0) return;
 
+            // Existing logic: Prevent multiple animals in a gestating pen (Destination)
+            const isGestating = p.PEN_NAME.toLowerCase().includes('gestating');
             if (prefix === 'dest' && isGestating && count >= 1) return;
 
             penSelect.innerHTML += `<option value="${p.PEN_ID}">${p.PEN_NAME} (${count} heads)</option>`;
         });
-        penSelect.disabled = false;
+        
+        // Handle case where building has no valid pens for source
+        if (penSelect.options.length === 1 && prefix === 'src') {
+            penSelect.innerHTML = '<option value="">-- No Occupied Pens --</option>';
+            penSelect.disabled = true;
+        } else {
+            penSelect.disabled = false;
+        }
     }
 
     async function loadAnimals(prefix) {

@@ -33,8 +33,8 @@ for item in data:
         X.append(prompt.lower())
         y.append(item["intent"])
 
-print(f"\n✅ Total training samples : {len(X)}")
-print(f"✅ Total intents          : {len(intent_map)}")
+print(f"\n  Total training samples : {len(X)}")
+print(f"  Total intents          : {len(intent_map)}")
 for intent, info in intent_map.items():
     count = y.count(intent)
     print(f"   • {intent:<30} ({count} prompts)  →  {info['url']}")
@@ -85,7 +85,7 @@ model_data = {
 with open("model.pkl", "wb") as f:
     pickle.dump(model_data, f)
 
-print("\n✅ Model saved to: model.pkl")
+print("\n  Model saved to: model.pkl")
 print("=" * 50)
 print("  Run 'python app.py' to start the Flask API")
 print("=" * 50)

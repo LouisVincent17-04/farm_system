@@ -3,7 +3,7 @@
         <div class="fp-spinner-ring"></div>
         <div class="fp-brand-icon">
             <img src="../common/tab-icon1.ico" alt="Logo" style="width: 40px; height: 40px; object-fit: contain;">
-        </div>s
+        </div>
     </div>
     <div class="fp-loader-text">Loading...</div>
 </div>

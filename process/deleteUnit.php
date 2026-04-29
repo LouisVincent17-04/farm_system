@@ -15,14 +15,14 @@ $unit_id = 0; // Initialize for finally scope
 $unit_name = 'the Unit'; // Default for error message
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: $redirect_page?status=error&msg=" . urlencode("❌ Invalid request method."));
+    header("Location: $redirect_page?status=error&msg=" . urlencode("  Invalid request method."));
     exit;
 }
 
 $unit_id = isset($_POST['unit_id']) ? (int) $_POST['unit_id'] : 0;
 
 if ($unit_id <= 0) {
-    header("Location: $redirect_page?status=error&msg=" . urlencode("❌ Invalid Unit ID."));
+    header("Location: $redirect_page?status=error&msg=" . urlencode("  Invalid Unit ID."));
     exit;
 }
 
@@ -47,7 +47,7 @@ try {
     if (!$unit_row) {
         // Rollback just in case
         $conn->rollBack();
-        header("Location: $redirect_page?status=error&msg=" . urlencode("❌ Unit not found."));
+        header("Location: $redirect_page?status=error&msg=" . urlencode("  Unit not found."));
         exit;
     }
 
@@ -87,7 +87,7 @@ try {
     // 4. COMMIT EVERYTHING
     $conn->commit();
 
-    header("Location: $redirect_page?status=success&msg=" . urlencode("✅ Unit deleted successfully."));
+    header("Location: $redirect_page?status=success&msg=" . urlencode("  Unit deleted successfully."));
     exit;
 
 } catch (PDOException $e) {
@@ -101,11 +101,11 @@ try {
     // Check for MySQL Integrity Constraint Violation (Code 1451)
     // This is equivalent to Oracle's ORA-02292 (Foreign key constraint fails)
     if ($e->errorInfo[1] == 1451) {
-        $errorMsg = "❌ Cannot delete $unit_name because it is currently linked to one or more records (e.g., Items, Feeds, Transactions). Please remove all references first.";
+        $errorMsg = "  Cannot delete $unit_name because it is currently linked to one or more records (e.g., Items, Feeds, Transactions). Please remove all references first.";
     } 
     // Check for Duplicate Entry (Code 1062) - Though rare on delete, corresponds loosely to Oracle's ORA-00001 unique constraint issues
     elseif ($e->errorInfo[1] == 1062) {
-        $errorMsg = "❌ Cannot delete $unit_name due to a database integrity issue.";
+        $errorMsg = "  Cannot delete $unit_name due to a database integrity issue.";
     }
 
     header("Location: $redirect_page?status=error&msg=" . urlencode($errorMsg));

@@ -150,6 +150,21 @@ try {
         }
     } catch(Exception $e) {}
 
+    // G. Miscellaneous Fees (Table: animal_misc_fees)
+    try {
+        $misc_sql = "SELECT 
+                        CREATED_AT AS txn_date, 
+                        'Misc Fee' AS type, 
+                        FEE_DESCRIPTION AS details,
+                        AMOUNT AS cost,
+                        'Manual Entry' AS remarks
+                    FROM animal_misc_fees
+                    WHERE ANIMAL_ID = ?";
+        $stmt = $conn->prepare($misc_sql);
+        $stmt->execute([$animal_id]);
+        $ledger = array_merge($ledger, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    } catch(Exception $e) {}
+
     // 3. Sort Ledger by Date Descending
     usort($ledger, function($a, $b) {
         return strtotime($b['txn_date']) - strtotime($a['txn_date']);
@@ -160,6 +175,7 @@ try {
 }
 
 $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'));
+
 ?>
 
 <!DOCTYPE html>
@@ -184,6 +200,7 @@ $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'
             --border:         rgba(255,255,255,0.07);
             
             --slate:          #94a3b8;
+            --slate-dim:      rgba(148,163,184,0.15);
             --emerald:        #10b981;
             --emerald-dim:    rgba(16,185,129,0.15);
             --amber:          #f59e0b;
@@ -303,6 +320,7 @@ $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'
         .t-vit { background: var(--emerald-dim); color: var(--emerald); border-color: rgba(16,185,129,0.3); }
         .t-chk { background: var(--purple-dim); color: var(--purple); border-color: rgba(168,85,247,0.3); }
         .t-trans { background: var(--pink-dim); color: var(--pink); border-color: rgba(236,72,153,0.3); }
+        .t-misc { background: var(--slate-dim); color: var(--text-primary); border-color: rgba(148,163,184,0.3); }
 
         .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); font-style: italic; }
 
@@ -329,7 +347,7 @@ $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'
 
 <div class="container">
     <div class="top-bar">
-        <a href="animal_report.php" class="back-link">
+        <a href="<?= $_SESSION['animal_report_url'] ?? 'animal_report.php' ?>" class="back-link">
             <i class="fa-solid fa-arrow-left"></i> Back to Animal Report
         </a>
     </div>
@@ -399,7 +417,7 @@ $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'
                 <div class="profile-item" style="background: rgba(16,185,129,0.05);">
                     <div class="p-label" style="color:var(--emerald);"><i class="fa-solid fa-chart-line"></i> Total Net Cost</div>
                     <div class="p-value val-emerald" style="font-size: 1.5rem;">₱<?= number_format($net_cost, 2) ?></div>
-                    <div class="p-sub">Acquisition + Operations</div>
+                    <div class="p-sub">Acquisition + Operations + Misc</div>
                 </div>
             </div>
         </div>
@@ -434,6 +452,7 @@ $net_cost = $animal['ACQUISITION_COST'] + array_sum(array_column($ledger, 'cost'
                                 if ($row['type'] == 'Supplement' || $row['type'] == 'Vitamins/Supplements') { $badgeClass = 't-vit'; $icon = 'fa-flask'; $row['type'] = 'Supplement'; }
                                 if ($row['type'] == 'Checkup') { $badgeClass = 't-chk'; $icon = 'fa-stethoscope'; }
                                 if ($row['type'] == 'Cost Transfer') { $badgeClass = 't-trans'; $icon = 'fa-arrow-right-arrow-left'; }
+                                if ($row['type'] == 'Misc Fee') { $badgeClass = 't-misc'; $icon = 'fa-file-invoice-dollar'; }
                                 
                                 $costVal = floatval($row['cost']);
                                 $costStr = '-';

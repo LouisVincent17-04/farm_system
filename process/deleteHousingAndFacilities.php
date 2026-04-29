@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
             
             echo json_encode([
                 'success' => false,
-                'message' => '❌ Item not found or already deleted.'
+                'message' => '  Item not found or already deleted.'
             ]);
             exit;
         }
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
 
         echo json_encode([
             'success' => true,
-            'message' => '✅ Item deleted successfully.'
+            'message' => '  Item deleted successfully.'
         ]);
 
         header('Location: ../views/purch_housing_facilities.php');    
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         echo json_encode([
             'success' => false,
-            'message' => '❌ Error: ' . $error_msg
+            'message' => '  Error: ' . $error_msg
         ]);
 
     } catch (Exception $e) {
@@ -117,13 +117,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         
         echo json_encode([
             'success' => false,
-            'message' => '❌ Error: ' . $e->getMessage()
+            'message' => '  Error: ' . $e->getMessage()
         ]);
     }
 } else {
     echo json_encode([
         'success' => false,
-        'message' => '❌ Invalid request.'
+        'message' => '  Invalid request.'
     ]);
 }
 ?>

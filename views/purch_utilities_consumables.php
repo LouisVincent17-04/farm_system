@@ -135,19 +135,25 @@ try {
             --bg-hover:       #162540;
             --border:         rgba(255,255,255,0.07);
             --border-active:  rgba(234,179,8,0.5); /* Yellow Accent */
+            
             --yellow:         #eab308;
             --yellow-dim:     rgba(234,179,8,0.12);
             --yellow-glow:    rgba(234,179,8,0.25);
             --emerald:        #10b981;
             --emerald-dim:    rgba(16,185,129,0.12);
             --emerald-glow:   rgba(16,185,129,0.25);
+            --amber:          #f59e0b;
+            --amber-dim:      rgba(245,158,11,0.12);
+            --amber-glow:     rgba(245,158,11,0.25);
             --blue:           #3b82f6;
             --blue-dim:       rgba(59,130,246,0.12);
             --red:            #f87171;
             --red-dim:        rgba(248,113,113,0.12);
+            
             --text-primary:   #f1f5f9;
             --text-secondary: #94a3b8;
             --text-muted:     #475569;
+            
             --radius-md:      10px;
             --radius-lg:      14px;
             --radius-xl:      20px;
@@ -251,7 +257,7 @@ try {
         .item-name { font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 2px; }
         .item-unit { color: var(--text-secondary); font-size: 0.85rem; }
         .val-mono { font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
-        .val-money { font-family: var(--font-mono); font-weight: 600; color: var(--yellow); font-size: 0.95rem;}
+        .val-money { font-family: var(--font-mono); font-weight: 600; color: var(--amber); font-size: 0.95rem;}
         
         .confirmed-badge {
             display: inline-flex; align-items: center; justify-content: center; gap: 4px;
@@ -279,54 +285,164 @@ try {
         }
         .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
         .action-btn.view:hover { color: var(--emerald); border-color: var(--emerald); }
-        .action-btn.edit:hover { color: var(--yellow); border-color: var(--yellow); }
+        .action-btn.edit:hover { color: var(--blue); border-color: var(--blue); }
         .action-btn.delete:hover { color: var(--red); border-color: var(--red); }
 
         .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
         .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block; }
 
-        /* ─── MODALS ─── */
+        /* ═══════════════════════════════════════════════
+           MODAL SYSTEM — Overflow-Safe, Zoom-Resistant
+        ═══════════════════════════════════════════════ */
+
         .modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center;
-            padding: 1rem;
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 1100;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 80px 1rem 2rem;
         }
-        .modal.show { display: flex; }
-        
+        .modal.show { display: flex; align-items: flex-start; justify-content: center; }
+
         .modal-content {
-            background: var(--bg-surface); border: 1px solid var(--border);
-            border-radius: var(--radius-xl); width: 100%; max-width: 650px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column;
-            max-height: 90vh; animation: modalZoom 0.2s ease-out;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            animation: modalZoom 0.2s ease-out;
+            max-height: 96vh;
         }
-        @keyframes modalZoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
-        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff; }
-        .modal-body { padding: 1.5rem; overflow-y: auto; }
-        .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-elevated); }
+        @keyframes modalZoom {
+            from { transform: scale(0.96); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
 
-        /* Form Elements inside Modal */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-group.full-width { grid-column: 1 / -1; margin-bottom: 1.25rem;}
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.2rem; font-weight: 700; color: #fff; }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
         
-        .form-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; }
+        .modal-body::-webkit-scrollbar { width: 8px; height: 8px; }
+        .modal-body::-webkit-scrollbar-track { background: transparent; }
+        .modal-body::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+
+        .modal-footer {
+            padding: 1.1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: var(--bg-elevated);
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            flex-shrink: 0;
+        }
+
+        /* ═══════════════════════════════════════════════
+           FORM LAYOUT — Consistent Grid System
+        ═══════════════════════════════════════════════ */
+
+        .info-group { margin-bottom: 0; }
+        .info-group + .info-group { margin-top: 1.75rem; }
+
+        .info-group h3 {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: var(--yellow);
+            margin: 0 0 1rem 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+        .form-group.full-width { grid-column: 1 / -1; }
+
+        .form-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
         .form-label span { color: var(--red); }
-        
-        .form-control, .form-select {
-            width: 100%; padding: 10px 12px; background: var(--bg-elevated);
-            border: 1px solid var(--border); color: var(--text-primary);
-            border-radius: 8px; font-size: 0.95rem; font-family: var(--font);
-            outline: none; transition: all var(--transition);
-        }
-        .form-control:focus, .form-select:focus, textarea.form-control:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px var(--yellow-glow); background: var(--bg-hover); }
-        textarea.form-control { resize: vertical; min-height: 60px; line-height: 1.5; }
-        
-        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer; }
-        .form-select:disabled, input:disabled, input[readonly] { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.02); color: var(--text-muted); }
 
-        .info-group h3 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--yellow); margin: 1.5rem 0 1rem 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .form-control,
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: var(--font);
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        .form-control:focus,
+        .form-select:focus,
+        textarea.form-control:focus {
+            border-color: var(--yellow);
+            box-shadow: 0 0 0 3px var(--yellow-glow);
+            background: var(--bg-hover);
+        }
+        textarea.form-control { resize: vertical; min-height: 72px; line-height: 1.5; }
+        
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
+        }
+        .form-select:disabled, input:disabled, input[readonly] { opacity: 0.45; cursor: not-allowed; }
 
         /* Autocomplete UI */
         .autocomplete-wrapper { position: relative; }
@@ -337,11 +453,15 @@ try {
             overflow-y: auto; box-shadow: var(--shadow-md); display: none;
         }
         .autocomplete-list.show { display: block; }
-        .autocomplete-item { padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 0.9rem;}
+        .autocomplete-item {
+            padding: 10px 14px; cursor: pointer; transition: background 0.15s;
+            border-bottom: 1px solid var(--border); color: var(--text-primary); font-size: 0.9rem;
+        }
         .autocomplete-item:last-child { border-bottom: none; }
         .autocomplete-item:hover { background: var(--bg-hover); color: var(--yellow); }
         .autocomplete-item strong { color: var(--yellow); }
-        .autocomplete-loading, .autocomplete-no-results { padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+        .autocomplete-loading,
+        .autocomplete-no-results { padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
 
         /* Toast Notifications */
         #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
@@ -352,14 +472,22 @@ try {
         }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* Confirm Modal specifics */
-        .confirm-content { text-align: center; padding: 1rem; }
+        /* Confirm modals */
+        .confirm-content { text-align: center; padding: 1rem 1rem 0; }
         .confirm-icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.8; }
         .warning-text {
-            color: var(--red); font-size: 0.85rem; margin: 1.5rem 0;
-            background: var(--red-dim); padding: 12px; border-radius: 8px;
-            border: 1px solid rgba(239,68,68,0.2); line-height: 1.4; text-align: left;
+            color: var(--red); font-size: 0.85rem; margin: 1.25rem 0 0;
+            background: var(--red-dim); padding: 12px 14px; border-radius: 8px;
+            border: 1px solid rgba(248,113,113,0.2); line-height: 1.5; text-align: left;
         }
+
+        /* Narrow modals (confirm dialogs) */
+        .modal-content.narrow { max-width: 440px; }
+        
+        /* Alerts inside modal */
+        .alert { padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 1.5rem; display: none; text-align: center; font-weight: 600; font-size: 0.9rem; }
+        .alert.success { background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.3); color: var(--emerald); }
+        .alert.error { background: var(--red-dim); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
 
         /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
@@ -367,15 +495,19 @@ try {
             .page-header { flex-direction: column; align-items: flex-start; }
             .header-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
             .btn { width: 100%; justify-content: center; }
-            
+
             .search-container { max-width: none; }
-            .form-row { grid-template-columns: 1fr; gap: 1rem; }
-            .modal-footer { flex-direction: column; gap: 10px; }
+            
+            /* Collapse all grids to single column */
+            .form-row,
+            .form-row-3 { grid-template-columns: 1fr; gap: 1rem;}
+            
+            .modal-footer { flex-direction: column-reverse; gap: 8px; }
             .modal-footer button { width: 100%; margin: 0 !important; }
 
-            /* Mobile Table to Cards */
-            .table-wrap { border: none; background: transparent; overflow: visible; }
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; }
+            /* Mobile table → cards */
+            .table-wrap { border: none; background: transparent; overflow: visible; box-shadow: none; }
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; box-sizing: border-box;}
             .table thead { display: none; }
             .table tbody tr { 
                 background: var(--bg-surface); border: 1px solid var(--border); 
@@ -384,7 +516,7 @@ try {
             }
             .table td { 
                 display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
             .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; gap: 10px; }
             .table td::before { 
@@ -394,6 +526,13 @@ try {
             .confirmed-badge, .confirm-btn { width: auto; padding: 4px 12px; }
             .actions { justify-content: flex-end; width: 100%; }
             .item-name { text-align: right; margin-bottom: 0; }
+        }
+
+        /* Keep navbar clearance on very small screens */
+        @media (max-width: 520px) {
+            .modal { padding: 72px 0.5rem 1.5rem; }
+            .modal-body { padding: 1.25rem 1rem; }
+            .modal-header, .modal-footer { padding-left: 1rem; padding-right: 1rem; }
         }
     </style>
 </head>
@@ -568,123 +707,135 @@ try {
             <h2 id="modal-title">Add Utilities & Consumables Purchase</h2>
         </div>
         <div class="modal-body">
+            <div id="modal-alert" class="alert"></div>
             <form id="item-form" method="POST">
                 <input type="hidden" id="item-id" name="item_id">
                 <input type="hidden" name="item_type_id" value="<?php echo $ITEM_TYPE_ID; ?>">
                 
-                <div class="info-group" style="margin-top: 0;">
-                    <h3 style="margin-top:0;">Item Information</h3>
-                    
-                    <div class="form-group autocomplete-wrapper">
-                        <label class="form-label" for="item-name">Item Name <span>*</span></label>
-                        <input type="text" id="item-name" name="item_name" class="form-control" placeholder="e.g., Light Bulbs, Lubricants" required maxlength="300" autocomplete="off">
-                        <div id="autocomplete-list" class="autocomplete-list"></div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group autocomplete-wrapper">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" id="supplier" name="supplier" class="form-control" placeholder="e.g., General Hardware" autocomplete="off">
-                            <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Reference No.</label>
-                            <input type="text" id="reference-no" name="reference_no" class="form-control" placeholder="e.g., OR-12345">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="item-quantity">Quantity <span>*</span></label>
-                            <input type="number" id="item-quantity" name="item_quantity" class="form-control val-mono" placeholder="e.g., 10" step="0.01" min="0" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="unit">Unit of Measurement <span>*</span></label>
-                            <select id="unit" name="unit_id" class="form-select" required>
-                                <option value="">Select Unit</option>
-                                <?php foreach($units as $unit): ?>
-                                    <option value="<?php echo $unit['UNIT_ID']; ?>"><?php echo htmlspecialchars($unit['UNIT_NAME']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="unit-cost">Unit Cost (₱) <span>*</span></label>
-                            <input type="number" id="unit-cost" name="unit_cost" class="form-control val-mono" placeholder="0.00" step="0.01" min="0" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="item-category">Item Category <span>*</span></label>
-                            <select id="item-category" name="item_category" class="form-select" required>
-                                <option value="">Select Category</option>
-                                <option value="0">Non-Consumable</option>
-                                <option value="1" selected>Consumable</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="purchase-date">Date of Purchase <span>*</span></label>
-                            <input type="text" id="purchase-date" name="date_of_purchase" class="form-control date-picker" placeholder="mm/dd/yyyy" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="net-weight">Net Weight/Volume <span style="color:var(--text-muted);">(Optional)</span></label>
-                            <input type="number" id="net-weight" name="item_net_weight" class="form-control val-mono" placeholder="e.g., 50.5" step="0.01" min="0">
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label class="form-label" for="item-desc">Item Description / Specs</label>
-                        <textarea id="item-desc" name="item_description" class="form-control" placeholder="Enter detailed specifications..." rows="2" maxlength="500"></textarea>
-                    </div>
-                </div>
-
                 <div class="info-group">
+                    <h3>Item Information</h3>
+                    <div class="form-stack">
+
+                        <div class="form-group full-width autocomplete-wrapper">
+                            <label class="form-label" for="item-name">Item Name <span>*</span></label>
+                            <input type="text" id="item-name" name="item_name" class="form-control" 
+                                   placeholder="e.g., Light Bulbs, Lubricants" required maxlength="300" autocomplete="off">
+                            <div id="autocomplete-list" class="autocomplete-list"></div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group autocomplete-wrapper">
+                                <label class="form-label">Supplier</label>
+                                <input type="text" id="supplier" name="supplier" class="form-control" 
+                                       placeholder="e.g., General Hardware" autocomplete="off">
+                                <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Reference No.</label>
+                                <input type="text" id="reference-no" name="reference_no" class="form-control" 
+                                       placeholder="e.g., OR-12345">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="item-quantity">Quantity <span>*</span></label>
+                                <input type="number" id="item-quantity" name="item_quantity" class="form-control val-mono" 
+                                       placeholder="e.g., 10" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="unit">Unit of Measurement <span>*</span></label>
+                                <select id="unit" name="unit_id" class="form-select" required>
+                                    <option value="">Select Unit</option>
+                                    <?php foreach($units as $unit): ?>
+                                        <option value="<?php echo $unit['UNIT_ID']; ?>"><?php echo htmlspecialchars($unit['UNIT_NAME']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="unit-cost">Unit Cost (₱) <span>*</span></label>
+                                <input type="number" id="unit-cost" name="unit_cost" class="form-control val-mono" 
+                                       placeholder="0.00" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="item-category">Item Category <span>*</span></label>
+                                <select id="item-category" name="item_category" class="form-select" required>
+                                    <option value="">Select Category</option>
+                                    <option value="0">Non-Consumable</option>
+                                    <option value="1" selected>Consumable</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="purchase-date">Date of Purchase <span>*</span></label>
+                                <input type="text" id="purchase-date" name="date_of_purchase" class="form-control date-picker" 
+                                       placeholder="mm/dd/yyyy" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="net-weight">Net Weight/Volume <span style="color:var(--text-muted);">(Optional)</span></label>
+                                <input type="number" id="net-weight" name="item_net_weight" class="form-control val-mono" 
+                                       placeholder="e.g., 50.5" step="0.01" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label" for="item-desc">Item Description / Specs</label>
+                            <textarea id="item-desc" name="item_description" class="form-control" 
+                                      placeholder="Enter detailed specifications..." rows="2" maxlength="500"></textarea>
+                        </div>
+                    </div></div><div class="info-group">
                     <h3>Initial Location</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label" for="location_id">Location</label>
-                            <select id="location_id" name="location_id" class="form-select" onchange="filterBuildings()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?> required>
-                                <?php if($USER_LOCATION_ == 1000): ?>
-                                    <option value="">Select Location</option>
+                    <div class="form-stack">
+                        
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label" for="location_id">Location</label>
+                                <select id="location_id" name="location_id" class="form-select" onchange="filterBuildings()" 
+                                        <?php echo ($USER_LOCATION_ != 1000) ? 'style="background-color: #1e293b; pointer-events: none; color: #94a3b8;"' : ''; ?> required>
+                                    <?php if($USER_LOCATION_ == 1000): ?>
+                                        <option value="">Select Location</option>
+                                    <?php endif; ?>
+                                    <?php foreach($locations as $loc): ?>
+                                        <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if ($USER_LOCATION_ != 1000): ?>
+                                    <input type="hidden" name="location_id" value="<?= $USER_LOCATION_ ?>">
                                 <?php endif; ?>
-                                <?php foreach($locations as $loc): ?>
-                                    <option value="<?php echo $loc['LOCATION_ID']; ?>" <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if ($USER_LOCATION_ != 1000): ?>
-                                <input type="hidden" name="location_id" value="<?= $USER_LOCATION_ ?>">
-                            <?php endif; ?>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="building_id">Building</label>
-                            <select id="building_id" name="building_id" class="form-select" onchange="filterPens()" disabled>
-                                <option value="">Select Location First</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="pen_id">Pen</label>
-                            <select id="pen_id" name="pen_id" class="form-select" disabled>
-                                <option value="">Select Building First</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label" for="building_id">Building</label>
+                                <select id="building_id" name="building_id" class="form-select" onchange="filterPens()" disabled>
+                                    <option value="">Select Location First</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label" for="pen_id">Pen</label>
+                                <select id="pen_id" name="pen_id" class="form-select" disabled>
+                                    <option value="">Select Building First</option>
+                                </select>
+                            </div>
+                        </div></div></div></form>
+        </div><div class="modal-footer">
             <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-            <button type="button" class="btn btn-primary" id="btn-save" onclick="saveItem()">Save Purchase</button>
+            <button type="button" class="btn btn-primary" id="btn-save" onclick="saveItem()">
+                <i class="fa-solid fa-floppy-disk me-2"></i> Save Purchase
+            </button>
         </div>
     </div>
 </div>
 
 <div id="view-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content narrow">
         <div class="modal-header">
             <h2>Purchase Dossier</h2>
         </div>
@@ -696,11 +847,13 @@ try {
 </div>
 
 <div id="confirm-modal" class="modal">
-    <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-content narrow">
         <div class="modal-body confirm-content">
             <span class="confirm-icon" style="color:var(--yellow);">💡</span>
             <h2 style="color: #fff; margin-bottom: 10px;">Verify Acquisition?</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 5px;">You are confirming the intake of <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color:var(--yellow);"></span></strong>.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 5px;">
+                You are confirming the intake of <strong><span id="confirm-item-qty"></span> <span id="confirm-item-name" style="color:var(--yellow);"></span></strong>.
+            </p>
             <div class="warning-text">
                 <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Critical:</strong> Once confirmed, this financial record is locked and cannot be edited or purged.
             </div>
@@ -708,7 +861,7 @@ try {
                 <input type="hidden" id="confirm_item_id" name="item_id">
             </form>
         </div>
-        <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px; background: transparent;">
+        <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; background: transparent; padding-bottom: 1.75rem;">
             <button type="button" class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
             <button type="button" class="btn btn-primary" onclick="submitConfirmation()" style="background: var(--red); border-color: var(--red); color: white;">Yes, Lock Record</button>
         </div>
@@ -716,18 +869,20 @@ try {
 </div>
 
 <div id="confirm-all-modal" class="modal">
-    <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-content narrow">
         <div class="modal-body confirm-content">
             <span class="confirm-icon" style="color:var(--emerald);">📋</span>
             <h2 style="color: #fff; margin-bottom: 10px;">Commit All Pending?</h2>
-            <p style="color: var(--text-secondary);">This function will verify and lock <strong>ALL</strong> currently pending utilities & consumables purchases in this location.</p>
+            <p style="color: var(--text-secondary);">
+                This function will verify and lock <strong>ALL</strong> currently pending utilities & consumables purchases in this location.
+            </p>
             <div class="warning-text" style="background: var(--emerald-dim); border-color: rgba(16,185,129,0.3); color: var(--emerald);">
                 <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>Irreversible Action:</strong> Please audit all pending items before executing this batch commit.
             </div>
         </div>
-        <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; padding-bottom: 30px; background: transparent;">
+        <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; background: transparent; padding-bottom: 1.75rem;">
             <button type="button" class="btn btn-ghost" onclick="closeConfirmAllModal()">Cancel</button>
-            <button type="button" class="btn btn-amber" onclick="submitConfirmAll()">Commit All Now</button>
+            <button type="button" class="btn btn-amber" onclick="submitConfirmAll()" style="background: var(--emerald); color: #fff;">Commit All Now</button>
         </div>
     </div>
 </div>
@@ -968,6 +1123,7 @@ try {
 
     function openAddModal() {
         document.getElementById('modal-title').textContent = 'Add Utilities & Consumables Purchase';
+        // TARGET ID INSTEAD OF CLASS
         document.getElementById('btn-save').innerHTML = '<i class="fa-solid fa-floppy-disk me-2"></i> Save Purchase';
         document.getElementById('item-form').reset();
         document.getElementById('item-id').value = '';
@@ -989,6 +1145,7 @@ try {
             document.getElementById('pen_id').disabled = true;
         }
 
+        hideAlert();
         document.getElementById('modal').classList.add('show');
         setTimeout(() => { initAutocomplete(); }, 100);
     }
@@ -1015,28 +1172,54 @@ try {
     function displayItemDetails(data) {
         const categoryLabels = {0: 'Non-Consumable', 1: 'Consumable'};
         const html = `
-            <div class="info-group">
-                <h3>Acquisition Overview</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <p style="color:var(--text-secondary); margin:0;"><strong>System ID:</strong> <br><span class="val-mono">PCH-${String(data.item_id).padStart(5, '0')}</span></p>
-                    <p style="color:var(--text-secondary); margin:0;"><strong>Reference No:</strong> <br><span class="val-mono">${data.reference_no || 'N/A'}</span></p>
+            <div class="info-group" style="margin-top:0;">
+                <h3 style="margin-top:0;">Acquisition Overview</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">System ID</p>
+                        <span class="val-mono">PCH-${String(data.item_id).padStart(5, '0')}</span>
+                    </div>
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Reference No</p>
+                        <span class="val-mono">${data.reference_no || 'N/A'}</span>
+                    </div>
                 </div>
-                <p style="margin-top:15px; color:var(--text-primary);"><strong>Item Nomenclature:</strong> <br>${data.item_name}</p>
-                <p style="margin-top:10px; color:var(--text-secondary);"><strong>Supplier Origin:</strong> <br>${data.supplier || 'N/A'}</p>
-                <p style="margin-top:10px; color:var(--text-secondary);"><strong>Remarks:</strong> <br>${data.item_description || 'None'}</p>
+                <div style="margin-top:14px;">
+                    <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Item Nomenclature</p>
+                    <p style="color:var(--text-primary); font-weight:600;">${data.item_name}</p>
+                </div>
+                <div style="margin-top:12px;">
+                    <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Supplier Origin</p>
+                    <p style="color:var(--text-secondary);">${data.supplier || 'N/A'}</p>
+                </div>
+                <div style="margin-top:12px;">
+                    <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Remarks</p>
+                    <p style="color:var(--text-secondary);">${data.item_description || 'None'}</p>
+                </div>
             </div>
-            <div class="info-group" style="margin-top:20px;">
+            <div class="info-group">
                 <h3>Financials & Metrics</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <p style="color:var(--text-secondary); margin:0;"><strong>Batch Size:</strong> <br><span style="color:#fff;">${data.quantity || '0'} ${data.unit}</span></p>
-                    <p style="color:var(--text-secondary); margin:0;"><strong>Net Weight/Volume:</strong> <br><span class="val-mono">${data.net_weight || '0'}</span></p>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
-                    <p style="color:var(--text-secondary); margin:0;"><strong>Unit Cost:</strong> <br><span class="val-money">₱${parseFloat(data.unit_cost).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span></p>
-                    <p style="color:var(--text-secondary); margin:0;"><strong>Category:</strong> <br><span style="color:#fff;">${categoryLabels[data.item_category]}</span></p>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
-                    <p style="color:var(--text-secondary); margin:0;"><strong>Date Logged:</strong> <br><span class="val-mono">${data.purchase_date_fmt || 'N/A'}</span></p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Batch Size</p>
+                        <span style="color:#fff;">${data.quantity || '0'} ${data.unit}</span>
+                    </div>
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Net Weight/Volume</p>
+                        <span class="val-mono">${data.net_weight || '0'}</span>
+                    </div>
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Unit Cost</p>
+                        <span class="val-money">₱${parseFloat(data.unit_cost).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Category</p>
+                        <span style="color:#fff;">${categoryLabels[data.item_category]}</span>
+                    </div>
+                    <div>
+                        <p style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Date Logged</p>
+                        <span class="val-mono">${data.purchase_date_fmt || 'N/A'}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -1067,6 +1250,7 @@ try {
 
     function populateEditForm(data) {
         document.getElementById('modal-title').textContent = 'Edit Utilities & Consumables Purchase';
+        // TARGET ID INSTEAD OF CLASS
         document.getElementById('btn-save').innerHTML = '<i class="fa-solid fa-arrows-rotate me-2"></i> Update Purchase';
         document.getElementById('item-id').value = data.item_id;
         document.getElementById('item-name').value = data.item_name;
@@ -1120,6 +1304,8 @@ try {
         const formData = new FormData(form);
         const isEdit = document.getElementById('item-id').value !== '';
         const url = isEdit ? '../process/editUtilitiesAndConsumables.php' : '../process/addUtilitiesAndConsumables.php';
+        
+        // TARGET ID INSTEAD OF CLASS
         const saveBtn = document.getElementById('btn-save');
         
         saveBtn.disabled = true;
@@ -1152,14 +1338,14 @@ try {
         const t = document.createElement('div');
         t.className = 'toast';
         t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--yellow)'}`;
-        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        t.innerHTML = `${type === 'error' ? ' ' : ' '} ${msg}`;
         document.getElementById('toastContainer').appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }
 
     function hideAlert() {
         const alert = document.getElementById('modal-alert');
-        alert.style.display = 'none';
+        if(alert) alert.style.display = 'none';
     }
 
     function closeModal() {

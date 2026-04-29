@@ -75,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_sale'])) {
         $audit_stmt->execute([$user_id, $username, $audit_action, $audit_details, $ip_address]);
 
         $conn->commit();
-        $message = "<div class='alert alert-success'>✅ Sale Confirmed! Profit: ₱" . number_format($profit, 2) . "</div>";
+        $message = "<div class='alert alert-success'>  Sale Confirmed! Profit: ₱" . number_format($profit, 2) . "</div>";
         
     } catch (Exception $e) {
         $conn->rollBack();

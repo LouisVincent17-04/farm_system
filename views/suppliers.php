@@ -165,7 +165,7 @@ try {
         .badge.inactive { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
 
         /* Actions */
-        .actions { display: flex; gap: 8px; }
+        .actions { display: flex; gap: 8px; justify-content: center; }
         .action-btn {
             width: 32px; height: 32px; border-radius: 6px;
             border: 1px solid var(--border); background: var(--bg-elevated);
@@ -217,10 +217,11 @@ try {
         @media (max-width: 768px) {
             .page-header { flex-direction: column; align-items: flex-start; }
             .header-info { text-align: left; }
-            .btn-add { width: 100%; }
+            .btn-add { width: 100%; justify-content: center; }
 
-            .table-wrap { border: none; background: transparent; }
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; }
+            .table-wrap { border: none; background: transparent; overflow-x: visible; box-shadow: none; }
+            .table { min-width: 100%; } /* CRITICAL FIX */
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; box-sizing: border-box; }
             .table thead { display: none; }
             .table tbody tr { 
                 background: var(--bg-surface); border: 1px solid var(--border); 
@@ -228,17 +229,25 @@ try {
             }
             .table td { 
                 display: flex; justify-content: space-between; align-items: center; 
-                padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right;
+                padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
             .table td:last-child { border-bottom: none; justify-content: flex-end; padding-top: 1rem; }
             .table td::before { 
                 content: attr(data-label); font-weight: 700; color: var(--text-muted); 
-                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0;
+                font-size: 0.75rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-right: 1rem;
             }
+            
+            /* Hide the data-label for the Company Name to make it a clean card header */
+            .table td[data-label="Company"] { display: block; text-align: left; padding-bottom: 1rem; margin-bottom: 0.5rem; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+            .table td[data-label="Company"]::before { display: none; }
+            
+            .table td[data-label="Actions"] { border-top: 1px dashed var(--border); margin-top: 10px; }
+            .table td[data-label="Actions"]::before { display: none; }
             .actions { justify-content: flex-end; width: 100%; }
+            
             .supplier-form-row { grid-template-columns: 1fr; gap: 0; }
-            .supplier-modal-actions { flex-direction: column; }
-            .supplier-modal-actions button { width: 100%; }
+            .supplier-modal-actions { flex-direction: column-reverse; }
+            .supplier-modal-actions button { width: 100%; justify-content: center; margin: 0; }
         }
     </style>
 </head>
@@ -352,7 +361,7 @@ try {
                     <input type="text" id="address" name="address" class="supplier-form-input" placeholder="City, Province, HQ location">
                 </div>
 
-                <div class="supplier-form-group">
+                <div class="supplier-form-group" style="margin-bottom: 0;">
                     <label class="supplier-form-label">Operational Status</label>
                     <select id="status" name="status" class="supplier-form-select">
                         <option value="Active">Active</option>

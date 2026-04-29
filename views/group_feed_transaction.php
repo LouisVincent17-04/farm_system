@@ -260,7 +260,7 @@ try {
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
         /* ═══════════════════════════════════════════
-           ─── MODAL ───
+            ─── MODAL ───
         ═══════════════════════════════════════════ */
         .modal {
             display: none;
@@ -393,7 +393,7 @@ try {
         }
 
         /* Form Elements */
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-end; }
         .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
         .form-label {
             font-size: 0.7rem;
@@ -522,7 +522,7 @@ try {
         }
         .summary-inner {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
             gap: 1rem;
             flex-wrap: wrap;
@@ -533,21 +533,15 @@ try {
             text-transform: uppercase;
             font-weight: 700;
             letter-spacing: 0.07em;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
-        .summary-value {
-            font-size: 2.2rem;
-            font-weight: 800;
-            color: var(--amber);
-            font-family: var(--font-mono);
-            line-height: 1;
+        
+        .feed-breakdown-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
-        .summary-value-unit {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-left: 4px;
-        }
+
         .summary-stats {
             display: flex;
             flex-direction: column;
@@ -629,7 +623,7 @@ try {
             .container { padding: 1rem; }
             .header-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
             .btn-base { justify-content: center; }
-            .form-row { grid-template-columns: 1fr; gap: 0; }
+            .form-row { flex-direction: column; gap: 0; }
             .modal-footer { flex-direction: column; }
             .modal-footer button { width: 100%; }
             .modal-body { padding: 1.25rem; }
@@ -739,9 +733,6 @@ try {
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════
-         MODAL
-    ═══════════════════════════════════════════ -->
     <div id="modal" class="modal">
         <div class="modal-content">
 
@@ -759,13 +750,12 @@ try {
             <div class="modal-body">
                 <form id="bulk-feed-form">
 
-                    <!-- STEP 1 -->
                     <div class="step-label">
                         <span class="step-number">1</span>
                         <span class="step-title">Target Area &amp; Animals</span>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr;">
                         <div class="form-group" style="margin:0;">
                             <label class="form-label">Location</label>
                             <select id="location_id" class="form-select" onchange="handleLocationChange()" <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?>>
@@ -787,7 +777,7 @@ try {
                         </div>
                     </div>
 
-                    <div class="form-group" id="animal-selection-group" style="display:none; margin-bottom:0;">
+                    <div class="form-group" id="animal-selection-group" style="display:none; margin-bottom:0; margin-top:1rem;">
                         <label class="form-label">
                             Pens &amp; Animals
                             <i id="pen-loading" class="fa-solid fa-spinner fa-spin" style="display:none; color:var(--amber); margin-left:6px;"></i>
@@ -795,62 +785,53 @@ try {
                         <div id="pens-container" class="pens-list-container"></div>
                     </div>
 
-                    <!-- STEP 2 -->
-                    <div id="feed-section" style="opacity:0.3; pointer-events:none; transition:opacity 0.3s ease; margin-top:1.5rem;">
+                    <div id="feed-section" style="opacity:0.3; pointer-events:none; transition:opacity 0.3s ease; margin-top:2rem;">
                         <div class="step-label">
                             <span class="step-number">2</span>
                             <span class="step-title">Feeding Details</span>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Feed Selection</label>
-                            <select id="feed_id" class="form-select" onchange="calculateTotal()" disabled>
-                                <option value="">Select location first</option>
-                            </select>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                                <a href="purch_feeds_feeding.php" target="_blank" class="resource-link">
-                                    Manage / Purchase Feeds
-                                    <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.7rem;"></i>
-                                </a>
-                                <button type="button" id="refresh-feeds-btn" class="btn-mini" onclick="refreshFeedsList()">
-                                    <i class="fa-solid fa-rotate-right"></i> Sync
-                                </button>
+                            <label class="form-label">Distribution Calculation Method</label>
+                            <div class="method-toggle">
+                                <button type="button" class="method-btn active" id="method-per-head" onclick="setMethod('head')">Per Head (Multiply by Animals)</button>
+                                <button type="button" class="method-btn" id="method-total" onclick="setMethod('total')">Total Group (Divide by Animals)</button>
                             </div>
+                            <input type="hidden" id="calc_method" value="head">
                         </div>
 
-                        <div class="form-row" style="margin:0;">
-                            <div class="form-group" style="margin:0;">
-                                <label class="form-label">Distribution Method</label>
-                                <div class="method-toggle">
-                                    <button type="button" class="method-btn active" id="method-per-head" onclick="setMethod('head')">Per Head</button>
-                                    <button type="button" class="method-btn" id="method-total" onclick="setMethod('total')">Total Group</button>
+                        <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                                <label class="form-label" style="margin:0;">Select Feeds &amp; Quantities</label>
+                                <div style="display:flex; gap:10px;">
+                                    <a href="purch_feeds_feeding.php" target="_blank" class="resource-link">Manage Stock <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.7rem;"></i></a>
+                                    <button type="button" id="refresh-feeds-btn" class="btn-mini" onclick="refreshFeedsList()"><i class="fa-solid fa-rotate-right"></i> Sync</button>
                                 </div>
-                                <input type="hidden" id="calc_method" value="head">
-                                <input type="number" id="input_qty" class="form-control" step="0.01" min="0.01" placeholder="e.g. 0.5 kg per animal" oninput="calculateTotal()">
                             </div>
-                            <div class="form-group" style="margin:0;">
-                                <label class="form-label">Date &amp; Time</label>
-                                <input type="text" id="transaction_date" class="form-control date-picker" placeholder="Select date &amp; time" required>
-                            </div>
+                            
+                            <div id="feed-rows-container" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                                </div>
+                            
+                            <button type="button" class="btn-mini" style="margin-top:8px; align-self:flex-start;" onclick="addFeedRow()">
+                                <i class="fa-solid fa-plus"></i> Add Another Feed
+                            </button>
+                        </div>
+
+                        <div class="form-group" style="margin-top:1rem;">
+                            <label class="form-label">Date &amp; Time</label>
+                            <input type="text" id="transaction_date" class="form-control date-picker" placeholder="Select date &amp; time" required>
                         </div>
                     </div>
 
-                    <!-- SUMMARY -->
                     <div class="summary-box" id="summary-box">
                         <div class="summary-inner">
                             <div class="summary-main">
-                                <div class="summary-title">Total Stock Deduction</div>
-                                <div class="summary-value">
-                                    <span id="total-deduction">0.00</span><span class="summary-value-unit">kg</span>
-                                </div>
+                                <div class="summary-title">Total Deductions Required</div>
+                                <div id="feed-breakdown" class="feed-breakdown-list">
+                                    </div>
                             </div>
                             <div class="summary-stats">
-                                <div class="summary-stat">
-                                    Animals &nbsp;<strong id="animal-count-display">0</strong>
-                                </div>
-                                <div class="summary-stat">
-                                    Per head &nbsp;<strong id="per-head-display">0.00</strong> kg
-                                </div>
+                                <div class="summary-stat">Animals Selected &nbsp;<strong id="animal-count-display">0</strong></div>
                             </div>
                         </div>
                         <div id="stock-warning" class="stock-warning">
@@ -874,6 +855,7 @@ try {
     <script>
         let allFeeds = <?php echo json_encode($feeds); ?>;
         const USER_LOCATION = <?php echo json_encode($USER_LOCATION_); ?>;
+        let currentFilteredFeeds = [];
         let currentAnimalCount = 0;
         let fpTransactionDate;
 
@@ -901,18 +883,16 @@ try {
         function setMethod(method) {
             const btnHead  = document.getElementById('method-per-head');
             const btnTotal = document.getElementById('method-total');
-            const inputField = document.getElementById('input_qty');
-
             document.getElementById('calc_method').value = method;
 
             if (method === 'head') {
                 btnHead.classList.add('active');
                 btnTotal.classList.remove('active');
-                inputField.placeholder = "e.g. 0.5 kg per animal";
+                document.querySelectorAll('.feed-qty').forEach(inp => inp.placeholder = "kg per head");
             } else {
                 btnTotal.classList.add('active');
                 btnHead.classList.remove('active');
-                inputField.placeholder = "e.g. 25 kg total to split";
+                document.querySelectorAll('.feed-qty').forEach(inp => inp.placeholder = "kg total");
             }
             calculateTotal();
         }
@@ -943,35 +923,54 @@ try {
             updateSelection();
         }
 
+        /* ── DYNAMIC FEED ROWS ── */
         function filterFeedsByLocation() {
             const locId = document.getElementById('location_id').value;
-            const feedSelect = document.getElementById('feed_id');
-            feedSelect.innerHTML = '<option value="">Select Feed</option>';
-
             if (!locId) {
-                feedSelect.disabled = true;
-                feedSelect.innerHTML = '<option value="">Select location first</option>';
-                return;
-            }
-
-            const filteredFeeds = allFeeds.filter(feed => feed.LOCATION_ID == locId);
-
-            if (filteredFeeds.length > 0) {
-                feedSelect.disabled = false;
-                filteredFeeds.forEach(feed => {
-                    const opt = document.createElement('option');
-                    opt.value = feed.FEED_ID;
-                    opt.textContent = `${feed.FEED_NAME}  (Stock: ${feed.TOTAL_WEIGHT_KG} kg)`;
-                    opt.dataset.stock = feed.TOTAL_WEIGHT_KG;
-                    feedSelect.appendChild(opt);
-                });
+                currentFilteredFeeds = [];
             } else {
-                feedSelect.disabled = true;
-                feedSelect.innerHTML = '<option value="">No feeds available at this location</option>';
+                currentFilteredFeeds = allFeeds.filter(feed => feed.LOCATION_ID == locId);
             }
+            
+            // Reset the rows
+            document.getElementById('feed-rows-container').innerHTML = '';
+            addFeedRow(); 
             calculateTotal();
         }
 
+        function getFeedOptionsHTML() {
+            if (currentFilteredFeeds.length === 0) return '<option value="">No feeds available</option>';
+            let html = '';
+            currentFilteredFeeds.forEach(feed => {
+                html += `<option value="${feed.FEED_ID}" data-stock="${feed.TOTAL_WEIGHT_KG}" data-name="${feed.FEED_NAME}">${feed.FEED_NAME} (Stock: ${feed.TOTAL_WEIGHT_KG} kg)</option>`;
+            });
+            return html;
+        }
+
+        function addFeedRow() {
+            const container = document.getElementById('feed-rows-container');
+            const rowCount = container.children.length;
+            const method = document.getElementById('calc_method').value;
+            const placeholder = method === 'head' ? 'kg per head' : 'kg total';
+            
+            const row = document.createElement('div');
+            row.className = 'form-row feed-row';
+            row.innerHTML = `
+                <div class="form-group" style="margin:0; flex: 2;">
+                    <select class="form-select feed-select" onchange="calculateTotal()" required>
+                        <option value="">Select Feed</option>
+                        ${getFeedOptionsHTML()}
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0; flex: 1;">
+                    <input type="number" class="form-control feed-qty" step="0.01" min="0.01" placeholder="${placeholder}" oninput="calculateTotal()" required>
+                </div>
+                ${rowCount > 0 ? `<button type="button" class="btn-close" style="margin-bottom:4px;" onclick="this.closest('.feed-row').remove(); calculateTotal();"><i class="fa-solid fa-trash"></i></button>` : `<div style="width:32px;"></div>`}
+            `;
+            container.appendChild(row);
+        }
+
+        /* ── BUILDING & ANIMAL LOADERS ── */
         async function loadBuildings() {
             const locId = document.getElementById('location_id').value;
             const bldg  = document.getElementById('building_id');
@@ -1079,48 +1078,70 @@ try {
             calculateTotal();
         }
 
-        /* ── CALCULATOR ── */
+        /* ── CALCULATOR FOR MULTIPLE FEEDS ── */
         function calculateTotal() {
-            const method   = document.getElementById('calc_method').value;
-            const rawInput = parseFloat(document.getElementById('input_qty').value) || 0;
+            if (currentAnimalCount === 0) return;
 
-            let totalToDeduct = 0;
-            let qtyPerHead    = 0;
+            const method = document.getElementById('calc_method').value;
+            const feedRows = document.querySelectorAll('.feed-row');
+            
+            let allValid = true;
+            let hasAtLeastOneFeed = false;
+            let breakdownHTML = '';
+            let anyStockError = false;
 
-            if (currentAnimalCount > 0) {
-                if (method === 'head') {
-                    qtyPerHead    = rawInput;
-                    totalToDeduct = currentAnimalCount * rawInput;
+            feedRows.forEach(row => {
+                const select = row.querySelector('.feed-select');
+                const qtyInput = row.querySelector('.feed-qty');
+                
+                const opt = select.options[select.selectedIndex];
+                const rawQty = parseFloat(qtyInput.value) || 0;
+
+                if (opt && opt.value && rawQty > 0) {
+                    hasAtLeastOneFeed = true;
+                    
+                    let totalToDeduct = (method === 'head') ? (rawQty * currentAnimalCount) : rawQty;
+                    let qtyPerHead    = (method === 'head') ? rawQty : (rawQty / currentAnimalCount);
+                    
+                    const stock = parseFloat(opt.dataset.stock || 0);
+                    const feedName = opt.dataset.name;
+                    
+                    const isOverStock = totalToDeduct > stock;
+                    if(isOverStock) { anyStockError = true; allValid = false; }
+                    
+                    breakdownHTML += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.15); padding:8px 12px; border-radius:6px;">
+                            <span style="font-size:0.85rem; color:#fff; font-weight:600;">${feedName}</span>
+                            <div style="text-align:right;">
+                                <span style="font-family:var(--font-mono); font-weight:700; font-size:1.1rem; color:${isOverStock ? '#ef4444' : 'var(--amber)'};">${totalToDeduct.toFixed(2)}<span style="font-size:0.7rem; margin-left:2px;">kg total</span></span>
+                                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(${qtyPerHead.toFixed(2)} kg/head • Stock: ${stock.toFixed(2)} kg)</div>
+                            </div>
+                        </div>
+                    `;
                 } else {
-                    totalToDeduct = rawInput;
-                    qtyPerHead    = rawInput / currentAnimalCount;
+                    if (opt.value || rawQty > 0) {
+                        allValid = false; // They filled out half a row
+                    }
                 }
-            }
+            });
 
             document.getElementById('animal-count-display').textContent = currentAnimalCount;
-            document.getElementById('per-head-display').textContent     = qtyPerHead.toFixed(2);
-            document.getElementById('total-deduction').textContent      = totalToDeduct.toFixed(2);
+            
+            if (breakdownHTML === '') {
+                breakdownHTML = '<span style="color:var(--text-muted); font-size:0.85rem; font-style:italic;">Enter feed quantities to see deduction.</span>';
+            }
+            document.getElementById('feed-breakdown').innerHTML = breakdownHTML;
 
-            const feed = document.getElementById('feed_id');
-            const opt  = feed.options[feed.selectedIndex];
             const warn = document.getElementById('stock-warning');
             const btn  = document.getElementById('btn-save');
 
-            if (opt && opt.dataset.stock) {
-                const stock = parseFloat(opt.dataset.stock);
-                if (totalToDeduct > stock) {
-                    warn.style.display = 'flex';
-                    warn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>&nbsp; Insufficient stock — only ${stock.toFixed(2)} kg available.`;
-                    btn.disabled = true;
-                } else if (totalToDeduct <= 0) {
-                    warn.style.display = 'none';
-                    btn.disabled = true;
-                } else {
-                    warn.style.display = 'none';
-                    btn.disabled = false;
-                }
-            } else {
+            if (anyStockError) {
+                warn.style.display = 'flex';
+                warn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>&nbsp; Insufficient stock for one or more feeds selected.`;
                 btn.disabled = true;
+            } else {
+                warn.style.display = 'none';
+                btn.disabled = (!allValid || !hasAtLeastOneFeed);
             }
         }
 
@@ -1155,15 +1176,31 @@ try {
             });
         }
 
-        /* ── SUBMIT ── */
+        /* ── SUBMIT ARRAY PAYLOAD ── */
         function saveBulkFeed() {
             const animalCbs = document.querySelectorAll('.animal-cb:checked');
-            const feedId    = document.getElementById('feed_id').value;
             const date      = document.getElementById('transaction_date').value;
-            const qtyPerHead = parseFloat(document.getElementById('per-head-display').textContent);
+            const method    = document.getElementById('calc_method').value;
 
-            if (animalCbs.length === 0)        { showToast("Please select at least one animal.", "error"); return; }
-            if (!feedId || qtyPerHead <= 0 || !date) { showToast("Please fill in all feeding details.", "error"); return; }
+            if (animalCbs.length === 0) { showToast("Please select at least one animal.", "error"); return; }
+            if (!date) { showToast("Please select a date and time.", "error"); return; }
+
+            // Gather all valid feeds
+            const feedsPayload = [];
+            document.querySelectorAll('.feed-row').forEach(row => {
+                const feedId = row.querySelector('.feed-select').value;
+                const rawQty = parseFloat(row.querySelector('.feed-qty').value) || 0;
+                
+                if (feedId && rawQty > 0) {
+                    const qtyPerHead = (method === 'head') ? rawQty : (rawQty / currentAnimalCount);
+                    feedsPayload.push({
+                        feed_id: feedId,
+                        qty_per_head: qtyPerHead
+                    });
+                }
+            });
+
+            if (feedsPayload.length === 0) { showToast("Please select at least one feed and quantity.", "error"); return; }
 
             const btn = document.getElementById('btn-save');
             btn.disabled  = true;
@@ -1171,8 +1208,7 @@ try {
 
             const fd = new FormData();
             animalCbs.forEach(cb => fd.append('animal_ids[]', cb.value));
-            fd.append('feed_id', feedId);
-            fd.append('qty_per_head', qtyPerHead);
+            fd.append('feeds', JSON.stringify(feedsPayload)); // Sending as a JSON string
             fd.append('transaction_date', date);
 
             fetch('../process/addFeedTransaction.php', { method: 'POST', body: fd })
@@ -1212,8 +1248,13 @@ try {
                 bldg.innerHTML = '<option value="">Select location first</option>';
                 bldg.disabled  = true;
                 document.getElementById('animal-selection-group').style.display = 'none';
-                document.getElementById('feed_id').innerHTML = '<option value="">Select location first</option>';
-                document.getElementById('feed_id').disabled  = true;
+                
+                document.getElementById('feed-rows-container').innerHTML = '';
+                addFeedRow();
+                document.querySelector('.feed-select').innerHTML = '<option value="">Select location first</option>';
+                document.querySelector('.feed-select').disabled  = true;
+                document.querySelector('.feed-qty').disabled = true;
+                
                 updateSelection();
             }
         }
@@ -1222,9 +1263,9 @@ try {
             document.getElementById('modal').classList.remove('show');
         }
 
-        window.onclick = function(e) {
-            if (e.target.classList.contains('modal')) closeModal();
-        };
+        // window.onclick = function(e) {
+        //     if (e.target.classList.contains('modal')) closeModal();
+        // };
 
         /* ── SEARCH ── */
         function filterTable() {

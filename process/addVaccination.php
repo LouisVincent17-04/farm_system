@@ -163,13 +163,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 9. COMMIT
         $conn->commit(); 
         $response['success'] = true;
-        $response['message'] = "✅ Vaccination recorded successfully.";
+        $response['message'] = "  Vaccination recorded successfully.";
             
     } catch (Exception $e) {
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        $response['message'] = '❌ Error: ' . $e->getMessage();
+        $response['message'] = '  Error: ' . $e->getMessage();
     }
 } else {
     $response['message'] = 'Invalid request method.';

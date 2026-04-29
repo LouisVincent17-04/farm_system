@@ -22,6 +22,9 @@ include '../common/navbar.php';
 include '../common/chat_support.php';
 include '../common/upcoming_birth_modal.php';
 
+// Fetch active farm name from session (fallback to 'My Farm' if not set)
+$active_farm_name = $_SESSION['farm_name'] ?? 'My Farm';
+
 // Fetch quick counts
 $emp_count = 0;
 $role_count = 0;
@@ -34,6 +37,7 @@ try {
     $total_animals = $conn->query("SELECT COUNT(*) FROM animal_records WHERE IS_ACTIVE = 1")->fetchColumn();
     $total_buildings = $conn->query("SELECT COUNT(*) FROM buildings")->fetchColumn();    
     $total_pens = $conn->query("SELECT COUNT(*) FROM pens")->fetchColumn();  
+    $total_breeds = $conn->query("SELECT COUNT(*) FROM breeds")->fetchColumn(); // Added count for breeds
 } catch(Exception $e) {}
 ?>
 
@@ -83,8 +87,17 @@ try {
 
         /* ─── HEADER ─── */
         .admin-header { text-align: center; margin-bottom: 3.5rem; }
+        
+        .farm-badge {
+            display: inline-flex; align-items: center; gap: 8px; 
+            background: var(--green-glow); color: var(--green); 
+            padding: 6px 16px; border-radius: 99px; margin-bottom: 1rem; 
+            font-weight: 700; font-size: 1.5rem; letter-spacing: 0.05em; 
+            border: 1px solid rgba(34,197,94,0.3); text-transform: uppercase;
+        }
+
         .admin-title {
-            font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.04em; margin-bottom: 0.75rem;
+            font-size: clamp(1.25rem, 5vw, 2rem); font-weight: 700; letter-spacing: -0.04em; margin-bottom: 0.75rem;
             background: linear-gradient(135deg, #fff 30%, var(--text-secondary));
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
@@ -139,6 +152,7 @@ try {
         .ic-staff  { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.2); }
         .ic-roles  { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
         .ic-species{ background: rgba(132, 204, 22, 0.1); color: #84cc16; border: 1px solid rgba(132, 204, 22, 0.2); }
+        .ic-breed  { background: rgba(250, 204, 21, 0.1); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.2); }
         .ic-loc    { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.2); }
         .ic-infra  { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
         .ic-vet    { background: rgba(236, 72, 153, 0.1); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.2); }
@@ -175,7 +189,11 @@ try {
 <body>
     <div class="admin-container">
         <header class="admin-header">
-            <h1 class="admin-title">Management <span>Center</span></h1>
+            <div class="farm-badge" onclick="window.location.href='../globalxadminzportal/my_farms.php'">
+                <i class="fa-solid fa-tractor"></i> <?= htmlspecialchars($active_farm_name) ?>
+            </div>
+
+            <h2 class="admin-title">Management <span>Center</span></h2>
             <p class="admin-subtitle">Configure, maintain, and oversee your global farm infrastructure and personnel data from a centralized hub.</p>
         </header>
 
@@ -240,6 +258,18 @@ try {
             </a>
             <?php endif; ?>
 
+            <?php if( hasAccess('breed') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
+            <a href="breed.php" class="management-card">
+                <div class="card-icon ic-breed"><i class="fa-solid fa-fingerprint"></i></div>
+                <h3 class="card-title">Animal Breeds</h3>
+                <p class="card-description">Manage specific genetic breeds tied to your animal species registry.</p>
+                <div class="card-footer">
+                    <div class="mini-stat"><span class="mini-val"><?= $total_breeds ?></span><span class="mini-lbl">Registered Breeds</span></div>
+                    <div class="btn-go"><i class="fa-solid fa-arrow-right"></i></div>
+                </div>
+            </a>
+            <?php endif; ?>
+
             <?php if( hasAccess('location') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="location.php" class="management-card">
                 <div class="card-icon ic-loc"><i class="fa-solid fa-map-location-dot"></i></div>
@@ -256,7 +286,7 @@ try {
             <a href="building.php" class="management-card">
                 <div class="card-icon ic-infra"><i class="fa-solid fa-warehouse"></i></div>
                 <h3 class="card-title">Buildings</h3>
-                <p class="card-description">Buildings inside the Location</p>
+                <p class="card-description">Manage specific housing structures, barns, and storage facilities within a location.</p>
                 <div class="card-footer">
                     <div class="mini-stat"><span class="mini-val"><?= $total_buildings ?></span><span class="mini-lbl">Structures</span></div>
                     <div class="btn-go"><i class="fa-solid fa-arrow-right"></i></div>
@@ -270,11 +300,11 @@ try {
                     <i class="fa-solid fa-paw"></i>
                 </div>
                 <h3 class="card-title">Pens</h3>
-                <p class="card-description">Pens inside the building.</p>
+                <p class="card-description">Manage individual holding pens, capacities, and group assignments inside buildings.</p>
                 <div class="card-footer">
                     <div class="mini-stat">
                         <span class="mini-val"><?= $total_pens ?></span>
-                        <span class="mini-lbl">Structures</span>
+                        <span class="mini-lbl">Holdings</span>
                     </div>
                     <div class="btn-go">
                         <i class="fa-solid fa-arrow-right"></i>
@@ -283,7 +313,7 @@ try {
             </a>
         <?php endif; ?>
 
-            <?php if( hasAccess('veterinary' || $_SESSION['user']['USER_TYPE'] < 3) == 1): ?>
+            <?php if( hasAccess('veterinary') == 1 || $_SESSION['user']['USER_TYPE'] < 3): ?>
             <a href="veterinary.php" class="management-card">
                 <div class="card-icon ic-vet"><i class="fa-solid fa-user-md"></i></div>
                 <h3 class="card-title">Veterinary</h3>

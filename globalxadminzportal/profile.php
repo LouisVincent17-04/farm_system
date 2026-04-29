@@ -18,6 +18,7 @@ if (!$admin) { session_destroy(); header('Location: login.php'); exit; }
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile | FarmPro Admin</title>
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap');
 
@@ -278,7 +279,7 @@ if (!$admin) { session_destroy(); header('Location: login.php'); exit; }
             { w: '25%',  bg: '#ef4444', t: 'Weak' },
             { w: '50%',  bg: '#f59e0b', t: 'Fair' },
             { w: '75%',  bg: '#60a5fa', t: 'Good' },
-            { w: '100%', bg: '#34d399', t: 'Strong ✅' },
+            { w: '100%', bg: '#34d399', t: 'Strong  ' },
         ];
         const l = levels[score] || levels[0];
         bar.style.width = l.w; bar.style.background = l.bg; hint.textContent = l.t;
@@ -292,7 +293,7 @@ if (!$admin) { session_destroy(); header('Location: login.php'); exit; }
         };
         const res  = await fetch('updateProfile.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const data = await res.json();
-        showAlert(data.success ? 'success' : 'error', (data.success ? '✅ ' : '❌ ') + data.message);
+        showAlert(data.success ? 'success' : 'error', (data.success ? '  ' : '  ') + data.message);
     }
 
     async function savePassword() {
@@ -300,16 +301,16 @@ if (!$admin) { session_destroy(); header('Location: login.php'); exit; }
         const newPw   = document.getElementById('new_pw').value;
         const confirm = document.getElementById('confirm_pw').value;
 
-        if (!current || !newPw || !confirm) { showAlert('error', '❌ All password fields are required.'); return; }
-        if (newPw.length < 8) { showAlert('error', '❌ New password must be at least 8 characters.'); return; }
-        if (newPw !== confirm) { showAlert('error', '❌ New passwords do not match.'); return; }
+        if (!current || !newPw || !confirm) { showAlert('error', '  All password fields are required.'); return; }
+        if (newPw.length < 8) { showAlert('error', '  New password must be at least 8 characters.'); return; }
+        if (newPw !== confirm) { showAlert('error', '  New passwords do not match.'); return; }
 
         const res  = await fetch('updateProfile.php', {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ action: 'update_password', current_password: current, new_password: newPw })
         });
         const data = await res.json();
-        showAlert(data.success ? 'success' : 'error', (data.success ? '✅ ' : '❌ ') + data.message);
+        showAlert(data.success ? 'success' : 'error', (data.success ? '  ' : '  ') + data.message);
         if (data.success) { document.getElementById('current_pw').value = ''; document.getElementById('new_pw').value = ''; document.getElementById('confirm_pw').value = ''; checkStrength(); }
     }
 </script>

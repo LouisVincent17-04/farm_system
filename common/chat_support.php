@@ -340,7 +340,7 @@
                 'network':       '🌐 Network error during speech recognition.',
                 'audio-capture': '🎤 No microphone found.',
             };
-            appendBotHTML(msgs[e.error] || `❌ Voice error: ${e.error}`);
+            appendBotHTML(msgs[e.error] || `  Voice error: ${e.error}`);
         });
 
         micBtn.addEventListener('click', () => {
@@ -401,7 +401,7 @@
                 typingEl.remove();
 
                 if (!data.devices || data.devices.length === 0) {
-                    appendBotHTML('❌ No devices registered. Run <code>test_runner_server.py</code> on a device first.');
+                    appendBotHTML('  No devices registered. Run <code>test_runner_server.py</code> on a device first.');
                     return;
                 }
 
@@ -426,7 +426,7 @@
             })
             .catch(() => {
                 typingEl.remove();
-                appendBotHTML('❌ Could not fetch registered devices. Check server.');
+                appendBotHTML('  Could not fetch registered devices. Check server.');
             });
 
             return; // ← stop here, don't send to AI
@@ -470,7 +470,7 @@
             if (err.name === 'AbortError') {
                 appendBotHTML('⏱️ Request timed out. Make sure the Python AI server is running.');
             } else {
-                appendBotHTML('❌ Error: ' + err.message);
+                appendBotHTML('  Error: ' + err.message);
             }
         })
         .finally(() => {
@@ -590,12 +590,12 @@
             appendBotHTML(
                 data.success
                     ? `🧪 ${data.message}`
-                    : `❌ ${data.message}`
+                    : `  ${data.message}`
             );
         })
         .catch(() => {
             typingEl.remove();
-            appendBotHTML(`❌ Could not reach runner on <strong>${device}</strong>.`);
+            appendBotHTML(`  Could not reach runner on <strong>${device}</strong>.`);
         });
     };
 })();

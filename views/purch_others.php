@@ -130,6 +130,7 @@ try {
             --bg-hover:       #162540;
             --border:         rgba(255,255,255,0.07);
             --border-active:  rgba(236,72,153,0.5);
+            
             --pink:           #ec4899;
             --pink-dim:       rgba(236,72,153,0.12);
             --pink-glow:      rgba(236,72,153,0.25);
@@ -142,9 +143,11 @@ try {
             --blue-dim:       rgba(59,130,246,0.12);
             --red:            #f87171;
             --red-dim:        rgba(248,113,113,0.12);
+            
             --text-primary:   #f1f5f9;
             --text-secondary: #94a3b8;
             --text-muted:     #475569;
+            
             --radius-md:      10px;
             --radius-lg:      14px;
             --radius-xl:      20px;
@@ -192,12 +195,8 @@ try {
 
         /* ─── HEADER ─── */
         .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;  /* FIX: was flex-end, center looks better */
-            margin-bottom: 1.75rem;
-            gap: 1.5rem;
-            flex-wrap: wrap;
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 1.75rem; gap: 1.5rem; flex-wrap: wrap;
         }
         .header-info h1 {
             font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
@@ -275,6 +274,7 @@ try {
         }
         .confirm-btn:hover { background: var(--red); color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
 
+        /* Categories */
         .category-badge {
             display: inline-block; padding: 3px 9px; border-radius: 9999px;
             font-size: 0.72rem; font-weight: 600; white-space: nowrap; text-transform: uppercase;
@@ -302,19 +302,35 @@ try {
         .empty-state i { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block; }
         .empty-state p { margin-top: 0.5rem; }
 
-        /* ─── MODALS ─── */
+        /* ═══════════════════════════════════════════════
+           MODAL SYSTEM — Overflow-Safe, Zoom-Resistant
+        ═══════════════════════════════════════════════ */
         .modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82);
-            backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;
-            padding: 1rem;
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 1100;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 80px 1rem 2rem;
         }
-        .modal.show { display: flex; }
+        .modal.show { display: flex; align-items: flex-start; justify-content: center; }
         
         .modal-content {
-            background: var(--bg-surface); border: 1px solid var(--border);
-            border-radius: var(--radius-xl); width: 100%; max-width: 660px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6); display: flex; flex-direction: column;
-            max-height: 90vh; animation: modalZoom 0.2s ease-out;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            animation: modalZoom 0.2s ease-out;
+            max-height: 96vh;
         }
         @keyframes modalZoom { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
@@ -324,6 +340,7 @@ try {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-shrink: 0;
         }
         .modal-header h2 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #fff; }
         .modal-close {
@@ -333,52 +350,61 @@ try {
             transition: all var(--transition); font-size: 0.8rem;
         }
         .modal-close:hover { background: var(--bg-elevated); color: var(--text-primary); }
-        .modal-body { padding: 1.5rem; overflow-y: auto; }
+        
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        .modal-body::-webkit-scrollbar { width: 8px; height: 8px; }
+        .modal-body::-webkit-scrollbar-track { background: transparent; }
+        .modal-body::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+
         .modal-footer {
             padding: 1rem 1.5rem; border-top: 1px solid var(--border);
             display: flex; justify-content: flex-end; gap: 10px;
             background: var(--bg-elevated); border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            flex-shrink: 0;
         }
 
-        /* ─── FORM ELEMENTS ─── */
-        /*
-            FIX: Unified form-row / form-group spacing.
-            Removed the duplicate margin-bottom from .form-group.full-width;
-            gap on .form-row handles vertical rhythm instead.
-        */
-        .form-section { margin-bottom: 1.5rem; }
-        .form-section:last-child { margin-bottom: 0; }
+        /* ═══════════════════════════════════════════════
+           FORM LAYOUT — Consistent Grid System
+        ═══════════════════════════════════════════════ */
+        .info-group { margin-bottom: 0; }
+        .info-group + .info-group { margin-top: 1.75rem; }
 
-        .form-section-title {
+        .info-group h3 {
             font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
             color: var(--pink); letter-spacing: 0.08em;
-            margin-bottom: 1rem; padding-bottom: 8px;
+            margin: 0 0 1rem 0; padding-bottom: 8px;
             border-bottom: 1px solid var(--border);
         }
 
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; } /* FIX: explicit 3-col grid for location row */
-        .form-row + .form-row { margin-top: 1rem; }
+        .form-stack { display: flex; flex-direction: column; gap: 1rem; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+        .form-row-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
 
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group.span-2 { grid-column: 1 / -1; } /* FIX: replaced .full-width with span-2 */
+        .form-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .form-group.full-width { grid-column: 1 / -1; }
         
         .form-label {
             font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
-            color: var(--text-secondary); letter-spacing: 0.05em;
+            color: var(--text-secondary); letter-spacing: 0.05em; white-space: nowrap;
         }
-        .form-label .req { color: var(--red); }
+        .form-label span { color: var(--red); }
         .form-label .opt { color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
         
         .form-control, .form-select {
             width: 100%; padding: 9px 12px; background: var(--bg-elevated);
             border: 1px solid var(--border); color: var(--text-primary);
             border-radius: 8px; font-size: 0.9rem; font-family: var(--font);
-            outline: none; transition: all var(--transition);
+            outline: none; transition: all var(--transition); box-sizing: border-box; min-width: 0;
         }
-        .form-control:focus, .form-select:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-glow); background: var(--bg-hover); }
+        .form-control:focus, .form-select:focus, textarea.form-control:focus { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink-glow); background: var(--bg-hover); }
         .form-control::placeholder { color: var(--text-muted); }
         textarea.form-control { resize: vertical; min-height: 64px; line-height: 1.5; }
+        
         .form-select {
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -439,51 +465,49 @@ try {
         .detail-item .value { font-size: 0.9rem; color: var(--text-primary); word-break: break-word; }
 
         /* ─── RESPONSIVE ─── */
-        @media (max-width: 900px) {
-            .form-row.cols-3 { grid-template-columns: 1fr 1fr; }
-            .form-row.cols-3 .form-group:last-child { grid-column: 1 / -1; }
-        }
-
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .page-header { flex-direction: column; align-items: flex-start; }
             .header-actions { width: 100%; }
             .header-actions .btn { flex: 1; justify-content: center; }
-            .form-row, .form-row.cols-3 { grid-template-columns: 1fr; }
-            .form-row.cols-3 .form-group:last-child { grid-column: auto; }
-            .form-group.span-2 { grid-column: auto; }
+            .form-row, .form-row-3 { grid-template-columns: 1fr; gap: 1rem; }
             .modal-footer { flex-direction: column; }
             .modal-footer .btn { width: 100%; }
 
             /* Mobile: table → cards */
-            .table-wrap { overflow: visible; }
-            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; }
+            .table-wrap { border: none; background: transparent; overflow: visible; box-shadow: none; }
+            .table, .table thead, .table tbody, .table th, .table td, .table tr { display: block; width: 100%; box-sizing: border-box; }
             .table thead { display: none; }
             .table tbody tr {
                 background: var(--bg-surface); border: 1px solid var(--border);
                 border-radius: var(--radius-xl); margin-bottom: 1rem; padding: 1rem 1.25rem;
                 box-shadow: var(--shadow-md);
             }
-            /* Card header: item name spans full width without label */
             .table td[data-label="Item Name"] {
                 display: block; padding: 0 0 0.75rem; border-bottom: 1px solid var(--border);
                 margin-bottom: 0.75rem; text-align: left;
             }
             .table td[data-label="Item Name"]::before { display: none; }
             .table td[data-label="Item Name"] .item-name { font-size: 1rem; }
-
-            /* All other cells: label + value side-by-side */
+            
             .table td {
                 display: flex; justify-content: space-between; align-items: center;
-                padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right;
+                padding: 0.5rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); text-align: right;
             }
             .table td:last-child { border-bottom: none; padding-top: 0.75rem; justify-content: flex-end; gap: 8px; }
             .table td::before {
                 content: attr(data-label); font-weight: 600; color: var(--text-muted);
                 font-size: 0.72rem; text-transform: uppercase; text-align: left; flex-shrink: 0; margin-right: 1rem;
             }
-            .confirmed-badge, .confirm-btn { width: auto; }
-            .actions { justify-content: flex-end; }
+            .confirmed-badge, .confirm-btn { width: auto; padding: 4px 12px; }
+            .actions { justify-content: flex-end; width: 100%; }
+        }
+
+        /* Keep navbar clearance on very small screens */
+        @media (max-width: 520px) {
+            .modal { padding: 72px 0.5rem 1.5rem; }
+            .modal-body { padding: 1.25rem 1rem; }
+            .modal-header, .modal-footer { padding-left: 1rem; padding-right: 1rem; }
         }
     </style>
 </head>
@@ -650,7 +674,6 @@ try {
     </div>
 </div>
 
-<!-- ─── ADD / EDIT MODAL ─── -->
 <div id="modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -662,118 +685,119 @@ try {
                 <input type="hidden" id="item-id" name="item_id">
                 <input type="hidden" name="item_type_id" value="<?php echo $ITEM_TYPE_ID; ?>">
 
-                <!-- Item Information -->
-                <div class="form-section">
-                    <div class="form-section-title">Item Information</div>
+                <div class="info-group">
+                    <h3>Item Information</h3>
+                    <div class="form-stack">
 
-                    <div class="form-group autocomplete-wrapper" style="margin-bottom:1rem;">
-                        <label class="form-label" for="item-name">Item Name <span class="req">*</span></label>
-                        <input type="text" id="item-name" name="item_name" class="form-control"
-                               placeholder="e.g., Seasonal Tarpaulin" required maxlength="300" autocomplete="off">
-                        <div id="autocomplete-list" class="autocomplete-list"></div>
-                    </div>
+                        <div class="form-group full-width autocomplete-wrapper">
+                            <label class="form-label" for="item-name">Item Name <span>*</span></label>
+                            <input type="text" id="item-name" name="item_name" class="form-control"
+                                   placeholder="e.g., Seasonal Tarpaulin" required maxlength="300" autocomplete="off">
+                            <div id="autocomplete-list" class="autocomplete-list"></div>
+                        </div>
 
-                    <div class="form-row" style="margin-bottom:1rem;">
-                        <div class="form-group autocomplete-wrapper">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" id="supplier" name="supplier" class="form-control"
-                                   placeholder="e.g., General Store" autocomplete="off">
-                            <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
+                        <div class="form-row">
+                            <div class="form-group autocomplete-wrapper">
+                                <label class="form-label">Supplier</label>
+                                <input type="text" id="supplier" name="supplier" class="form-control"
+                                       placeholder="e.g., General Store" autocomplete="off">
+                                <div id="supplier-autocomplete-list" class="autocomplete-list"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Reference No.</label>
+                                <input type="text" id="reference-no" name="reference_no" class="form-control" placeholder="e.g., OR-12345">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Reference No.</label>
-                            <input type="text" id="reference-no" name="reference_no" class="form-control" placeholder="e.g., OR-12345">
-                        </div>
-                    </div>
 
-                    <div class="form-row" style="margin-bottom:1rem;">
-                        <div class="form-group">
-                            <label class="form-label" for="item-quantity">Quantity <span class="req">*</span></label>
-                            <input type="number" id="item-quantity" name="item_quantity" class="form-control val-mono"
-                                   placeholder="e.g., 5" step="0.01" min="0" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="item-quantity">Quantity <span>*</span></label>
+                                <input type="number" id="item-quantity" name="item_quantity" class="form-control val-mono"
+                                       placeholder="e.g., 5" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="unit">Unit of Measurement <span>*</span></label>
+                                <select id="unit" name="unit_id" class="form-select" required>
+                                    <option value="">Select Unit</option>
+                                    <?php foreach($units as $unit): ?>
+                                        <option value="<?php echo $unit['UNIT_ID']; ?>"><?php echo htmlspecialchars($unit['UNIT_NAME']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label" for="unit">Unit of Measurement <span class="req">*</span></label>
-                            <select id="unit" name="unit_id" class="form-select" required>
-                                <option value="">Select Unit</option>
-                                <?php foreach($units as $unit): ?>
-                                    <option value="<?php echo $unit['UNIT_ID']; ?>"><?php echo htmlspecialchars($unit['UNIT_NAME']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div class="form-row" style="margin-bottom:1rem;">
-                        <div class="form-group">
-                            <label class="form-label" for="unit-cost">Unit Cost (₱) <span class="req">*</span></label>
-                            <input type="number" id="unit-cost" name="unit_cost" class="form-control val-mono"
-                                   placeholder="0.00" step="0.01" min="0" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="unit-cost">Unit Cost (₱) <span>*</span></label>
+                                <input type="number" id="unit-cost" name="unit_cost" class="form-control val-mono"
+                                       placeholder="0.00" step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="item-category">Category <span>*</span></label>
+                                <select id="item-category" name="item_category" class="form-select" required>
+                                    <option value="">Select Category</option>
+                                    <option value="0">Non-Consumable</option>
+                                    <option value="1">Consumable</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label" for="item-category">Category <span class="req">*</span></label>
-                            <select id="item-category" name="item_category" class="form-select" required>
-                                <option value="">Select Category</option>
-                                <option value="0">Non-Consumable</option>
-                                <option value="1">Consumable</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div class="form-row" style="margin-bottom:1rem;">
-                        <div class="form-group">
-                            <label class="form-label" for="purchase-date">Date of Purchase <span class="req">*</span></label>
-                            <input type="text" id="purchase-date" name="date_of_purchase" class="form-control"
-                                   placeholder="mm/dd/yyyy" required>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="purchase-date">Date of Purchase <span>*</span></label>
+                                <input type="text" id="purchase-date" name="date_of_purchase" class="form-control date-picker"
+                                       placeholder="mm/dd/yyyy" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="net-weight">Net Weight <span class="opt">(optional)</span></label>
+                                <input type="number" id="net-weight" name="item_net_weight" class="form-control val-mono"
+                                       placeholder="e.g., 5.5" step="0.01" min="0">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label" for="net-weight">Net Weight <span class="opt">(optional)</span></label>
-                            <input type="number" id="net-weight" name="item_net_weight" class="form-control val-mono"
-                                   placeholder="e.g., 5.5" step="0.01" min="0">
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="item-desc">Description / Specs</label>
-                        <textarea id="item-desc" name="item_description" class="form-control"
-                                  placeholder="Enter detailed specifications..." rows="2" maxlength="500"></textarea>
+                        <div class="form-group full-width">
+                            <label class="form-label" for="item-desc">Description / Specs</label>
+                            <textarea id="item-desc" name="item_description" class="form-control"
+                                      placeholder="Enter detailed specifications..." rows="2" maxlength="500"></textarea>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Location -->
-                <div class="form-section">
-                    <div class="form-section-title">Initial Location</div>
-                    <!-- FIX: 3-col grid so all 3 selects sit on one row without overflow -->
-                    <div class="form-row cols-3">
-                        <div class="form-group">
-                            <label class="form-label" for="location_id">Location</label>
-                            <select id="location_id" name="location_id" class="form-select"
-                                    onchange="filterBuildings()"
-                                    <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?> required>
-                                <?php if($USER_LOCATION_ == 1000): ?>
-                                    <option value="">Select Location</option>
+                <div class="info-group">
+                    <h3>Initial Location</h3>
+                    <div class="form-stack">
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label" for="location_id">Location</label>
+                                <select id="location_id" name="location_id" class="form-select"
+                                        onchange="filterBuildings()"
+                                        <?php echo ($USER_LOCATION_ != 1000) ? 'disabled' : ''; ?> required>
+                                    <?php if($USER_LOCATION_ == 1000): ?>
+                                        <option value="">Select Location</option>
+                                    <?php endif; ?>
+                                    <?php foreach($locations as $loc): ?>
+                                        <option value="<?php echo $loc['LOCATION_ID']; ?>"
+                                            <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if ($USER_LOCATION_ != 1000): ?>
+                                    <input type="hidden" name="location_id" value="<?= $USER_LOCATION_ ?>">
                                 <?php endif; ?>
-                                <?php foreach($locations as $loc): ?>
-                                    <option value="<?php echo $loc['LOCATION_ID']; ?>"
-                                        <?php echo ($USER_LOCATION_ != 1000 && $loc['LOCATION_ID'] == $USER_LOCATION_) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($loc['LOCATION_NAME']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if ($USER_LOCATION_ != 1000): ?>
-                                <input type="hidden" name="location_id" value="<?= $USER_LOCATION_ ?>">
-                            <?php endif; ?>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="building_id">Building</label>
-                            <select id="building_id" name="building_id" class="form-select" onchange="filterPens()" disabled>
-                                <option value="">Select Location First</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="pen_id">Pen</label>
-                            <select id="pen_id" name="pen_id" class="form-select" disabled>
-                                <option value="">Select Building First</option>
-                            </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="building_id">Building</label>
+                                <select id="building_id" name="building_id" class="form-select" onchange="filterPens()" disabled>
+                                    <option value="">Select Location First</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="pen_id">Pen</label>
+                                <select id="pen_id" name="pen_id" class="form-select" disabled>
+                                    <option value="">Select Building First</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -788,7 +812,6 @@ try {
     </div>
 </div>
 
-<!-- ─── VIEW MODAL ─── -->
 <div id="view-modal" class="modal">
     <div class="modal-content" style="max-width:520px;">
         <div class="modal-header">
@@ -802,9 +825,8 @@ try {
     </div>
 </div>
 
-<!-- ─── SINGLE CONFIRM MODAL ─── -->
 <div id="confirm-modal" class="modal">
-    <div class="modal-content" style="max-width:440px;">
+    <div class="modal-content narrow">
         <div class="modal-header">
             <h2>Verify Acquisition</h2>
             <button class="modal-close" onclick="closeConfirmModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -825,16 +847,15 @@ try {
         <div class="modal-footer" style="justify-content:center; background:transparent; border-top:none;">
             <button type="button" class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
             <button type="button" class="btn btn-primary" id="confirm-submit-btn"
-                    onclick="submitConfirmation()" style="background:var(--red); border-color:var(--red);">
+                    onclick="submitConfirmation()" style="background:var(--red); border-color:var(--red); color:#fff;">
                 <i class="fa-solid fa-lock"></i> Lock Record
             </button>
         </div>
     </div>
 </div>
 
-<!-- ─── CONFIRM ALL MODAL ─── -->
 <div id="confirm-all-modal" class="modal">
-    <div class="modal-content" style="max-width:440px;">
+    <div class="modal-content narrow">
         <div class="modal-header">
             <h2>Commit All Pending</h2>
             <button class="modal-close" onclick="closeConfirmAllModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -856,7 +877,6 @@ try {
     </div>
 </div>
 
-<!-- Hidden delete form -->
 <form id="deleteItemForm" method="POST" action="../process/deleteOtherPurchase.php" style="display:none;">
     <input type="hidden" id="delete_item_id" name="item_id">
 </form>
@@ -877,7 +897,6 @@ try {
             allowInput: true
         });
 
-        // FIX: was calling loadBuildings('src') / loadBuildings('dest') which don't exist
         if (USER_LOCATION != 1000) {
             filterBuildings();
         }
@@ -1076,14 +1095,14 @@ try {
     function closeConfirmAllModal() { document.getElementById('confirm-all-modal').classList.remove('show'); }
 
     // Backdrop close for all modals
-    document.querySelectorAll('.modal').forEach(m => {
-        m.addEventListener('click', function (e) {
-            if (e.target === this) {
-                this.classList.remove('show');
-                closeAutocomplete();
-            }
-        });
-    });
+    // document.querySelectorAll('.modal').forEach(m => {
+    //     m.addEventListener('click', function (e) {
+    //         if (e.target === this) {
+    //             this.classList.remove('show');
+    //             closeAutocomplete();
+    //         }
+    //     });
+    // });
 
     // ─── VIEW ───
     function viewItem(button) {
@@ -1296,7 +1315,7 @@ try {
         const t = document.createElement('div');
         t.className = 'toast';
         t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--pink)'}`;
-        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        t.innerHTML = `${type === 'error' ? ' ' : ' '} ${msg}`;
         document.getElementById('toastContainer').appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }

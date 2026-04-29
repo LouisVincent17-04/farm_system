@@ -110,7 +110,7 @@ try {
     $conn->commit(); 
     
     // SUCCESS: Redirect back
-    $successMsg = urlencode("✅ Transaction deleted and $supply_name stock restored.");
+    $successMsg = urlencode("  Transaction deleted and $supply_name stock restored.");
     header("Location: $redirect_page?status=success&msg=$successMsg");
     exit();
 
@@ -119,7 +119,7 @@ try {
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
-    $errorMsg = urlencode('❌ Error deleting transaction: ' . $e->getMessage());
+    $errorMsg = urlencode('  Error deleting transaction: ' . $e->getMessage());
     header("Location: $redirect_page?status=error&msg=$errorMsg");
     exit();
 }

@@ -65,6 +65,7 @@ $pending_users = $conn->query("
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Verification | FarmPro Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="icon" type="image/x-icon" href="../common/tab-icon1.ico">
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -261,7 +262,7 @@ $pending_users = $conn->query("
             <?php if (empty($pending_users)): ?>
                 <tr class="empty-row">
                     <td colspan="4">
-                        <span class="empty-icon">✅</span>
+                        <span class="empty-icon"> </span>
                         All caught up! No pending registrations.
                     </td>
                 </tr>

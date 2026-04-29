@@ -133,7 +133,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['confirm_mortality'])) 
         
         // Message
         if ($profit >= 0) {
-            $_SESSION['flash_message'] = "<div class='alert alert-success'>✅ Mortality Recorded. Net Recovery: +₱" . number_format($profit, 2) . "</div>";
+            $_SESSION['flash_message'] = "<div class='alert alert-success'>  Mortality Recorded. Net Recovery: +₱" . number_format($profit, 2) . "</div>";
         } else {
             $_SESSION['flash_message'] = "<div class='alert alert-danger'>💀 Mortality Recorded. Net Loss: -₱" . number_format(abs($profit), 2) . "</div>";
         }

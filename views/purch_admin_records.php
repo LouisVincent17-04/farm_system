@@ -1111,7 +1111,7 @@ try {
         const t = document.createElement('div');
         t.className = 'toast';
         t.style.borderLeft = `4px solid ${type === 'error' ? 'var(--red)' : 'var(--indigo)'}`;
-        t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+        t.innerHTML = `${type === 'error' ? ' ' : ' '} ${msg}`;
         document.getElementById('toastContainer').appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }

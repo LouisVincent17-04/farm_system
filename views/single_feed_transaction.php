@@ -30,6 +30,7 @@ try {
         LEFT JOIN ANIMAL_RECORDS a ON ft.ANIMAL_ID = a.ANIMAL_ID
         LEFT JOIN PENS p ON a.PEN_ID = p.PEN_ID
         LEFT JOIN FEEDS f ON ft.FEED_ID = f.FEED_ID
+        WHERE f.TOTAL_WEIGHT_KG > 0
         ORDER BY ft.TRANSACTION_DATE DESC, ft.FT_ID DESC
         LIMIT 100
     ";
@@ -291,7 +292,7 @@ try {
     <header class="page-header">
         <div class="header-info">
             <h1>Feed Distribution <span>Ledger</span></h1>
-            <p>Record and track targeted individual or bulk pen feeding transactions.</p>
+            <p>Record and track per animal or bulk pen feeding transactions.</p>
         </div>
         
         <div class="header-actions">
@@ -374,7 +375,7 @@ try {
                     </label>
                     <label class="radio-label">
                         <input type="radio" name="feed_mode" value="individual" onchange="toggleMode()">
-                        Target Individual
+                        Per Animal
                     </label>
                 </div>
 
@@ -778,11 +779,11 @@ try {
     }
 
     // Close modal on outside click
-    window.onclick = function(e) {
-        if (e.target.classList.contains('modal')) {
-            closeModal();
-        }
-    }
+    // window.onclick = function(e) {
+    //     if (e.target.classList.contains('modal')) {
+    //         closeModal();
+    //     }
+    // }
     
     function filterTable() {
         const term = document.getElementById('searchInput').value.toLowerCase();

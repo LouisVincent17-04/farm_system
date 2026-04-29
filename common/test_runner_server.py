@@ -61,11 +61,11 @@ def register_with_server(local_ip):
         )
         data = res.json()
         if data.get('success'):
-            print(f"✅ Registered as '{DEVICE_NAME}' → {runner_url}")
+            print(f"  Registered as '{DEVICE_NAME}' → {runner_url}")
         else:
             print(f"⚠️  Registration failed: {data.get('message')}")
     except Exception as e:
-        print(f"❌ Could not register with server: {e}")
+        print(f"  Could not register with server: {e}")
 
 
 def run_test(test_key, script_path):
@@ -77,7 +77,7 @@ def run_test(test_key, script_path):
             encoding='utf-8', errors='replace'
         )
         running_tests[test_key] = 'done'
-        print(f"\n✅ Test finished: {test_key}")
+        print(f"\n  Test finished: {test_key}")
         print(result.stdout)
         if result.stderr:
             print("STDERR:", result.stderr)
@@ -86,7 +86,7 @@ def run_test(test_key, script_path):
         print(f"⏱️ Test timed out: {test_key}")
     except Exception as e:
         running_tests[test_key] = 'error'
-        print(f"❌ Test error: {e}")
+        print(f"  Test error: {e}")
 
 
 @app.route('/run-test', methods=['POST'])
@@ -106,7 +106,7 @@ def run_test_endpoint():
 
     return jsonify({
         'success': True,
-        'message': f'✅ Test launched on <strong>{DEVICE_NAME}</strong>! Watch the browser window.',
+        'message': f'  Test launched on <strong>{DEVICE_NAME}</strong>! Watch the browser window.',
         'script':  script_path
     })
 

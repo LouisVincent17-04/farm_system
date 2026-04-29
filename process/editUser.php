@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? null;
 
     if (!$id || !$name || !$email) {
-        echo json_encode(['success' => false, 'message' => '❌ Missing fields (ID, Name, or Email).']);
+        echo json_encode(['success' => false, 'message' => '  Missing fields (ID, Name, or Email).']);
         exit;
     }
 
@@ -86,16 +86,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 4. COMMIT EVERYTHING
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => '✅ User updated successfully.']);
+        echo json_encode(['success' => true, 'message' => '  User updated successfully.']);
 
     } catch (Exception $e) {
         // Rollback on error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ Error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  Error: ' . $e->getMessage()]);
     }
 } else {
-    echo json_encode(['success' => false, 'message' => '❌ Invalid request method.']);
+    echo json_encode(['success' => false, 'message' => '  Invalid request method.']);
 }
 ?>

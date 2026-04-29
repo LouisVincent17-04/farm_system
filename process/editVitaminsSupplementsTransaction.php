@@ -197,16 +197,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // 9. COMMIT EVERYTHING
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => "✅ Record Updated. Cost: ₱$cost_display"]);
+        echo json_encode(['success' => true, 'message' => "  Record Updated. Cost: ₱$cost_display"]);
         
     } catch (Exception $e) {
         // Rollback on error
         if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
-        echo json_encode(['success' => false, 'message' => '❌ ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => '  ' . $e->getMessage()]);
     }
 } else {
-    echo json_encode(['success' => false, 'message' => '❌ Invalid request method.']);
+    echo json_encode(['success' => false, 'message' => '  Invalid request method.']);
 }
 ?>
